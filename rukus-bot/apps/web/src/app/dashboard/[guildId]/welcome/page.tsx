@@ -25,7 +25,7 @@ export default async function WelcomePage({
         guildId={guildId}
         initial={config}
         channels={options.channels}
-        roles={options.roles}
+        roles={options.grantableRoles}
       />
     </div>
   );

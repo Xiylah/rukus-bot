@@ -1,6 +1,7 @@
 import {
   fetchGuildChannels,
   fetchGuildRoles,
+  assignableRoles,
   textChannels,
   categoryChannels,
 } from "./discord";
@@ -27,12 +28,21 @@ function roleColor(color: number): string | undefined {
 export async function loadGuildOptions(guildId: string): Promise<{
   categories: Option[];
   channels: Option[];
+  /** ALL roles including bot roles, for permission pickers (support roles). */
   roles: Option[];
+  /** Only roles the bot can grant to members (auto-roles, form approval). */
+  grantableRoles: Option[];
 }> {
   const [allChannels, allRoles] = await Promise.all([
     fetchGuildChannels(guildId),
     fetchGuildRoles(guildId),
   ]);
+
+  const toOption = (r: (typeof allRoles)[number]): Option => ({
+    id: r.id,
+    name: r.name,
+    color: roleColor(r.color),
+  });
 
   return {
     categories: categoryChannels(allChannels).map((c) => ({
@@ -43,10 +53,7 @@ export async function loadGuildOptions(guildId: string): Promise<{
       id: c.id,
       name: c.name,
     })),
-    roles: allRoles.map((r) => ({
-      id: r.id,
-      name: r.name,
-      color: roleColor(r.color),
-    })),
+    roles: allRoles.map(toOption),
+    grantableRoles: assignableRoles(allRoles).map(toOption),
   };
 }

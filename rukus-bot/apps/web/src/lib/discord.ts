@@ -204,14 +204,25 @@ export function categoryChannels(channels: DiscordChannel[]): DiscordChannel[] {
 }
 
 /**
- * Every role in the guild, highest first, excluding @everyone and
- * integration-managed roles (which can't be assigned by a bot anyway).
+ * Every role in the guild, highest first, excluding @everyone.
+ *
+ * Managed (bot/integration) roles ARE included: permission pickers like ticket
+ * support roles legitimately need them, e.g. adding the bot's own role so it
+ * can read ticket channels. They get a "(bot)" suffix so they're identifiable.
+ * Callers that assign roles to members (auto-roles, form approval) should use
+ * assignableRoles() instead, since Discord refuses to grant managed roles.
  */
 export async function fetchGuildRoles(guildId: string): Promise<DiscordRole[]> {
   const roles = await botGet<DiscordRole>(`/guilds/${guildId}/roles`);
   return roles
-    .filter((r) => r.id !== guildId && !r.managed) // @everyone shares the guild id
-    .sort((a, b) => b.position - a.position);
+    .filter((r) => r.id !== guildId) // @everyone shares the guild id
+    .sort((a, b) => b.position - a.position)
+    .map((r) => (r.managed ? { ...r, name: `${r.name} (bot)` } : r));
+}
+
+/** Roles a bot can actually grant to members (excludes managed ones). */
+export function assignableRoles(roles: DiscordRole[]): DiscordRole[] {
+  return roles.filter((r) => !r.managed);
 }
 
 export interface DiscordMember {

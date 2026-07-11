@@ -89,6 +89,24 @@ export async function createTicket(params: {
       id: guild.roles.everyone.id,
       deny: [PermissionFlagsBits.ViewChannel],
     },
+    // The bot must always see its own ticket channels (transcripts,
+    // translation, closing) regardless of which support roles are configured.
+    ...(guild.members.me
+      ? [
+          {
+            id: guild.members.me.id,
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.SendMessages,
+              PermissionFlagsBits.ReadMessageHistory,
+              PermissionFlagsBits.EmbedLinks,
+              PermissionFlagsBits.AttachFiles,
+              PermissionFlagsBits.ManageMessages,
+              PermissionFlagsBits.ManageChannels,
+            ],
+          },
+        ]
+      : []),
     {
       id: opener.id,
       allow: [
