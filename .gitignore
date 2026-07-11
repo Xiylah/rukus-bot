@@ -16,12 +16,13 @@ out/
 .vercel/
 .wrangler/
 
-# ---- Python (main.py bot) ----
+# ---- Python (legacy main.py bot, now retired) ----
 __pycache__/
 *.py[cod]
 .venv/
 venv/
 learned_examples.json
+
 
 # ---- Logs ----
 *.log

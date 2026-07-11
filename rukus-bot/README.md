@@ -15,10 +15,12 @@ A TypeScript monorepo containing **one all-in-one bot** plus a dashboard:
 - **`packages/db`** — Prisma schema + client (Postgres / Supabase).
 - **`packages/shared`** — shared types, constants, and Zod schemas.
 
-> This **replaces** the old Python `main.py`. Translation and the event/lost-item
-> responder have been ported here (the responder now uses keyword matching
-> instead of the Python ML model). Once this bot is running, `main.py` can be
-> retired — you run **one** bot with **one** token.
+> This **replaces** the old Python bot (`main.py`, since removed — see git
+> history). Its translation and event/lost-item responder were ported here, with
+> one deliberate change: the responder now uses **keyword matching** rather than
+> the Python sentence-transformer model, so it no longer auto-learns new
+> phrasings — add server-specific wording on the dashboard's Auto-responder page
+> instead. One bot, one token.
 
 ---
 

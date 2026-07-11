@@ -1,6 +1,0 @@
-discord.py
-sentence-transformers
-torch
-deep-translator
-langdetect
-deepl
