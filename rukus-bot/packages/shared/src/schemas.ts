@@ -73,6 +73,10 @@ export const ticketConfigSchema = z.object({
     .default("Thanks for opening a ticket! Staff will be with you shortly."),
   /** Max simultaneously-open tickets per user (0 = unlimited). */
   maxOpenPerUser: z.number().int().min(0).max(50).default(1),
+  /** Where the live panel message lives, so the dashboard can update it
+   *  in place instead of posting duplicates. Set by the publish action. */
+  panelChannelId: snowflake,
+  panelMessageId: snowflake,
   /** Ping the support roles when a ticket opens, so staff notice fast. */
   pingSupportOnOpen: z.boolean().default(false),
   /**
@@ -134,6 +138,10 @@ export type Form = z.infer<typeof formSchema>;
 export const formsConfigSchema = z.object({
   enabled: z.boolean().default(false),
   forms: z.array(formSchema).default([]),
+  /** Where the live panel message lives, so the dashboard can update it
+   *  in place instead of posting duplicates. Set by the publish action. */
+  panelChannelId: snowflake,
+  panelMessageId: snowflake,
   /** The panel posted by /form panel. */
   panel: z
     .object({

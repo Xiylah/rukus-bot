@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import {
+  getTicketConfig,
+  getFormsConfig,
   setTicketConfig,
   setFormsConfig,
   setTranslationConfig,
@@ -18,8 +20,11 @@ import {
   moderationConfigSchema,
   welcomeConfigSchema,
   accessConfigSchema,
+  buildTicketPanelPayload,
+  buildFormsPanelPayload,
 } from "@rukus/shared";
 import { requireGuildAccess } from "@/lib/guard";
+import { postChannelMessage, editChannelMessage } from "@/lib/discord";
 
 /**
  * Server actions that persist dashboard config.
@@ -40,6 +45,12 @@ export async function saveTicketConfig(
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
+  // Panel tracking (where the live panel message lives) is owned by the
+  // publish action, not the settings form; preserve it across saves so a
+  // stale client state can't orphan the posted panel.
+  const currentTickets = await getTicketConfig(guildId);
+  parsed.data.panelChannelId = currentTickets.panelChannelId;
+  parsed.data.panelMessageId = currentTickets.panelMessageId;
   await setTicketConfig(guildId, parsed.data);
   revalidatePath(`/dashboard/${guildId}/tickets`);
   revalidatePath(`/dashboard/${guildId}`);
@@ -55,6 +66,10 @@ export async function saveFormsConfig(
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
+  // Same as tickets: the publish action owns the panel tracking fields.
+  const currentForms = await getFormsConfig(guildId);
+  parsed.data.panelChannelId = currentForms.panelChannelId;
+  parsed.data.panelMessageId = currentForms.panelMessageId;
   await setFormsConfig(guildId, parsed.data);
   revalidatePath(`/dashboard/${guildId}/forms`);
   revalidatePath(`/dashboard/${guildId}`);
@@ -145,4 +160,60 @@ export async function saveAccessConfig(
   await setAccessConfig(guildId, parsed.data);
   revalidatePath(`/dashboard/${guildId}/access`);
   return { ok: true };
+}
+
+/**
+ * Publish (or update in place) a panel message in Discord from the dashboard.
+ * If we previously posted this panel to the SAME channel, we edit that message
+ * so the server doesn't accumulate duplicates; otherwise we post fresh and
+ * remember where it lives.
+ */
+async function publishPanel(
+  guildId: string,
+  channelId: string,
+  kind: "tickets" | "forms",
+): Promise<ActionResult & { updated?: boolean }> {
+  await requireGuildAccess(guildId);
+  if (!/^\d{17,20}$/.test(channelId)) {
+    return { ok: false, error: "Pick a channel first." };
+  }
+
+  const config =
+    kind === "tickets" ? await getTicketConfig(guildId) : await getFormsConfig(guildId);
+  const payload =
+    kind === "tickets"
+      ? buildTicketPanelPayload(config as never)
+      : buildFormsPanelPayload(config as never);
+
+  // Same channel as last time: try an in-place edit first.
+  if (config.panelMessageId && config.panelChannelId === channelId) {
+    const edited = await editChannelMessage(channelId, config.panelMessageId, payload);
+    if (edited) {
+      revalidatePath(`/dashboard/${guildId}/${kind}`);
+      return { ok: true, updated: true };
+    }
+    // Message was deleted; fall through and post a new one.
+  }
+
+  const posted = await postChannelMessage(channelId, payload);
+  if (!posted.ok) return { ok: false, error: posted.error };
+
+  const next = {
+    ...config,
+    panelChannelId: channelId,
+    panelMessageId: posted.messageId,
+  };
+  if (kind === "tickets") await setTicketConfig(guildId, next);
+  else await setFormsConfig(guildId, next);
+
+  revalidatePath(`/dashboard/${guildId}/${kind}`);
+  return { ok: true, updated: false };
+}
+
+export async function publishTicketPanel(guildId: string, channelId: string) {
+  return publishPanel(guildId, channelId, "tickets");
+}
+
+export async function publishFormsPanel(guildId: string, channelId: string) {
+  return publishPanel(guildId, channelId, "forms");
 }

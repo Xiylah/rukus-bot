@@ -6,8 +6,15 @@ import {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
+  type MessageCreateOptions,
 } from "discord.js";
-import { COLORS, CID, type Form, type FormsConfig } from "@rukus/shared";
+import {
+  COLORS,
+  CID,
+  buildFormsPanelPayload,
+  type Form,
+  type FormsConfig,
+} from "@rukus/shared";
 
 /**
  * Custom-id format for forms: we append the form id so a single handler can
@@ -26,46 +33,12 @@ export function idFromCustomId(customId: string): string {
   return parts[parts.length - 1] ?? "";
 }
 
-/** Parse "#rrggbb" to the int discord.js wants; fall back to blurple. */
-function hexToInt(hex: string | undefined): number {
-  if (!hex) return COLORS.primary;
-  const n = parseInt(hex.replace("#", ""), 16);
-  return Number.isNaN(n) ? COLORS.primary : n;
-}
-
-/** The public panel: embed + a button per form. */
-export function formPanelMessage(config: FormsConfig) {
-  const forms = config.forms;
-  const description =
-    config.panel.description.trim() ||
-    forms
-      .map((f) => `• **${f.name}**${f.description ? `: ${f.description}` : ""}`)
-      .join("\n") ||
-    "No forms configured yet.";
-
-  const embed = new EmbedBuilder()
-    .setColor(hexToInt(config.panel.color))
-    .setTitle(config.panel.title)
-    .setDescription(description);
-
-  // Discord allows max 5 buttons per row, 5 rows.
-  const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-  for (let i = 0; i < forms.length; i += 5) {
-    const slice = forms.slice(i, i + 5);
-    rows.push(
-      new ActionRowBuilder<ButtonBuilder>().addComponents(
-        ...slice.map((f) =>
-          new ButtonBuilder()
-            .setCustomId(formOpenId(f.id))
-            .setLabel(f.buttonLabel)
-            .setStyle(ButtonStyle.Primary)
-            .setEmoji("📝"),
-        ),
-      ),
-    );
-  }
-
-  return { embeds: [embed], components: rows.slice(0, 5) };
+/**
+ * The public panel: embed + a button per form. Built by the SHARED payload
+ * builder so /form panel and the dashboard's "Post to Discord" are identical.
+ */
+export function formPanelMessage(config: FormsConfig): MessageCreateOptions {
+  return buildFormsPanelPayload(config) as MessageCreateOptions;
 }
 
 /** Build the modal for a given form definition. */

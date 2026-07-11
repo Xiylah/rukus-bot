@@ -1,6 +1,7 @@
 import { getTicketConfig, getFormsConfig } from "@rukus/supabase";
 import { loadGuildOptions } from "@/lib/guildOptions";
 import { TicketSettingsForm } from "./TicketSettingsForm";
+import { PublishPanel } from "@/components/PublishPanel";
 
 export default async function TicketsPage({
   params,
@@ -30,6 +31,14 @@ export default async function TicketsPage({
         roles={options.roles}
         forms={formsCfg.forms.map((f) => ({ id: f.id, name: f.name }))}
       />
+      <div className="mt-5">
+        <PublishPanel
+          guildId={guildId}
+          kind="tickets"
+          channels={options.channels}
+          currentChannelId={config.panelChannelId}
+        />
+      </div>
     </div>
   );
 }

@@ -225,6 +225,63 @@ export function assignableRoles(roles: DiscordRole[]): DiscordRole[] {
   return roles.filter((r) => !r.managed);
 }
 
+/**
+ * Post a message to a channel with the bot token. Used by the dashboard's
+ * "Post panel to Discord" buttons. Returns the new message id, or an error.
+ */
+export async function postChannelMessage(
+  channelId: string,
+  payload: object,
+): Promise<{ ok: true; messageId: string } | { ok: false; error: string }> {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) return { ok: false, error: "Bot token is not configured." };
+  const res = await fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    if (res.status === 403) {
+      return {
+        ok: false,
+        error: "The bot can't post in that channel (missing permission).",
+      };
+    }
+    return { ok: false, error: `Discord rejected the message (${res.status}): ${body.slice(0, 200)}` };
+  }
+  const msg = (await res.json()) as { id: string };
+  return { ok: true, messageId: msg.id };
+}
+
+/**
+ * Edit an existing bot message in place. Returns false when the message no
+ * longer exists (deleted), so the caller can fall back to posting a new one.
+ */
+export async function editChannelMessage(
+  channelId: string,
+  messageId: string,
+  payload: object,
+): Promise<boolean> {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) return false;
+  const res = await fetch(
+    `${DISCORD_API}/channels/${channelId}/messages/${messageId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bot ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+  return res.ok;
+}
+
 export interface DiscordMember {
   id: string;
   name: string; // nickname, else display name, else username

@@ -1,6 +1,7 @@
 import { getFormsConfig } from "@rukus/supabase";
 import { loadGuildOptions } from "@/lib/guildOptions";
 import { FormsSettings } from "./FormsSettings";
+import { PublishPanel } from "@/components/PublishPanel";
 
 export default async function FormsPage({
   params,
@@ -27,6 +28,14 @@ export default async function FormsPage({
         channels={options.channels}
         roles={options.grantableRoles}
       />
+      <div className="mt-5">
+        <PublishPanel
+          guildId={guildId}
+          kind="forms"
+          channels={options.channels}
+          currentChannelId={config.panelChannelId}
+        />
+      </div>
     </div>
   );
 }

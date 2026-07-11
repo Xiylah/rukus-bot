@@ -1,0 +1,142 @@
+import { CID, COLORS } from "./constants.js";
+import type { TicketConfig, TicketType, FormsConfig } from "./schemas.js";
+
+/**
+ * Panel payload builders, shared by the bot and the dashboard.
+ *
+ * These return plain Discord API JSON (embeds + components), NOT discord.js
+ * builders, so the dashboard can post/edit panels over REST with the bot token
+ * and the bot can pass the same objects straight to channel.send(). One source
+ * of truth means "publish from the website" and /ticket panel are pixel
+ * identical.
+ */
+
+export interface PanelPayload {
+  embeds: object[];
+  components: object[];
+}
+
+/** Parse "#rrggbb" into the integer Discord wants; fall back to blurple. */
+export function hexToInt(hex: string | undefined): number {
+  if (!hex) return COLORS.primary;
+  const n = parseInt(hex.replace("#", ""), 16);
+  return Number.isNaN(n) ? COLORS.primary : n;
+}
+
+/**
+ * Resolve the guild's ticket types. When none are configured we synthesize a
+ * single default type, so callers never special-case "no types".
+ */
+export function resolveTypes(config: TicketConfig): TicketType[] {
+  if (config.types.length > 0) return config.types;
+  return [
+    {
+      id: "default",
+      label: "Support",
+      description: "",
+      emoji: "🎫",
+      nameTemplate: "ticket-{count}",
+      categoryId: undefined,
+      welcomeMessage: undefined,
+      formId: undefined,
+      transcriptChannelId: undefined,
+      supportRoleIds: [],
+    },
+  ];
+}
+
+/** Emoji object for the API, or undefined when the string can't be one. */
+function apiEmoji(emoji: string | undefined): { name: string } | undefined {
+  const e = emoji?.trim();
+  if (!e) return undefined;
+  // A real unicode emoji is non-ASCII; plain text here would 400 the request.
+  if (/^[\x00-\x7F]+$/.test(e)) return undefined;
+  return { name: e };
+}
+
+/** The ticket panel: one type = button, several = select menu. */
+export function buildTicketPanelPayload(config: TicketConfig): PanelPayload {
+  const embed = {
+    title: config.panel.title,
+    description: config.panel.description,
+    color: hexToInt(config.panel.color),
+  };
+
+  const types = resolveTypes(config);
+
+  if (types.length === 1) {
+    const only = types[0]!;
+    return {
+      embeds: [embed],
+      components: [
+        {
+          type: 1, // action row
+          components: [
+            {
+              type: 2, // button
+              style: 1, // primary
+              label: config.panel.buttonLabel.slice(0, 80),
+              custom_id: `${CID.ticketOpen}:${only.id}`,
+              emoji: apiEmoji(only.emoji),
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  return {
+    embeds: [embed],
+    components: [
+      {
+        type: 1,
+        components: [
+          {
+            type: 3, // string select
+            custom_id: CID.ticketOpen,
+            placeholder: (config.panel.buttonLabel || "Make a selection").slice(0, 150),
+            options: types.slice(0, 25).map((t) => ({
+              label: t.label.slice(0, 100),
+              value: t.id,
+              description: t.description ? t.description.slice(0, 100) : undefined,
+              emoji: apiEmoji(t.emoji),
+            })),
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/** The forms panel: embed + one button per form. */
+export function buildFormsPanelPayload(config: FormsConfig): PanelPayload {
+  const description =
+    config.panel.description.trim() ||
+    config.forms
+      .map((f) => `• **${f.name}**${f.description ? `: ${f.description}` : ""}`)
+      .join("\n") ||
+    "No forms configured yet.";
+
+  const embed = {
+    title: config.panel.title,
+    description,
+    color: hexToInt(config.panel.color),
+  };
+
+  // Max 5 buttons per row, max 5 rows.
+  const rows: object[] = [];
+  for (let i = 0; i < config.forms.length && rows.length < 5; i += 5) {
+    rows.push({
+      type: 1,
+      components: config.forms.slice(i, i + 5).map((f) => ({
+        type: 2,
+        style: 1,
+        label: (f.buttonLabel || "Apply").slice(0, 80),
+        custom_id: `${CID.formOpen}:${f.id}`,
+        emoji: { name: "📝" },
+      })),
+    });
+  }
+
+  return { embeds: [embed], components: rows };
+}
