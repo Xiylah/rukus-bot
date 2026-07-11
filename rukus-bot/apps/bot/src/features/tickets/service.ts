@@ -69,6 +69,32 @@ export function allSupportRoleIds(config: TicketConfig): string[] {
   return [...ids];
 }
 
+/**
+ * Guild-wide permissions the bot needs to create private ticket channels.
+ * Discord refuses channel creation with overwrites unless the bot itself
+ * holds every permission being allowed/denied, so a missing View Channels
+ * (common on servers that strip @everyone) breaks ticket creation entirely.
+ */
+const REQUIRED_TICKET_PERMS = [
+  ["View Channels", PermissionFlagsBits.ViewChannel],
+  ["Manage Channels", PermissionFlagsBits.ManageChannels],
+  ["Manage Roles", PermissionFlagsBits.ManageRoles],
+  ["Send Messages", PermissionFlagsBits.SendMessages],
+  ["Read Message History", PermissionFlagsBits.ReadMessageHistory],
+  ["Embed Links", PermissionFlagsBits.EmbedLinks],
+  ["Attach Files", PermissionFlagsBits.AttachFiles],
+  ["Manage Messages", PermissionFlagsBits.ManageMessages],
+] as const;
+
+/** Names of required permissions the bot's roles do NOT grant guild-wide. */
+export function missingTicketPerms(guild: Guild): string[] {
+  const me = guild.members.me;
+  if (!me) return [];
+  return REQUIRED_TICKET_PERMS.filter(([, bit]) => !me.permissions.has(bit)).map(
+    ([name]) => name,
+  );
+}
+
 /** Create the private ticket channel and its DB row. Returns both. */
 export async function createTicket(params: {
   guild: Guild;

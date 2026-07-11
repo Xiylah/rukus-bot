@@ -92,6 +92,52 @@ async function main() {
     if (res.ok) {
       const g = (await res.json()) as { name: string };
       ok("Bot is in the guild", `→ "${g.name}"`);
+
+      // Verify the bot's ROLE grants what tickets need guild-wide. Discord
+      // refuses channel creation with overwrites unless the bot itself holds
+      // every permission being set, so a missing View Channels (common when
+      // servers strip @everyone) silently breaks ticket creation.
+      try {
+        const botId = Buffer.from(token.split(".")[0]!, "base64").toString();
+        const [member, roles] = await Promise.all([
+          fetch(`https://discord.com/api/v10/guilds/${guildId}/members/${botId}`, {
+            headers: { Authorization: `Bot ${token}` },
+          }).then((r) => r.json() as Promise<{ roles?: string[] }>),
+          fetch(`https://discord.com/api/v10/guilds/${guildId}/roles`, {
+            headers: { Authorization: `Bot ${token}` },
+          }).then((r) => r.json() as Promise<{ id: string; permissions: string }[]>),
+        ]);
+        let perms = 0n;
+        for (const rid of [guildId, ...(member.roles ?? [])]) {
+          const role = roles.find((r) => r.id === rid);
+          if (role) perms |= BigInt(role.permissions);
+        }
+        const needed: [string, bigint][] = [
+          ["View Channels", 1024n],
+          ["Manage Channels", 16n],
+          ["Manage Roles", 268435456n],
+          ["Send Messages", 2048n],
+          ["Read Message History", 65536n],
+          ["Embed Links", 16384n],
+          ["Attach Files", 32768n],
+          ["Manage Messages", 8192n],
+        ];
+        const admin = (perms & 8n) === 8n;
+        const missing = admin
+          ? []
+          : needed.filter(([, bit]) => (perms & bit) !== bit).map(([n]) => n);
+        if (missing.length === 0) {
+          ok("Bot role has all permissions tickets need");
+        } else {
+          bad(
+            `Bot role is missing: ${missing.join(", ")}`,
+            "Server Settings > Roles > the bot's role > enable these. Ticket " +
+              "creation fails without them.",
+          );
+        }
+      } catch {
+        warn("Couldn't verify the bot's role permissions", "Check them manually.");
+      }
     } else {
       warn(
         "Bot can't see that guild",

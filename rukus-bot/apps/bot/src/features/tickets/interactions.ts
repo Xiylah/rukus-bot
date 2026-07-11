@@ -30,6 +30,7 @@ import {
   markClosed,
   countOpenForUser,
   allSupportRoleIds,
+  missingTicketPerms,
 } from "./service.js";
 import {
   ticketOpenedMessage,
@@ -96,6 +97,19 @@ async function createAndAnnounce(
 ) {
   if (!interaction.inCachedGuild()) return;
   await interaction.deferReply(ephemeral);
+
+  // Tell the admin EXACTLY which permission is missing instead of guessing.
+  const missing = missingTicketPerms(interaction.guild);
+  if (missing.length > 0) {
+    await interaction.editReply({
+      content:
+        "I can't create ticket channels because my role is missing these " +
+        `server-wide permissions: **${missing.join(", ")}**.
+` +
+        "An admin can fix this in Server Settings > Roles > my role.",
+    });
+    return;
+  }
 
   try {
     const { ticket, channel } = await createTicket({
