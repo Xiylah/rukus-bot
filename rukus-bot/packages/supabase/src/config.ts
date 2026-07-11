@@ -37,6 +37,18 @@ async function readConfig<T>(guildId: string, feature: FeatureName): Promise<T> 
   return schema.parse(data?.config ?? {}) as T;
 }
 
+/**
+ * Prisma applies `@default(cuid())` and `@updatedAt` in its CLIENT, not as
+ * database defaults. This layer writes through PostgREST instead, so it has to
+ * supply those columns itself — otherwise Postgres rejects the insert with
+ * `null value in column "updatedAt" violates not-null constraint`.
+ * (A migration also adds DB-level defaults; this keeps us correct either way.)
+ */
+function newId(): string {
+  // Not a real cuid, but the column only needs a unique string id.
+  return `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+}
+
 async function writeConfig<T>(
   guildId: string,
   feature: FeatureName,
@@ -45,18 +57,20 @@ async function writeConfig<T>(
   const schema = FEATURE_SCHEMAS[feature];
   const parsed = schema.parse(config);
   const supabase = getSupabase();
+  const now = new Date().toISOString();
 
   // Ensure the parent Guild row exists (FK constraint) — upsert is idempotent.
   const guildUpsert = await supabase
     .from("Guild")
-    .upsert({ id: guildId }, { onConflict: "id" });
+    .upsert({ id: guildId, updatedAt: now }, { onConflict: "id" });
   if (guildUpsert.error) {
     throw new Error(`Supabase guild upsert failed: ${guildUpsert.error.message}`);
   }
 
   // Upsert the feature config on the (guildId, feature) unique constraint.
+  // `id` is only used on insert; on conflict the existing row keeps its id.
   const { error } = await supabase.from(TABLE).upsert(
-    { guildId, feature, config: parsed },
+    { id: newId(), guildId, feature, config: parsed, updatedAt: now },
     { onConflict: "guildId,feature" },
   );
   if (error) throw new Error(`Supabase write failed: ${error.message}`);

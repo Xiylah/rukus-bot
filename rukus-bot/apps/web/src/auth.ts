@@ -12,9 +12,20 @@ import Discord from "next-auth/providers/discord";
  * so server components / route handlers can call the Discord API on the user's
  * behalf (see lib/discord.ts).
  */
+
+// Auth.js needs a full URL. A bare hostname (e.g. "app.up.railway.app", which
+// is what hosting dashboards show you) makes it throw a bare `TypeError:
+// Invalid URL` with no hint at the cause. Normalize it instead of exploding.
+for (const key of ["NEXTAUTH_URL", "AUTH_URL"] as const) {
+  const value = process.env[key];
+  if (value && !/^https?:\/\//i.test(value)) {
+    process.env[key] = `https://${value.replace(/\/+$/, "")}`;
+  }
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  // Auth.js only auto-trusts the host on Vercel. We deploy to Cloudflare Pages,
-  // so we must opt in explicitly or every request fails with UntrustedHost.
+  // Auth.js only auto-trusts the host on Vercel; we self-host on Railway, so we
+  // must opt in explicitly or every request fails with UntrustedHost.
   trustHost: true,
   providers: [
     Discord({
