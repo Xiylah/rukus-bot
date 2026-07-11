@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-panel text-zinc-200 antialiased;
+}
+
+/* Reusable form primitives to keep settings pages consistent. */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition-colors;
+  }
+  .btn-primary {
+    @apply btn bg-blurple text-white hover:bg-indigo-500;
+  }
+  .btn-ghost {
+    @apply btn bg-card text-zinc-200 hover:bg-edge;
+  }
+  .input {
+    @apply w-full rounded-md border border-edge bg-panel px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blurple;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium text-zinc-300;
+  }
+  .card {
+    @apply rounded-lg border border-edge bg-card p-5;
+  }
+}

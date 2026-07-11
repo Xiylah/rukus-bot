@@ -1,0 +1,40 @@
+import { config as loadEnv } from "dotenv";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+import { z } from "zod";
+
+// Load the monorepo-root .env regardless of where the process is launched from.
+// (apps/bot/src/env.ts → ../../../../.env resolves to rukus-bot/.env)
+const here = dirname(fileURLToPath(import.meta.url));
+loadEnv({ path: resolve(here, "../../../.env") });
+// Also load a bot-local .env if present (overrides root); harmless if absent.
+loadEnv({ path: resolve(here, "../.env"), override: false });
+
+/**
+ * Validate required environment at startup so we fail fast with a clear message
+ * instead of a cryptic error deep inside discord.js or Prisma.
+ *
+ * dotenv loads the monorepo-root .env when the bot is run from apps/bot; in
+ * production (Railway) the vars come from the environment directly.
+ */
+const schema = z.object({
+  DISCORD_BOT_TOKEN: z.string().min(1, "DISCORD_BOT_TOKEN is required"),
+  DISCORD_CLIENT_ID: z.string().min(1, "DISCORD_CLIENT_ID is required"),
+  DISCORD_GUILD_ID: z.string().min(1, "DISCORD_GUILD_ID is required"),
+  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  // Optional: enables the higher-quality DeepL engine (Google is the fallback).
+  DEEPL_API_KEY: z.string().optional(),
+});
+
+const parsed = schema.safeParse(process.env);
+
+if (!parsed.success) {
+  console.error("❌ Invalid environment configuration:");
+  for (const issue of parsed.error.issues) {
+    console.error(`  - ${issue.path.join(".")}: ${issue.message}`);
+  }
+  process.exit(1);
+}
+
+export const env = parsed.data;

@@ -1,0 +1,32 @@
+node_modules/
+dist/
+.next/
+out/
+build/
+
+# cloudflare / vercel build output
+.vercel/
+.wrangler/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# prisma
+packages/db/prisma/*.db
+packages/db/prisma/dev.db*
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# os / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# transcripts written at runtime
+apps/bot/transcripts/

@@ -1,0 +1,38 @@
+# ============================================================
+# SECRETS — never commit these.
+# ============================================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- Node / pnpm ----
+node_modules/
+dist/
+build/
+out/
+.next/
+.vercel/
+.wrangler/
+
+# ---- Python (main.py bot) ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+learned_examples.json
+
+# ---- Logs ----
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# ---- Runtime artifacts ----
+rukus-bot/apps/bot/transcripts/

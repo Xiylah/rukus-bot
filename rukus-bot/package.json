@@ -1,0 +1,25 @@
+{
+  "name": "rukus-bot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Rukus all-in-one Discord bot (tickets, forms, moderation) + dashboard",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "bot:dev": "pnpm --filter @rukus/bot dev",
+    "bot:deploy-commands": "pnpm --filter @rukus/bot deploy-commands",
+    "check-env": "pnpm --filter @rukus/bot check-env",
+    "web:dev": "pnpm --filter @rukus/web dev",
+    "db:generate": "pnpm --filter @rukus/db generate",
+    "db:push": "pnpm --filter @rukus/db push",
+    "db:migrate": "pnpm --filter @rukus/db migrate",
+    "db:studio": "pnpm --filter @rukus/db studio",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  },
+  "packageManager": "pnpm@10.26.0"
+}

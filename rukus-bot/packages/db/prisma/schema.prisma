@@ -1,0 +1,129 @@
+// Prisma schema for the Rukus bot + dashboard.
+//
+// IMPORTANT: this database is SHARED with another app (a Roblox game whose
+// tables live in the `public` schema — leaderboard, saves, ratings, etc.).
+// To keep the two completely isolated, ALL bot tables live in their own
+// dedicated `rukus` Postgres schema. Prisma only ever manages `rukus`, so it
+// can never touch or drop the game's `public` tables.
+//
+// Design note: every table that holds per-server data carries `guildId`. Today
+// the bot runs for a single guild, but keying everything by guild means the
+// jump to a multi-server (public) bot is a data change, not a rewrite.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+  schemas   = ["rukus"]
+}
+
+/// One row per guild the bot is in. Holds top-level metadata; feature config
+/// lives in FeatureConfig so the dashboard can update features independently.
+model Guild {
+  id        String   @id // Discord guild snowflake
+  name      String?
+  iconHash  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  features    FeatureConfig[]
+  tickets     Ticket[]
+  submissions FormSubmission[]
+
+  @@schema("rukus")
+}
+
+/// JSON config blob for a single feature (tickets, forms, ...) in a guild.
+/// Shape is validated by the Zod schemas in @rukus/shared on both read/write.
+model FeatureConfig {
+  id      String  @id @default(cuid())
+  guild   Guild   @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  guildId String
+  feature String // "tickets" | "forms" | "moderation"
+  /// Validated JSON matching the feature's Zod schema.
+  config  Json    @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([guildId, feature])
+  @@index([guildId])
+  @@schema("rukus")
+}
+
+enum TicketStatus {
+  OPEN
+  CLAIMED
+  CLOSED
+
+  @@schema("rukus")
+}
+
+/// A support ticket. The Discord channel is created/closed by the bot; this row
+/// is the source of truth for status, ownership, and the transcript pointer.
+model Ticket {
+  id        String       @id @default(cuid())
+  guild     Guild        @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  guildId   String
+  /// Sequential per-guild number shown to users (ticket-0001).
+  number    Int
+  channelId String       @unique
+  openerId  String // user who opened it
+  claimedBy String? // staff who claimed it
+  status    TicketStatus @default(OPEN)
+  subject   String?
+  /// Public URL or storage key of the HTML transcript once closed.
+  transcriptUrl String?
+
+  createdAt DateTime  @default(now())
+  closedAt  DateTime?
+
+  @@unique([guildId, number])
+  @@index([guildId, status])
+  @@index([openerId])
+  @@schema("rukus")
+}
+
+/// Counter table so ticket numbers are sequential and race-free per guild.
+model TicketCounter {
+  guildId String @id
+  next    Int    @default(1)
+
+  @@schema("rukus")
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  DENIED
+
+  @@schema("rukus")
+}
+
+/// A completed form/application submission awaiting or past review.
+model FormSubmission {
+  id       String           @id @default(cuid())
+  guild    Guild            @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  guildId  String
+  formId   String // matches a form id inside the forms FeatureConfig
+  formName String
+  userId   String
+  /// Array of { label, value } captured from the modal, stored as JSON.
+  answers  Json
+  status   SubmissionStatus @default(PENDING)
+  reviewedBy String?
+  reviewNote String?
+  /// The review-channel message id, so approve/deny can edit it in place.
+  reviewMessageId String?
+
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  @@index([guildId, status])
+  @@index([userId])
+  @@schema("rukus")
+}
