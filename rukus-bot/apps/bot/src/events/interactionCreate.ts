@@ -48,10 +48,13 @@ const handler: EventHandler<Events.InteractionCreate> = {
           return void (await tickets.handleOpenButton(interaction));
         if (customId.startsWith(CID.ticketClaim))
           return void (await tickets.handleClaimButton(interaction));
-        if (customId.startsWith(CID.ticketClose))
-          return void (await tickets.handleCloseButton(interaction));
+        // Order matters: "tkt:closeconfirm" startsWith "tkt:close", so the
+        // confirm branch must be checked FIRST or Confirm would just re-open
+        // the confirmation prompt forever.
         if (customId.startsWith(CID.ticketCloseConfirm))
           return void (await tickets.handleCloseConfirm(interaction));
+        if (customId.startsWith(CID.ticketClose))
+          return void (await tickets.handleCloseButton(interaction));
         if (customId.startsWith(CID.ticketReopen))
           return void (await tickets.handleReopen(interaction));
         if (customId.startsWith(CID.ticketDelete))
@@ -62,6 +65,12 @@ const handler: EventHandler<Events.InteractionCreate> = {
           return void (await forms.handleApprove(interaction));
         if (customId.startsWith(CID.formDeny))
           return void (await forms.handleDeny(interaction));
+      }
+
+      if (interaction.isStringSelectMenu()) {
+        // The multi-type ticket panel is a dropdown; each value is a type id.
+        if (customId.startsWith(CID.ticketOpen))
+          return void (await tickets.handleOpenSelect(interaction));
       }
 
       if (interaction.isModalSubmit()) {

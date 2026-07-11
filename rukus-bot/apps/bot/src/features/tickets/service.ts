@@ -6,7 +6,7 @@ import {
   type OverwriteResolvable,
 } from "discord.js";
 import { prisma } from "@rukus/db";
-import type { TicketConfig } from "@rukus/shared";
+import type { TicketConfig, TicketType } from "@rukus/shared";
 
 /**
  * Ticket domain operations. These functions own the DB rows and the Discord
@@ -36,14 +36,36 @@ export function countOpenForUser(guildId: string, userId: string) {
   });
 }
 
+/**
+ * Render a ticket type's channel-name template.
+ * {count} → zero-padded per-guild ticket number, {type} → the type label.
+ * The result is normalized to something Discord accepts as a channel name.
+ */
+export function renderChannelName(
+  template: string,
+  number: number,
+  label: string,
+): string {
+  const raw = template
+    .replace(/\{count\}/gi, String(number).padStart(4, "0"))
+    .replace(/\{type\}/gi, label);
+  const name = raw
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/[^\p{L}\p{N}\p{Extended_Pictographic}_-]/gu, "")
+    .slice(0, 100);
+  return name || `ticket-${String(number).padStart(4, "0")}`;
+}
+
 /** Create the private ticket channel and its DB row. Returns both. */
 export async function createTicket(params: {
   guild: Guild;
   opener: GuildMember;
   config: TicketConfig;
-  subject?: string;
+  type: TicketType;
 }) {
-  const { guild, opener, config, subject } = params;
+  const { guild, opener, config, type } = params;
   const number = await nextTicketNumber(guild.id);
 
   // Permission overwrites: hide from @everyone, allow opener + support roles.
@@ -74,10 +96,11 @@ export async function createTicket(params: {
   ];
 
   const channel = await guild.channels.create({
-    name: `ticket-${String(number).padStart(4, "0")}`,
+    name: renderChannelName(type.nameTemplate, number, type.label),
     type: ChannelType.GuildText,
-    parent: config.categoryId ?? undefined,
-    topic: `Ticket #${number} • opened by ${opener.user.tag} (${opener.id})`,
+    // Per-type category wins; otherwise the guild-level default.
+    parent: type.categoryId ?? config.categoryId ?? undefined,
+    topic: `${type.label} #${number} • opened by ${opener.user.tag} (${opener.id})`,
     permissionOverwrites: overwrites,
   });
 
@@ -87,7 +110,8 @@ export async function createTicket(params: {
       number,
       channelId: channel.id,
       openerId: opener.id,
-      subject: subject ?? null,
+      // The type label doubles as the subject, so staff tooling shows it.
+      subject: type.label,
       status: "OPEN",
     },
   });

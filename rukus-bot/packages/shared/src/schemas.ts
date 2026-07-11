@@ -17,6 +17,33 @@ const snowflake = z
 
 // ---------------- Tickets ----------------
 
+/**
+ * One kind of ticket (Support, Mute Appeal, ...). With multiple types the
+ * panel renders a Ticket-Tool-style dropdown; each type controls how its
+ * ticket channel is named so staff can tell tickets apart at a glance.
+ * Unset per-type fields fall back to the guild-level ticket config.
+ */
+export const ticketTypeSchema = z.object({
+  id: z.string().min(1),
+  /** Shown in the dropdown and in the ticket embed, e.g. "Mute Appeal". */
+  label: z.string().min(1).max(80),
+  /** Dropdown option description (Discord caps these at 100 chars). */
+  description: z.string().max(100).default(""),
+  /** Unicode emoji shown next to the option, e.g. "🔨". */
+  emoji: z.string().max(8).default("🎫"),
+  /**
+   * Channel name template. {count} → per-guild ticket number (0001),
+   * {type} → the label. E.g. "mute-appeal-{count}".
+   */
+  nameTemplate: z.string().min(1).max(90).default("ticket-{count}"),
+  /** Optional category override; falls back to the global categoryId. */
+  categoryId: snowflake,
+  /** Optional welcome override; falls back to the global welcomeMessage. */
+  welcomeMessage: z.string().max(2000).optional(),
+});
+
+export type TicketType = z.infer<typeof ticketTypeSchema>;
+
 export const ticketConfigSchema = z.object({
   /** Whether the ticket feature is active for this guild. */
   enabled: z.boolean().default(false),
@@ -33,6 +60,11 @@ export const ticketConfigSchema = z.object({
     .default("Thanks for opening a ticket! Staff will be with you shortly."),
   /** Max simultaneously-open tickets per user (0 = unlimited). */
   maxOpenPerUser: z.number().int().min(0).max(50).default(1),
+  /**
+   * Ticket types. Empty = classic single-button panel using the settings
+   * above. 2+ = the panel becomes a dropdown (Discord caps options at 25).
+   */
+  types: z.array(ticketTypeSchema).max(25).default([]),
   /** The panel embed users click to open a ticket. */
   panel: z
     .object({
@@ -41,6 +73,7 @@ export const ticketConfigSchema = z.object({
         .string()
         .max(4000)
         .default("Click the button below to open a support ticket."),
+      /** Button text (single type) or dropdown placeholder (multiple types). */
       buttonLabel: z.string().max(80).default("Open a ticket"),
     })
     .default({}),

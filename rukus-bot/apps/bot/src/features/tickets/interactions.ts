@@ -4,9 +4,10 @@ import {
   PermissionFlagsBits,
   TextChannel,
   type ButtonInteraction,
+  type StringSelectMenuInteraction,
   type GuildMember,
 } from "discord.js";
-import { COLORS } from "@rukus/shared";
+import { COLORS, type TicketConfig, type TicketType } from "@rukus/shared";
 import { ticketConfig } from "../../lib/configCache.js";
 import { hasAnyRole } from "../../lib/perms.js";
 import { log } from "../../lib/logger.js";
@@ -21,13 +22,23 @@ import {
   ticketOpenedMessage,
   closeConfirmMessage,
   closedControlsMessage,
+  resolveTypes,
 } from "./ui.js";
 import { buildTranscript } from "./transcript.js";
 
 const ephemeral = { flags: MessageFlags.Ephemeral as const };
 
-/** User clicked "Open a ticket" on a panel. */
-export async function handleOpenButton(interaction: ButtonInteraction) {
+/** Find a ticket type by id, falling back to the first configured type. */
+function typeById(config: TicketConfig, typeId: string | undefined): TicketType {
+  const types = resolveTypes(config);
+  return types.find((t) => t.id === typeId) ?? types[0]!;
+}
+
+/** Shared open flow for both the button and the dropdown. */
+async function openTicket(
+  interaction: ButtonInteraction | StringSelectMenuInteraction,
+  typeId: string | undefined,
+) {
   if (!interaction.inCachedGuild()) return;
   const config = await ticketConfig(interaction.guildId);
 
@@ -38,6 +49,8 @@ export async function handleOpenButton(interaction: ButtonInteraction) {
     });
     return;
   }
+
+  const type = typeById(config, typeId);
 
   // Enforce per-user open limit.
   if (config.maxOpenPerUser > 0) {
@@ -58,18 +71,20 @@ export async function handleOpenButton(interaction: ButtonInteraction) {
       guild: interaction.guild,
       opener: interaction.member as GuildMember,
       config,
+      type,
     });
 
     await channel.send(
       ticketOpenedMessage({
         config,
+        type,
         openerId: interaction.user.id,
         ticketNumber: ticket.number,
       }),
     );
 
     await interaction.editReply({
-      content: `Your ticket has been created: <#${channel.id}>`,
+      content: `Your **${type.label}** ticket has been created: <#${channel.id}>`,
     });
   } catch (err) {
     log.error("Failed to create ticket:", err);
@@ -79,6 +94,20 @@ export async function handleOpenButton(interaction: ButtonInteraction) {
         "**Manage Channels** permission or the configured category is invalid.",
     });
   }
+}
+
+/** User clicked the "Open a ticket" button (single-type panels). The custom id
+ *  may carry a type suffix (`tkt:open:<typeId>`); legacy panels have none. */
+export async function handleOpenButton(interaction: ButtonInteraction) {
+  const parts = interaction.customId.split(":");
+  await openTicket(interaction, parts[2]);
+}
+
+/** User picked a ticket type from the panel dropdown. */
+export async function handleOpenSelect(
+  interaction: StringSelectMenuInteraction,
+) {
+  await openTicket(interaction, interaction.values[0]);
 }
 
 /** Staff clicked "Claim" inside a ticket. */
