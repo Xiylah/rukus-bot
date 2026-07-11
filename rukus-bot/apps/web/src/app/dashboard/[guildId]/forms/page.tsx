@@ -1,4 +1,5 @@
 import { getFormsConfig } from "@rukus/supabase";
+import { loadGuildOptions } from "@/lib/guildOptions";
 import { FormsSettings } from "./FormsSettings";
 
 export default async function FormsPage({
@@ -7,7 +8,10 @@ export default async function FormsPage({
   params: Promise<{ guildId: string }>;
 }) {
   const { guildId } = await params;
-  const config = await getFormsConfig(guildId);
+  const [config, options] = await Promise.all([
+    getFormsConfig(guildId),
+    loadGuildOptions(guildId),
+  ]);
 
   return (
     <div>
@@ -17,7 +21,12 @@ export default async function FormsPage({
         saving, run <code className="rounded bg-panel px-1">/form panel</code> in
         Discord to post the buttons.
       </p>
-      <FormsSettings guildId={guildId} initial={config} />
+      <FormsSettings
+        guildId={guildId}
+        initial={config}
+        channels={options.channels}
+        roles={options.roles}
+      />
     </div>
   );
 }

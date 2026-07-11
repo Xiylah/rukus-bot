@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { FormsConfig, Form, FormField } from "@rukus/shared";
+import { Select, type Option } from "@/components/Pickers";
 import { saveFormsConfig } from "../actions";
 
 /** Generate a short client-side id for new forms/fields (no crypto needed). */
@@ -32,9 +33,13 @@ function emptyForm(): Form {
 export function FormsSettings({
   guildId,
   initial,
+  channels,
+  roles,
 }: {
   guildId: string;
   initial: FormsConfig;
+  channels: Option[];
+  roles: Option[];
 }) {
   const [enabled, setEnabled] = useState(initial.enabled);
   const [forms, setForms] = useState<Form[]>(initial.forms);
@@ -133,28 +138,23 @@ export function FormsSettings({
                 onChange={(e) => updateForm(fi, { buttonLabel: e.target.value })}
               />
             </div>
-            <div>
-              <label className="label">Review channel ID</label>
-              <input
-                className="input"
-                placeholder="Where submissions are posted"
-                value={form.reviewChannelId ?? ""}
-                onChange={(e) =>
-                  updateForm(fi, { reviewChannelId: e.target.value || undefined })
-                }
-              />
-            </div>
-            <div>
-              <label className="label">Approve role ID (optional)</label>
-              <input
-                className="input"
-                placeholder="Granted on approval"
-                value={form.approveRoleId ?? ""}
-                onChange={(e) =>
-                  updateForm(fi, { approveRoleId: e.target.value || undefined })
-                }
-              />
-            </div>
+            <Select
+              label="Review channel"
+              hint="Submissions are posted here for approve/deny."
+              value={form.reviewChannelId}
+              onChange={(v) => updateForm(fi, { reviewChannelId: v })}
+              options={channels}
+              prefix="#"
+              placeholder="— none (submissions won't be posted) —"
+            />
+            <Select
+              label="Role granted on approval (optional)"
+              value={form.approveRoleId}
+              onChange={(v) => updateForm(fi, { approveRoleId: v })}
+              options={roles}
+              prefix="@"
+              placeholder="— don't grant a role —"
+            />
             <div>
               <label className="label">Panel description</label>
               <input

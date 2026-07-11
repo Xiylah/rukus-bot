@@ -6,8 +6,9 @@
 
 const DISCORD_API = "https://discord.com/api/v10";
 
-// Discord permission bit for MANAGE_GUILD (0x20 = 1 << 5).
-const MANAGE_GUILD = 0x20n;
+// Discord permission bits.
+const MANAGE_GUILD = 0x20n; // 1 << 5
+const ADMINISTRATOR = 0x8n; // 1 << 3
 
 export interface DiscordGuild {
   id: string;
@@ -15,6 +16,31 @@ export interface DiscordGuild {
   icon: string | null;
   owner: boolean;
   permissions: string; // stringified bitfield
+}
+
+/** Discord channel types we care about (numeric, per the API). */
+export const CHANNEL_TYPE = {
+  text: 0,
+  voice: 2,
+  category: 4,
+  announcement: 5,
+  forum: 15,
+} as const;
+
+export interface DiscordChannel {
+  id: string;
+  name: string;
+  type: number;
+  parent_id: string | null;
+  position: number;
+}
+
+export interface DiscordRole {
+  id: string;
+  name: string;
+  color: number;
+  position: number;
+  managed: boolean; // true for bot/integration roles
 }
 
 /** Fetch the guilds the user is in, using their OAuth access token. */
@@ -34,7 +60,25 @@ export async function fetchUserGuilds(accessToken: string): Promise<DiscordGuild
 export function canManageGuild(guild: DiscordGuild): boolean {
   if (guild.owner) return true;
   try {
-    return (BigInt(guild.permissions) & MANAGE_GUILD) === MANAGE_GUILD;
+    const perms = BigInt(guild.permissions);
+    // Administrator implies every permission, including Manage Server.
+    if ((perms & ADMINISTRATOR) === ADMINISTRATOR) return true;
+    return (perms & MANAGE_GUILD) === MANAGE_GUILD;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * True if the user owns the guild or has Administrator.
+ *
+ * Stricter than canManageGuild — used to gate the Access page, since granting
+ * dashboard access is effectively granting power over every other setting.
+ */
+export function isGuildAdmin(guild: DiscordGuild): boolean {
+  if (guild.owner) return true;
+  try {
+    return (BigInt(guild.permissions) & ADMINISTRATOR) === ADMINISTRATOR;
   } catch {
     return false;
   }
@@ -70,4 +114,87 @@ export async function fetchMemberRoleIds(
   if (!res.ok) return []; // 404 = not a member, 403 = bot lacks access
   const member = (await res.json()) as { roles?: string[] };
   return member.roles ?? [];
+}
+
+/** GET a guild sub-resource with the bot token. Returns [] on any failure. */
+async function botGet<T>(path: string, revalidate = 60): Promise<T[]> {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) return [];
+  try {
+    const res = await fetch(`${DISCORD_API}${path}`, {
+      headers: { Authorization: `Bot ${token}` },
+      // Channels/roles change rarely; cache briefly to stay well inside
+      // Discord's rate limits while keeping the dashboard responsive.
+      next: { revalidate },
+    });
+    if (!res.ok) return [];
+    return (await res.json()) as T[];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Every channel in the guild, sorted for display.
+ *
+ * Used to populate the dashboard's channel/category dropdowns, so admins pick
+ * from a real list instead of pasting snowflake IDs.
+ */
+export async function fetchGuildChannels(
+  guildId: string,
+): Promise<DiscordChannel[]> {
+  const channels = await botGet<DiscordChannel>(`/guilds/${guildId}/channels`);
+  return channels.sort((a, b) => a.position - b.position);
+}
+
+/** Text-ish channels the bot can post in (text, announcement). */
+export function textChannels(channels: DiscordChannel[]): DiscordChannel[] {
+  return channels.filter(
+    (c) => c.type === CHANNEL_TYPE.text || c.type === CHANNEL_TYPE.announcement,
+  );
+}
+
+/** Category channels (used as the parent for new ticket channels). */
+export function categoryChannels(channels: DiscordChannel[]): DiscordChannel[] {
+  return channels.filter((c) => c.type === CHANNEL_TYPE.category);
+}
+
+/**
+ * Every role in the guild, highest first, excluding @everyone and
+ * integration-managed roles (which can't be assigned by a bot anyway).
+ */
+export async function fetchGuildRoles(guildId: string): Promise<DiscordRole[]> {
+  const roles = await botGet<DiscordRole>(`/guilds/${guildId}/roles`);
+  return roles
+    .filter((r) => r.id !== guildId && !r.managed) // @everyone shares the guild id
+    .sort((a, b) => b.position - a.position);
+}
+
+export interface DiscordMember {
+  id: string;
+  name: string; // nickname, else display name, else username
+}
+
+/**
+ * Guild members, for the Access page's user allow-list picker.
+ *
+ * Discord caps this endpoint at 1000 per call and it needs the Guild Members
+ * intent (which the bot has). We fetch a single page — ample for picking staff,
+ * and it avoids paginating thousands of members just to fill a dropdown.
+ */
+export async function fetchGuildMembers(
+  guildId: string,
+): Promise<DiscordMember[]> {
+  type Raw = {
+    user?: { id: string; username: string; global_name?: string | null; bot?: boolean };
+    nick?: string | null;
+  };
+  const raw = await botGet<Raw>(`/guilds/${guildId}/members?limit=1000`, 120);
+  return raw
+    .filter((m) => m.user && !m.user.bot)
+    .map((m) => ({
+      id: m.user!.id,
+      name: m.nick || m.user!.global_name || m.user!.username,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }

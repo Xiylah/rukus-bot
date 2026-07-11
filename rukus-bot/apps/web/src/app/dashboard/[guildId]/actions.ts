@@ -108,12 +108,18 @@ export async function saveAccessConfig(
   guildId: string,
   payload: unknown,
 ): Promise<ActionResult> {
-  // Only Manage-Server users may change WHO gets access — not staff-role users,
-  // to prevent privilege escalation. Re-check the permission explicitly here.
+  // ADMINISTRATOR-only. Granting dashboard access is effectively granting power
+  // over every other setting, so staff-role users must not be able to escalate.
+  //
+  // This check is the real security boundary — the page-level redirect is only
+  // UI. A server action is a callable endpoint, so it must re-verify on its own.
   const { guild } = await requireGuildAccess(guildId);
-  const { canManageGuild } = await import("@/lib/discord");
-  if (!canManageGuild(guild)) {
-    return { ok: false, error: "Only Manage Server can change access settings." };
+  const { isGuildAdmin } = await import("@/lib/discord");
+  if (!isGuildAdmin(guild)) {
+    return {
+      ok: false,
+      error: "Only server Administrators can change access settings.",
+    };
   }
   const parsed = accessConfigSchema.safeParse(payload);
   if (!parsed.success) {

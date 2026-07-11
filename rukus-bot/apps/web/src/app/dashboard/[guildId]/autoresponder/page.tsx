@@ -1,4 +1,5 @@
 import { getAutoResponderConfig } from "@rukus/supabase";
+import { loadGuildOptions } from "@/lib/guildOptions";
 import { AutoResponderForm } from "./AutoResponderForm";
 
 export default async function AutoResponderPage({
@@ -7,7 +8,11 @@ export default async function AutoResponderPage({
   params: Promise<{ guildId: string }>;
 }) {
   const { guildId } = await params;
-  const config = await getAutoResponderConfig(guildId);
+  const [config, options] = await Promise.all([
+    getAutoResponderConfig(guildId),
+    loadGuildOptions(guildId),
+  ]);
+
   return (
     <div>
       <h1 className="mb-1 text-2xl font-bold text-white">💬 Auto-responder</h1>
@@ -15,7 +20,11 @@ export default async function AutoResponderPage({
         Automatically replies to common questions like &quot;when&apos;s the next
         event?&quot; or &quot;I lost my items&quot; using keyword matching.
       </p>
-      <AutoResponderForm guildId={guildId} initial={config} />
+      <AutoResponderForm
+        guildId={guildId}
+        initial={config}
+        channels={options.channels}
+      />
     </div>
   );
 }

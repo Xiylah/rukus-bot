@@ -3,14 +3,17 @@
 import { useState, useTransition } from "react";
 import type { ModerationConfig } from "@rukus/shared";
 import { Toggle } from "@/components/Toggle";
+import { Select, type Option } from "@/components/Pickers";
 import { saveModerationConfig } from "../actions";
 
 export function ModerationForm({
   guildId,
   initial,
+  channels,
 }: {
   guildId: string;
   initial: ModerationConfig;
+  channels: Option[];
 }) {
   const [config, setConfig] = useState<ModerationConfig>(initial);
   const [pending, startTransition] = useTransition();
@@ -33,20 +36,15 @@ export function ModerationForm({
           checked={config.drugFilter}
           onChange={(v) => setConfig((c) => ({ ...c, drugFilter: v }))}
         />
-        <div>
-          <label className="label">Image-only channel ID</label>
-          <input
-            className="input"
-            placeholder="Text-only messages here get deleted (leave blank to disable)"
-            value={config.imageOnlyChannelId ?? ""}
-            onChange={(e) =>
-              setConfig((c) => ({
-                ...c,
-                imageOnlyChannelId: e.target.value || undefined,
-              }))
-            }
-          />
-        </div>
+        <Select
+          label="Image-only channel"
+          hint="Text-only messages posted here get deleted (e.g. a showcase channel)."
+          value={config.imageOnlyChannelId}
+          onChange={(v) => setConfig((c) => ({ ...c, imageOnlyChannelId: v }))}
+          options={channels}
+          prefix="#"
+          placeholder="— disabled —"
+        />
       </div>
 
       <div className="flex items-center gap-3">

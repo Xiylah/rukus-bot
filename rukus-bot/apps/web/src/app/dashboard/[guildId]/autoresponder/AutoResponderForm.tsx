@@ -3,14 +3,17 @@
 import { useState, useTransition } from "react";
 import type { AutoResponderConfig } from "@rukus/shared";
 import { Toggle } from "@/components/Toggle";
+import { Select, type Option } from "@/components/Pickers";
 import { saveAutoResponderConfig } from "../actions";
 
 export function AutoResponderForm({
   guildId,
   initial,
+  channels,
 }: {
   guildId: string;
   initial: AutoResponderConfig;
+  channels: Option[];
 }) {
   const [config, setConfig] = useState<AutoResponderConfig>(initial);
   const [phrasesText, setPhrasesText] = useState(
@@ -40,31 +43,22 @@ export function AutoResponderForm({
           checked={config.enabled}
           onChange={(v) => setConfig((c) => ({ ...c, enabled: v }))}
         />
-        <div>
-          <label className="label">Events channel ID</label>
-          <input
-            className="input"
-            placeholder="Channel referenced in event replies"
-            value={config.eventChannelId ?? ""}
-            onChange={(e) =>
-              setConfig((c) => ({ ...c, eventChannelId: e.target.value || undefined }))
-            }
-          />
-        </div>
-        <div>
-          <label className="label">Support channel ID</label>
-          <input
-            className="input"
-            placeholder="Channel referenced in lost-item replies"
-            value={config.supportChannelId ?? ""}
-            onChange={(e) =>
-              setConfig((c) => ({
-                ...c,
-                supportChannelId: e.target.value || undefined,
-              }))
-            }
-          />
-        </div>
+        <Select
+          label="Events channel"
+          hint="Members asking about events get pointed here."
+          value={config.eventChannelId}
+          onChange={(v) => setConfig((c) => ({ ...c, eventChannelId: v }))}
+          options={channels}
+          prefix="#"
+        />
+        <Select
+          label="Support channel"
+          hint="Members reporting lost items get pointed here."
+          value={config.supportChannelId}
+          onChange={(v) => setConfig((c) => ({ ...c, supportChannelId: v }))}
+          options={channels}
+          prefix="#"
+        />
         <div>
           <label className="label">Extra event phrasings (one per line)</label>
           <textarea
@@ -74,7 +68,7 @@ export function AutoResponderForm({
             onChange={(e) => setPhrasesText(e.target.value)}
           />
           <p className="mt-1 text-xs text-zinc-500">
-            Added on top of the built-in event phrase bank to catch server-specific
+            Added on top of the built-in phrase bank to catch server-specific
             wording.
           </p>
         </div>

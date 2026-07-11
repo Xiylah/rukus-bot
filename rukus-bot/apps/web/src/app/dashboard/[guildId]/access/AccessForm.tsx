@@ -2,35 +2,28 @@
 
 import { useState, useTransition } from "react";
 import type { AccessConfig } from "@rukus/shared";
+import { MultiSelect, type Option } from "@/components/Pickers";
 import { saveAccessConfig } from "../actions";
 
 export function AccessForm({
   guildId,
   initial,
+  roles,
+  members,
 }: {
   guildId: string;
   initial: AccessConfig;
+  roles: Option[];
+  members: Option[];
 }) {
-  const [rolesText, setRolesText] = useState(initial.staffRoleIds.join(", "));
-  const [usersText, setUsersText] = useState(initial.allowUserIds.join(", "));
+  const [config, setConfig] = useState<AccessConfig>(initial);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  function parseIds(text: string): string[] {
-    return text
-      .split(/[\s,]+/)
-      .map((s) => s.trim())
-      .filter((s) => /^\d{17,20}$/.test(s));
-  }
-
   function onSave() {
     setMsg(null);
-    const payload: AccessConfig = {
-      staffRoleIds: parseIds(rolesText),
-      allowUserIds: parseIds(usersText),
-    };
     startTransition(async () => {
-      const res = await saveAccessConfig(guildId, payload);
+      const res = await saveAccessConfig(guildId, config);
       setMsg(res.ok ? { ok: true, text: "Saved." } : { ok: false, text: res.error });
     });
   }
@@ -38,31 +31,32 @@ export function AccessForm({
   return (
     <div className="space-y-5">
       <div className="card space-y-4">
-        <div>
-          <label className="label">Staff role IDs</label>
-          <input
-            className="input"
-            placeholder="Comma or space separated, e.g. 123..., 456..."
-            value={rolesText}
-            onChange={(e) => setRolesText(e.target.value)}
-          />
-          <p className="mt-1 text-xs text-zinc-500">
-            Members with any of these roles can log in and edit settings (but not
-            this Access page — only Manage Server can change who has access).
-          </p>
+        <MultiSelect
+          label="Staff roles"
+          hint="Members with any of these roles can log in and change settings — but not this page."
+          values={config.staffRoleIds}
+          onChange={(v) => setConfig((c) => ({ ...c, staffRoleIds: v }))}
+          options={roles}
+          prefix="@"
+          emptyText="No roles — only Administrators can use the dashboard"
+        />
+        <MultiSelect
+          label="Individual users (optional)"
+          hint="Grant access to specific people without giving them a role."
+          values={config.allowUserIds}
+          onChange={(v) => setConfig((c) => ({ ...c, allowUserIds: v }))}
+          options={members}
+          emptyText="No individual users"
+        />
+      </div>
+
+      <div className="card border-amber-500/30 bg-amber-500/5">
+        <div className="text-sm text-amber-200/90">
+          <strong>Note:</strong> staff you grant access to can change every other
+          settings page, but cannot see or edit this Access page — so they can&apos;t
+          grant themselves or anyone else more access. Only server Administrators
+          can.
         </div>
-        <div>
-          <label className="label">Allowed user IDs (optional)</label>
-          <input
-            className="input"
-            placeholder="Specific users always allowed"
-            value={usersText}
-            onChange={(e) => setUsersText(e.target.value)}
-          />
-        </div>
-        <p className="text-xs text-zinc-500">
-          Enable Discord Developer Mode → right-click a role or user → Copy ID.
-        </p>
       </div>
 
       <div className="flex items-center gap-3">

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireGuildAccess } from "@/lib/guard";
-import { guildIconUrl } from "@/lib/discord";
+import { guildIconUrl, isGuildAdmin } from "@/lib/discord";
 import { SignOutButton } from "@/components/SignOutButton";
 
 export default async function GuildLayout({
@@ -21,8 +21,12 @@ export default async function GuildLayout({
     { href: `/dashboard/${guildId}/translation`, label: "🌐 Translation" },
     { href: `/dashboard/${guildId}/autoresponder`, label: "💬 Auto-responder" },
     { href: `/dashboard/${guildId}/moderation`, label: "🛡️ Moderation" },
-    { href: `/dashboard/${guildId}/access`, label: "🔑 Access" },
   ];
+
+  // Access is Administrator-only; don't show staff a link that just redirects.
+  if (isGuildAdmin(guild)) {
+    nav.push({ href: `/dashboard/${guildId}/access`, label: "🔑 Access" });
+  }
 
   return (
     <div className="min-h-screen">

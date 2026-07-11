@@ -2,23 +2,26 @@
 
 import { useState, useTransition } from "react";
 import type { TicketConfig } from "@rukus/shared";
+import { Toggle } from "@/components/Toggle";
+import { Select, MultiSelect, type Option } from "@/components/Pickers";
 import { saveTicketConfig } from "../actions";
 
 export function TicketSettingsForm({
   guildId,
   initial,
+  categories,
+  channels,
+  roles,
 }: {
   guildId: string;
   initial: TicketConfig;
+  categories: Option[];
+  channels: Option[];
+  roles: Option[];
 }) {
   const [config, setConfig] = useState<TicketConfig>(initial);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-
-  // Support roles are edited as a comma-separated list of IDs for now.
-  const [supportRolesText, setSupportRolesText] = useState(
-    initial.supportRoleIds.join(", "),
-  );
 
   function update<K extends keyof TicketConfig>(key: K, value: TicketConfig[K]) {
     setConfig((c) => ({ ...c, [key]: value }));
@@ -31,15 +34,9 @@ export function TicketSettingsForm({
   }
 
   function onSave() {
-    const supportRoleIds = supportRolesText
-      .split(",")
-      .map((s) => s.trim())
-      .filter((s) => /^\d{17,20}$/.test(s));
-
-    const payload: TicketConfig = { ...config, supportRoleIds };
     setMsg(null);
     startTransition(async () => {
-      const res = await saveTicketConfig(guildId, payload);
+      const res = await saveTicketConfig(guildId, config);
       setMsg(
         res.ok
           ? { ok: true, text: "Saved. Changes apply within ~15s in the bot." }
@@ -50,63 +47,42 @@ export function TicketSettingsForm({
 
   return (
     <div className="space-y-5">
-      <div className="card flex items-center justify-between">
-        <div>
-          <div className="font-medium text-white">Enable tickets</div>
-          <div className="text-sm text-zinc-400">
-            Master switch for the whole feature.
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => update("enabled", !config.enabled)}
-          className={`h-6 w-11 rounded-full transition-colors ${
-            config.enabled ? "bg-blurple" : "bg-edge"
-          }`}
-          aria-pressed={config.enabled}
-        >
-          <span
-            className={`block h-5 w-5 translate-x-0.5 rounded-full bg-white transition-transform ${
-              config.enabled ? "translate-x-[22px]" : ""
-            }`}
-          />
-        </button>
+      <div className="card">
+        <Toggle
+          label="Enable tickets"
+          hint="Master switch for the whole feature."
+          checked={config.enabled}
+          onChange={(v) => update("enabled", v)}
+        />
       </div>
 
       <div className="card space-y-4">
-        <div>
-          <label className="label">Ticket category ID</label>
-          <input
-            className="input"
-            placeholder="Category channel ID new tickets are created under"
-            value={config.categoryId ?? ""}
-            onChange={(e) => update("categoryId", e.target.value || undefined)}
-          />
-        </div>
-        <div>
-          <label className="label">Transcript channel ID</label>
-          <input
-            className="input"
-            placeholder="Where closed-ticket transcripts get posted"
-            value={config.transcriptChannelId ?? ""}
-            onChange={(e) =>
-              update("transcriptChannelId", e.target.value || undefined)
-            }
-          />
-        </div>
-        <div>
-          <label className="label">Support role IDs</label>
-          <input
-            className="input"
-            placeholder="Comma-separated role IDs, e.g. 123..., 456..."
-            value={supportRolesText}
-            onChange={(e) => setSupportRolesText(e.target.value)}
-          />
-          <p className="mt-1 text-xs text-zinc-500">
-            Enable Developer Mode in Discord, then right-click a channel/role →
-            Copy ID.
-          </p>
-        </div>
+        <Select
+          label="Ticket category"
+          hint="New ticket channels are created under this category."
+          value={config.categoryId}
+          onChange={(v) => update("categoryId", v)}
+          options={categories}
+          placeholder="— no category —"
+        />
+        <Select
+          label="Transcript channel"
+          hint="Closed-ticket transcripts get posted here."
+          value={config.transcriptChannelId}
+          onChange={(v) => update("transcriptChannelId", v)}
+          options={channels}
+          prefix="#"
+          placeholder="— don't post transcripts —"
+        />
+        <MultiSelect
+          label="Support roles"
+          hint="These roles can see, claim, and close tickets."
+          values={config.supportRoleIds}
+          onChange={(v) => update("supportRoleIds", v)}
+          options={roles}
+          prefix="@"
+          emptyText="No support roles — only admins can handle tickets"
+        />
         <div>
           <label className="label">Max open tickets per user</label>
           <input
@@ -115,10 +91,9 @@ export function TicketSettingsForm({
             max={50}
             className="input"
             value={config.maxOpenPerUser}
-            onChange={(e) =>
-              update("maxOpenPerUser", Number(e.target.value) || 0)
-            }
+            onChange={(e) => update("maxOpenPerUser", Number(e.target.value) || 0)}
           />
+          <p className="mt-1 text-xs text-zinc-500">0 = unlimited.</p>
         </div>
         <div>
           <label className="label">Welcome message</label>
