@@ -86,12 +86,7 @@ const handler: EventHandler<Events.InteractionCreate> = {
 
 /** Best-effort error reply that works whether or not we've already deferred. */
 async function replyError(interaction: Interaction) {
-  if (
-    !interaction.isRepliable ||
-    !("isRepliable" in interaction) ||
-    !interaction.isRepliable()
-  )
-    return;
+  if (!interaction.isRepliable()) return;
   const payload = {
     content: "Something went wrong handling that. Please try again.",
     flags: MessageFlags.Ephemeral as const,

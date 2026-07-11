@@ -1,4 +1,4 @@
-import { Events, Message, ChannelType } from "discord.js";
+import { Events, Message } from "discord.js";
 import type { EventHandler } from "../lib/types.js";
 import { log } from "../lib/logger.js";
 import {
@@ -45,7 +45,8 @@ const handler: EventHandler<Events.MessageCreate> = {
     // --- Drug/substance filter: delete + warn ---
     if (mod.drugFilter && content && containsDrugTerm(content)) {
       await message.delete().catch(() => {});
-      if (message.channel.type === ChannelType.GuildText) {
+      // Warn in any channel the bot can post in (text, announcement, threads).
+      if (message.channel.isSendable()) {
         await message.channel
           .send({
             content: `${message.author} ${randomDrugWarning()}`,

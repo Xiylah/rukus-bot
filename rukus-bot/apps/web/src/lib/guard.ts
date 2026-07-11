@@ -5,8 +5,26 @@ import {
   fetchUserGuilds,
   canManageGuild,
   fetchMemberRoleIds,
+  DiscordApiError,
   type DiscordGuild,
 } from "./discord";
+
+/**
+ * Fetch the user's guilds, translating an expired/revoked Discord token
+ * (401) into a clean re-login instead of a server-error page. The Auth.js
+ * session can outlive the ~7-day Discord access token, so this WILL happen
+ * to long-lived logins.
+ */
+async function userGuildsOrRelogin(accessToken: string) {
+  try {
+    return await fetchUserGuilds(accessToken);
+  } catch (err) {
+    if (err instanceof DiscordApiError && err.status === 401) {
+      redirect("/login?expired=1");
+    }
+    throw err;
+  }
+}
 
 /**
  * Server-side guard for dashboard routes. This is the security boundary — the
@@ -31,7 +49,7 @@ export async function requireSession() {
 /** All guilds the user is in (raw), plus which ones they can manage by perm. */
 export async function requireUserGuilds() {
   const session = await requireSession();
-  const guilds = await fetchUserGuilds(session.accessToken!);
+  const guilds = await userGuildsOrRelogin(session.accessToken!);
   return { session, guilds };
 }
 
@@ -41,7 +59,7 @@ export async function requireUserGuilds() {
  */
 export async function requireGuildAccess(guildId: string) {
   const session = await requireSession();
-  const guilds = await fetchUserGuilds(session.accessToken!);
+  const guilds = await userGuildsOrRelogin(session.accessToken!);
   const guild = guilds.find((g) => g.id === guildId);
 
   // The user must at least be a member of the guild.

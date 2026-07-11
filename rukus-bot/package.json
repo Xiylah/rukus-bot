@@ -4,7 +4,7 @@
   "private": true,
   "description": "Rukus all-in-one Discord bot (tickets, forms, moderation) + dashboard",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "_comment": "Railway/Railpack falls back to the root `build` and `start` scripts when a service has no explicit command. `start` runs the BOT (the default service); the DASHBOARD service overrides it via railway.web.json.",

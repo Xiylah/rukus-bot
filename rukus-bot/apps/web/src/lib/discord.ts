@@ -43,17 +43,61 @@ export interface DiscordRole {
   managed: boolean; // true for bot/integration roles
 }
 
+/** Error that carries the Discord HTTP status so callers can react to it. */
+export class DiscordApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
+
+/**
+ * In-process cache for each user's guild list, keyed by their access token.
+ *
+ * /users/@me/guilds is one of Discord's most tightly rate-limited endpoints,
+ * and the auth guard needs it on every page render (layout + page = several
+ * calls per click). Without this cache, clicking around the dashboard quickly
+ * produces 429s and an error page. Next's fetch cache can't be trusted with
+ * per-user Authorization headers, so we cache explicitly:
+ *   - fresh for 60s per user,
+ *   - on 429/5xx we serve the stale list rather than crash the page.
+ */
+const guildListCache = new Map<
+  string,
+  { data: DiscordGuild[]; expires: number }
+>();
+const GUILDS_TTL_MS = 60_000;
+const GUILDS_CACHE_MAX = 500;
+
 /** Fetch the guilds the user is in, using their OAuth access token. */
-export async function fetchUserGuilds(accessToken: string): Promise<DiscordGuild[]> {
+export async function fetchUserGuilds(
+  accessToken: string,
+): Promise<DiscordGuild[]> {
+  const now = Date.now();
+  const hit = guildListCache.get(accessToken);
+  if (hit && hit.expires > now) return hit.data;
+
   const res = await fetch(`${DISCORD_API}/users/@me/guilds`, {
     headers: { Authorization: `Bearer ${accessToken}` },
-    // Guilds change rarely within a session; cache briefly to dodge rate limits.
-    next: { revalidate: 30 },
+    cache: "no-store",
   });
+
   if (!res.ok) {
-    throw new Error(`Discord /users/@me/guilds failed: ${res.status}`);
+    // Rate limited or Discord hiccup: a stale guild list beats an error page.
+    if (hit && (res.status === 429 || res.status >= 500)) return hit.data;
+    throw new DiscordApiError(
+      res.status,
+      `Discord /users/@me/guilds failed: ${res.status}`,
+    );
   }
-  return (await res.json()) as DiscordGuild[];
+
+  const data = (await res.json()) as DiscordGuild[];
+  guildListCache.set(accessToken, { data, expires: now + GUILDS_TTL_MS });
+  while (guildListCache.size > GUILDS_CACHE_MAX) {
+    const oldest = guildListCache.keys().next().value;
+    if (oldest === undefined) break;
+    guildListCache.delete(oldest);
+  }
+  return data;
 }
 
 /** True if the user owns the guild or has the Manage Server permission. */
