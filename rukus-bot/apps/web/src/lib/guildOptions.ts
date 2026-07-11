@@ -5,7 +5,17 @@ import {
   categoryChannels,
 } from "./discord";
 import type { Option } from "@/components/Pickers";
-import { roleColor } from "@/components/Pickers";
+
+/**
+ * Convert Discord's integer role color to CSS (0 = "no color").
+ * Defined here, NOT in Pickers.tsx: that file is "use client", and calling a
+ * client-module function from server code is a runtime error in production
+ * ("Attempted to call roleColor() from the server").
+ */
+function roleColor(color: number): string | undefined {
+  if (!color) return undefined;
+  return `#${color.toString(16).padStart(6, "0")}`;
+}
 
 /**
  * Load a guild's channels and roles as ready-to-render dropdown options.

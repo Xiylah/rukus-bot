@@ -16,14 +16,8 @@ import { useState, useRef, useEffect } from "react";
 export interface Option {
   id: string;
   name: string;
-  /** Optional hex color (roles). */
+  /** Optional CSS hex color (roles). */
   color?: string;
-}
-
-/** Convert Discord's integer role color to CSS, ignoring the "no color" 0. */
-export function roleColor(color: number): string | undefined {
-  if (!color) return undefined;
-  return `#${color.toString(16).padStart(6, "0")}`;
 }
 
 // ---------------- Single select ----------------
