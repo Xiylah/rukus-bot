@@ -1,9 +1,6 @@
 import { getTranslationConfig } from "@rukus/supabase";
 import { TranslationSettingsForm } from "./TranslationSettingsForm";
 
-// Cloudflare Pages runs on the edge runtime.
-export const runtime = "edge";
-
 export default async function TranslationPage({
   params,
 }: {

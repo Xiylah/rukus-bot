@@ -16,17 +16,28 @@ Follow these in order. Each step says exactly what to click and what to paste.
 
 ---
 
-## Step 1 — Expose the `rukus` schema in Supabase  ⏱️ 1 min
+## Step 1 — Supabase: expose + grant the `rukus` schema  ✅ DONE
 
-The dashboard reads the database through Supabase's API, which by default only
-exposes the `public` schema. You must add `rukus`:
+*(Recorded here in case you ever rebuild the database.)*
 
-1. Supabase → your project → **Settings** → **API**
-2. Find **Data API** → **Exposed schemas**
-3. Add **`rukus`** (keep `public` as well) → **Save**
+The bot's tables live in a `rukus` schema (isolated from your Roblox game's
+`public` tables). Two separate things are needed for the **dashboard** to read
+them — the bot doesn't need either, since it connects to Postgres directly.
 
-> The bot doesn't need this (it connects to Postgres directly). Only the
-> dashboard does. `pnpm check-env` will confirm when it's working.
+**1a. Expose the schema to the API**
+1. Supabase → **Settings** → **API** → **Data API** → **Exposed schemas**
+2. Add **`rukus`** (keep `public`) → **click Save**
+
+**1b. Grant the API roles permission on it**
+
+Exposing only *routes* requests to the schema — it doesn't grant Postgres
+privileges. Because Prisma (not Supabase) created `rukus`, Supabase never
+applied its usual grants, so you'd get `permission denied for schema rukus`.
+
+Fix — paste **[`rukus-bot/packages/db/prisma/grants.sql`](rukus-bot/packages/db/prisma/grants.sql)**
+into Supabase → **SQL Editor** → Run. It only touches `rukus`, never `public`.
+
+> `pnpm check-env` verifies both and tells you which one is missing.
 
 ---
 
@@ -142,11 +153,15 @@ Try it: in Discord run `/ping`. Then open the dashboard, sign in, configure
 
 ---
 
-## Step 6 — Deploy the dashboard to Cloudflare Pages  ⏱️ 10 min
+## Step 6 — Deploy the dashboard (a 2nd Railway service)  ⏱️ 10 min
 
-See **[rukus-bot/DEPLOYMENT.md](rukus-bot/DEPLOYMENT.md#step-3--deploy-the-dashboard-to-cloudflare-pages)**
-for the full walkthrough (build settings, environment variables, custom domain,
-and the `nodejs_compat` flag).
+The dashboard runs on **Railway** too, as a second service in the same project.
+(Cloudflare Pages was ruled out: it requires Next's edge runtime, which breaks
+React Server Components in this app. You can still use your **Cloudflare domain**
+— just point a CNAME at the Railway service.)
+
+Full walkthrough, including the custom-domain steps:
+**[rukus-bot/DEPLOYMENT.md](rukus-bot/DEPLOYMENT.md#step-4--railway-the-dashboard-service)**
 
 ---
 

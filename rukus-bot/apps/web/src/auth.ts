@@ -13,6 +13,9 @@ import Discord from "next-auth/providers/discord";
  * behalf (see lib/discord.ts).
  */
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Auth.js only auto-trusts the host on Vercel. We deploy to Cloudflare Pages,
+  // so we must opt in explicitly or every request fails with UntrustedHost.
+  trustHost: true,
   providers: [
     Discord({
       clientId: process.env.DISCORD_CLIENT_ID,

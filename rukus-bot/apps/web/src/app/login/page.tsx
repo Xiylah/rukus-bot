@@ -1,9 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
 
-// Cloudflare Pages runs on the edge runtime.
-export const runtime = "edge";
-
 export default async function LoginPage() {
   const session = await auth();
   if (session) redirect("/dashboard");

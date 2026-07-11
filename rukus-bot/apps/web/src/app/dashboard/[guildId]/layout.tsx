@@ -3,9 +3,6 @@ import { requireGuildAccess } from "@/lib/guard";
 import { guildIconUrl } from "@/lib/discord";
 import { SignOutButton } from "@/components/SignOutButton";
 
-// Cloudflare Pages runs on the edge runtime.
-export const runtime = "edge";
-
 export default async function GuildLayout({
   children,
   params,

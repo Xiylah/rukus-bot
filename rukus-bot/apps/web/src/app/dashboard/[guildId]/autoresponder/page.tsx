@@ -1,9 +1,6 @@
 import { getAutoResponderConfig } from "@rukus/supabase";
 import { AutoResponderForm } from "./AutoResponderForm";
 
-// Cloudflare Pages runs on the edge runtime.
-export const runtime = "edge";
-
 export default async function AutoResponderPage({
   params,
 }: {

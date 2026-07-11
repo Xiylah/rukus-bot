@@ -3,9 +3,6 @@ import { requireManageableGuilds } from "@/lib/guard";
 import { guildIconUrl } from "@/lib/discord";
 import { SignOutButton } from "@/components/SignOutButton";
 
-// Cloudflare Pages runs on the edge runtime.
-export const runtime = "edge";
-
 const BOT_GUILD_ID = process.env.DISCORD_GUILD_ID;
 
 export default async function DashboardHome() {

@@ -143,13 +143,27 @@ async function main() {
       ok("Supabase REST can read the rukus schema");
     } else {
       const body = await res.text();
-      if (body.includes("schema") || res.status === 406 || res.status === 404) {
+      // Two distinct failures, easy to confuse:
+      //  - PGRST106 / "Invalid schema" → schema not exposed in the Supabase UI
+      //  - 42501 / "permission denied" → exposed, but the API roles lack grants
+      if (body.includes("42501") || body.includes("permission denied")) {
         bad(
-          "Supabase REST can't see the `rukus` schema",
-          "Supabase → Settings → API → Data API → Exposed schemas → add `rukus`",
+          "Supabase roles lack permission on the `rukus` schema",
+          "Run the grants: psql < packages/db/prisma/grants.sql, or paste that " +
+            "file into Supabase → SQL Editor. (Prisma made the schema, so " +
+            "Supabase never granted its API roles access.)",
+        );
+      } else if (
+        body.includes("PGRST106") ||
+        body.includes("Invalid schema") ||
+        res.status === 406
+      ) {
+        bad(
+          "The `rukus` schema isn't exposed to the API",
+          "Supabase → Settings → API → Data API → Exposed schemas → add `rukus` → SAVE",
         );
       } else {
-        bad(`Supabase REST error (${res.status})`, body.slice(0, 120));
+        bad(`Supabase REST error (${res.status})`, body.slice(0, 140));
       }
     }
   }

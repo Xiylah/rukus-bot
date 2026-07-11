@@ -1,9 +1,6 @@
 import { getFormsConfig } from "@rukus/supabase";
 import { FormsSettings } from "./FormsSettings";
 
-// Cloudflare Pages runs on the edge runtime.
-export const runtime = "edge";
-
 export default async function FormsPage({
   params,
 }: {

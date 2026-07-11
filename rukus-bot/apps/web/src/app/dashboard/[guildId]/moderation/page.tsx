@@ -1,9 +1,6 @@
 import { getModerationConfig } from "@rukus/supabase";
 import { ModerationForm } from "./ModerationForm";
 
-// Cloudflare Pages runs on the edge runtime.
-export const runtime = "edge";
-
 export default async function ModerationPage({
   params,
 }: {

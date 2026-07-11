@@ -7,9 +7,6 @@ import {
   getModerationConfig,
 } from "@rukus/supabase";
 
-// Cloudflare Pages runs on the edge runtime.
-export const runtime = "edge";
-
 export default async function GuildOverview({
   params,
 }: {

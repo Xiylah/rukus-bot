@@ -4,9 +4,6 @@ import { requireGuildAccess } from "@/lib/guard";
 import { canManageGuild } from "@/lib/discord";
 import { AccessForm } from "./AccessForm";
 
-// Cloudflare Pages runs on the edge runtime.
-export const runtime = "edge";
-
 export default async function AccessPage({
   params,
 }: {

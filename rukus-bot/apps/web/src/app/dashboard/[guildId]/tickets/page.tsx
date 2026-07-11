@@ -1,9 +1,6 @@
 import { getTicketConfig } from "@rukus/supabase";
 import { TicketSettingsForm } from "./TicketSettingsForm";
 
-// Cloudflare Pages runs on the edge runtime.
-export const runtime = "edge";
-
 export default async function TicketsPage({
   params,
 }: {
