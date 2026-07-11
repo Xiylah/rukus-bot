@@ -46,6 +46,32 @@ git add -A && git commit -m "deploy" && git push
 
 ---
 
+## ⚠️ Two services, one repo — set each service's config file
+
+Both services share the same repo and root directory, so a plain `railway.json`
+would apply to BOTH — and silently overwrite whatever commands you type into the
+UI. (Symptom: you set the web start command, deploy, and Railway resets it to
+`--filter @rukus/bot start`.)
+
+So there is **no `railway.json`**. There are two named configs instead:
+
+| Service   | Config file        | Set it in |
+| --------- | ------------------ | --------- |
+| bot       | `railway.bot.json` | Settings → **Config as code** |
+| dashboard | `railway.web.json` | Settings → **Config as code** |
+
+For **each** service: **Settings → Config as code → Path** → enter the filename
+(`railway.bot.json` or `railway.web.json`) → **Save** → **Redeploy**.
+
+That file then supplies the build and start commands, so you don't type them by
+hand and they can't be clobbered.
+
+> If your Railway UI has no "Config as code" field, leave it blank and instead
+> type the commands manually per service (see the two steps below) — with no
+> `railway.json` present, your typed commands will now stick.
+
+---
+
 ## Step 3 — Railway: the BOT service
 
 > 🔴 **Delete or pause your old `main.py` Railway project first.** It uses the
