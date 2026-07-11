@@ -34,6 +34,9 @@ const schema = z.object({
     ),
   // Optional: enables the higher-quality DeepL engine (Google is the fallback).
   DEEPL_API_KEY: z.string().optional(),
+  // Optional: the dashboard's public URL. When set, ticket transcripts get a
+  // hosted "Direct Link" (DASHBOARD_URL/transcript/<token>).
+  DASHBOARD_URL: z.string().optional(),
 });
 
 // Treat empty-string vars as absent, so an unset-but-present var (common on

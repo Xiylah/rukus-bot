@@ -79,8 +79,12 @@ model Ticket {
   /// Ticket type id from the guild's ticket config, so close-time logic can
   /// resolve per-type settings (transcript channel etc.) reliably.
   typeId    String?
-  /// Public URL or storage key of the HTML transcript once closed.
+  /// Public URL of the hosted transcript once closed.
   transcriptUrl String?
+  /// Unguessable token the dashboard serves the transcript under.
+  transcriptToken String? @unique
+  /// The transcript HTML itself, served by the dashboard's /transcript route.
+  transcriptHtml String?
 
   createdAt DateTime  @default(now())
   closedAt  DateTime?

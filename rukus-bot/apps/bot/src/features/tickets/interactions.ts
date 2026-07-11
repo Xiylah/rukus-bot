@@ -37,6 +37,7 @@ import {
   closeConfirmMessage,
   closedControlsMessage,
   resolveTypes,
+  hexToInt,
 } from "./ui.js";
 import { buildTranscript } from "./transcript.js";
 
@@ -311,29 +312,68 @@ export async function closeTicketFlow(
   const transcriptChannelId =
     ticketType?.transcriptChannelId ?? config.transcriptChannelId;
 
-  // Build + post transcript to the configured channel.
+  // Build the transcript, host it behind an unguessable dashboard URL, and
+  // post a Ticket-Tool-style summary (owner, panel, per-user message counts,
+  // attached HTML, Direct Link button) to the transcript channel.
   let transcriptNote = "";
+  let transcript: { url?: string; token?: string; html?: string } | undefined;
   try {
-    const { html, count } = await buildTranscript(channel);
-    const file = {
-      attachment: html,
-      name: `transcript-ticket-${String(ticket.number).padStart(4, "0")}.html`,
-    };
-    if (transcriptChannelId) {
+    const { html, count, participants } = await buildTranscript(channel);
+    const fileName = `transcript-${channel.name}.html`;
+    const file = { attachment: html, name: fileName };
+
+    const { randomBytes } = await import("node:crypto");
+    const token = randomBytes(24).toString("hex");
+    const base = process.env.DASHBOARD_URL?.replace(/\/+$/, "");
+    const url = base ? `${base}/transcript/${token}` : undefined;
+    transcript = { url, token, html: html.toString("utf-8") };
+
+    if (!transcriptChannelId) {
+      transcriptNote = url
+        ? ` Transcript: ${url}`
+        : " (No transcript channel is configured; set one on the dashboard.)";
+    } else {
       const tChannel = await channel.guild.channels
         .fetch(transcriptChannelId)
         .catch(() => null);
-      if (tChannel && tChannel.type === ChannelType.GuildText) {
-        await (tChannel as TextChannel).send({
+      if (!tChannel || !tChannel.isSendable()) {
+        transcriptNote =
+          ` I couldn't post the transcript to <#${transcriptChannelId}>` +
+          " (channel missing or I lack permission there)." +
+          (url ? ` Transcript: ${url}` : "");
+      } else {
+        const userList = participants
+          .map((p) => `${p.count} - <@${p.id}> - ${p.tag}`)
+          .join("\n")
+          .slice(0, 1024);
+        const summary = {
           embeds: [
             {
-              color: COLORS.neutral,
-              title: `Ticket #${String(ticket.number).padStart(4, "0")} closed`,
-              description: `Opened by <@${ticket.openerId}> • ${count} messages • closed by <@${closedById}>`,
+              color: hexToInt(config.panel.color),
+              fields: [
+                { name: "Ticket Owner", value: `<@${ticket.openerId}>`, inline: true },
+                { name: "Ticket Name", value: channel.name, inline: true },
+                { name: "Panel", value: ticket.subject ?? "Support", inline: true },
+                { name: "Closed By", value: `<@${closedById}>`, inline: true },
+                { name: "Messages", value: String(count), inline: true },
+                { name: "Users in transcript", value: userList || "none" },
+              ],
+              timestamp: new Date().toISOString(),
             },
           ],
           files: [file],
-        });
+          components: url
+            ? [
+                {
+                  type: 1,
+                  components: [
+                    { type: 2, style: 5, label: "Direct Link", url },
+                  ],
+                },
+              ]
+            : [],
+        };
+        await (tChannel as TextChannel).send(summary as never);
         transcriptNote = ` Transcript posted to <#${transcriptChannelId}>.`;
       }
     }
@@ -342,7 +382,7 @@ export async function closeTicketFlow(
     transcriptNote = " (Transcript could not be generated.)";
   }
 
-  await markClosed(channel.id);
+  await markClosed(channel.id, transcript);
 
   // Revoke the opener's access; keep support roles able to see it.
   try {

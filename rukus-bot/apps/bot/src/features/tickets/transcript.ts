@@ -8,10 +8,16 @@ import type { TextChannel } from "discord.js";
  * is opened in a browser. The file is returned as a Buffer so the caller can
  * attach it to a Discord message or upload it to storage.
  */
+export interface TranscriptParticipant {
+  id: string;
+  tag: string;
+  count: number;
+}
+
 export async function buildTranscript(
   channel: TextChannel,
   opts: { maxMessages?: number } = {},
-): Promise<{ html: Buffer; count: number }> {
+): Promise<{ html: Buffer; count: number; participants: TranscriptParticipant[] }> {
   const max = opts.maxMessages ?? 2000;
   const collected: {
     author: string;
@@ -20,6 +26,7 @@ export async function buildTranscript(
     ts: string;
     attachments: string[];
   }[] = [];
+  const byAuthor = new Map<string, { tag: string; count: number }>();
 
   let before: string | undefined;
   while (collected.length < max) {
@@ -33,10 +40,17 @@ export async function buildTranscript(
         ts: msg.createdAt.toISOString(),
         attachments: [...msg.attachments.values()].map((a) => a.url),
       });
+      const entry = byAuthor.get(msg.author.id);
+      if (entry) entry.count++;
+      else byAuthor.set(msg.author.id, { tag: msg.author.tag, count: 1 });
     }
     before = batch.last()?.id;
     if (batch.size < 100) break;
   }
+
+  const participants: TranscriptParticipant[] = [...byAuthor.entries()]
+    .map(([id, v]) => ({ id, tag: v.tag, count: v.count }))
+    .sort((a, b) => b.count - a.count);
 
   // Discord returns newest-first; reverse to chronological order.
   collected.reverse();
@@ -84,7 +98,7 @@ export async function buildTranscript(
 <main>${rows}</main>
 </body></html>`;
 
-  return { html: Buffer.from(html, "utf-8"), count: collected.length };
+  return { html: Buffer.from(html, "utf-8"), count: collected.length, participants };
 }
 
 /** Escape a string for safe insertion into HTML text/attribute context. */

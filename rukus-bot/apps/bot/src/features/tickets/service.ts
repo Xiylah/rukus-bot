@@ -190,13 +190,18 @@ export function claimTicket(channelId: string, staffId: string) {
   });
 }
 
-export function markClosed(channelId: string, transcriptUrl?: string) {
+export function markClosed(
+  channelId: string,
+  transcript?: { url?: string; token?: string; html?: string },
+) {
   return prisma.ticket.update({
     where: { channelId },
     data: {
       status: "CLOSED",
       closedAt: new Date(),
-      transcriptUrl: transcriptUrl ?? undefined,
+      transcriptUrl: transcript?.url,
+      transcriptToken: transcript?.token,
+      transcriptHtml: transcript?.html,
     },
   });
 }
