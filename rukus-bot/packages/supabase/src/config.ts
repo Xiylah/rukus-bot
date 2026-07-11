@@ -40,7 +40,7 @@ async function readConfig<T>(guildId: string, feature: FeatureName): Promise<T> 
 /**
  * Prisma applies `@default(cuid())` and `@updatedAt` in its CLIENT, not as
  * database defaults. This layer writes through PostgREST instead, so it has to
- * supply those columns itself — otherwise Postgres rejects the insert with
+ * supply those columns itself - otherwise Postgres rejects the insert with
  * `null value in column "updatedAt" violates not-null constraint`.
  * (A migration also adds DB-level defaults; this keeps us correct either way.)
  */
@@ -59,7 +59,7 @@ async function writeConfig<T>(
   const supabase = getSupabase();
   const now = new Date().toISOString();
 
-  // Ensure the parent Guild row exists (FK constraint) — upsert is idempotent.
+  // Ensure the parent Guild row exists (FK constraint) - upsert is idempotent.
   const guildUpsert = await supabase
     .from("Guild")
     .upsert({ id: guildId, updatedAt: now }, { onConflict: "id" });

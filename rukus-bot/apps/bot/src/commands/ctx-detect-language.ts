@@ -26,7 +26,7 @@ const command: MessageContextCommand = {
     if (!result) {
       await interaction.editReply({
         content:
-          "Couldn't detect the language — the message may be too short, slang, " +
+          "Couldn't detect the language - the message may be too short, slang, " +
           "or the service is busy.",
       });
       return;

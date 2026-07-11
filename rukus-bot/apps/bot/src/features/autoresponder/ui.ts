@@ -28,7 +28,7 @@ export function supportEmbed(supportChannelId?: string): EmbedBuilder {
   const options: [string, string][] = [
     ["🎫 Need help?", `Open a support ticket in ${ref} and the team will sort you out!`],
     ["🛠️ Lost something?", `File a ticket in ${ref} and we'll look into it for you.`],
-    ["📬 We've got you", `Head to ${ref} and open a ticket — we'll get it resolved.`],
+    ["📬 We've got you", `Head to ${ref} and open a ticket - we'll get it resolved.`],
     ["🆘 Let's get this fixed", `Submit a support ticket in ${ref} and we'll help you out!`],
   ];
   const [title, desc] = pick(options);

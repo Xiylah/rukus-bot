@@ -65,7 +65,7 @@ export const LANGUAGE_CHOICES: Record<string, string> = {
 /**
  * franc returns ISO 639-3 codes; map the common ones back to the 2-letter
  * codes our translators use. Anything not here is treated as "unknown", which
- * just means we don't skip the API call — safe.
+ * just means we don't skip the API call - safe.
  */
 export const ISO3_TO_ISO2: Record<string, string> = {
   eng: "en", spa: "es", fra: "fr", por: "pt", deu: "de",

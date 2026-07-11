@@ -7,7 +7,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
-import { COLORS, CID, type Form } from "@rukus/shared";
+import { COLORS, CID, type Form, type FormsConfig } from "@rukus/shared";
 
 /**
  * Custom-id format for forms: we append the form id so a single handler can
@@ -26,15 +26,27 @@ export function idFromCustomId(customId: string): string {
   return parts[parts.length - 1] ?? "";
 }
 
+/** Parse "#rrggbb" to the int discord.js wants; fall back to blurple. */
+function hexToInt(hex: string | undefined): number {
+  if (!hex) return COLORS.primary;
+  const n = parseInt(hex.replace("#", ""), 16);
+  return Number.isNaN(n) ? COLORS.primary : n;
+}
+
 /** The public panel: embed + a button per form. */
-export function formPanelMessage(forms: Form[]) {
+export function formPanelMessage(config: FormsConfig) {
+  const forms = config.forms;
+  const description =
+    config.panel.description.trim() ||
+    forms
+      .map((f) => `• **${f.name}**${f.description ? `: ${f.description}` : ""}`)
+      .join("\n") ||
+    "No forms configured yet.";
+
   const embed = new EmbedBuilder()
-    .setColor(COLORS.primary)
-    .setTitle("Applications & Forms")
-    .setDescription(
-      forms.map((f) => `• **${f.name}** — ${f.description || "Click to apply"}`).join("\n") ||
-        "No forms configured yet.",
-    );
+    .setColor(hexToInt(config.panel.color))
+    .setTitle(config.panel.title)
+    .setDescription(description);
 
   // Discord allows max 5 buttons per row, 5 rows.
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
@@ -91,7 +103,7 @@ export function reviewMessage(params: {
   const { formName, userId, submissionId, answers } = params;
   const embed = new EmbedBuilder()
     .setColor(COLORS.warning)
-    .setTitle(`New submission — ${formName}`)
+    .setTitle(`New submission - ${formName}`)
     .setDescription(`From <@${userId}>`)
     .addFields(
       answers.map((a) => ({

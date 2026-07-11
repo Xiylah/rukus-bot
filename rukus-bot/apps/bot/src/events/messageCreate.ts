@@ -19,7 +19,7 @@ import {
 } from "../features/autoresponder/ui.js";
 
 /**
- * Main message pipeline — the TS equivalent of the Python on_message, but every
+ * Main message pipeline - the TS equivalent of the Python on_message, but every
  * behavior is gated by that guild's config (read from cache). Order mirrors the
  * original: image-only channel → drug filter → auto-translate → auto-responder.
  */

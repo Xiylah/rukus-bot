@@ -34,7 +34,7 @@ const command: Command = {
     if (!result) {
       await interaction.editReply({
         content:
-          "Couldn't translate that — it may be too short, already in that " +
+          "Couldn't translate that - it may be too short, already in that " +
           "language, or the service is busy. Try again in a moment.",
       });
       return;

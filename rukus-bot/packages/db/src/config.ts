@@ -17,7 +17,7 @@ import { prisma } from "./index.js";
  * Read/write helpers for per-guild feature config.
  *
  * Reads always return a fully-defaulted, schema-valid object even when no row
- * exists yet — so callers never have to null-check individual fields. Writes
+ * exists yet - so callers never have to null-check individual fields. Writes
  * validate against the same schema, so a bad dashboard payload is rejected
  * before it ever reaches the bot.
  */

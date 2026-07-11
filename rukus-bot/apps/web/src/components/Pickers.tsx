@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react";
 /**
  * Dropdown pickers for Discord channels, categories, and roles.
  *
- * These replace the old "paste a snowflake ID" inputs — the guild's real
+ * These replace the old "paste a snowflake ID" inputs - the guild's real
  * channels/roles are fetched server-side (see lib/discord.ts) and passed in as
  * `options`, so non-technical staff pick from a list instead of hunting for IDs
  * with Developer Mode.
@@ -28,7 +28,7 @@ export function Select({
   value,
   onChange,
   options,
-  placeholder = "— none —",
+  placeholder = "None",
   prefix = "",
 }: {
   label: string;
@@ -53,7 +53,7 @@ export function Select({
       >
         <option value="">{placeholder}</option>
         {missing && (
-          <option value={value}>⚠ unknown ({value}) — no longer exists</option>
+          <option value={value}>⚠ unknown ({value}) - no longer exists</option>
         )}
         {options.map((o) => (
           <option key={o.id} value={o.id}>
@@ -65,7 +65,7 @@ export function Select({
       {hint && <p className="mt-1 text-xs text-zinc-500">{hint}</p>}
       {options.length === 0 && (
         <p className="mt-1 text-xs text-amber-400">
-          Nothing to choose from — is the bot in this server with permission to
+          Nothing to choose from - is the bot in this server with permission to
           view it?
         </p>
       )}

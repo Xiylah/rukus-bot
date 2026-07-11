@@ -7,7 +7,7 @@ import { log } from "../lib/logger.js";
  * On startup: log in, then register slash + context-menu commands with Discord.
  *
  * Registration is idempotent (a PUT that replaces the guild's command set), so
- * running it on every boot is safe and means a Railway deploy is all you need —
+ * running it on every boot is safe and means a Railway deploy is all you need -
  * no separate `deploy-commands` step to remember. Set SKIP_COMMAND_SYNC=1 to
  * opt out (e.g. to avoid the extra API call on frequent restarts).
  */
@@ -17,10 +17,10 @@ const handler: EventHandler<Events.ClientReady> = {
   execute: async (client: Client) => {
     log.info(`Logged in as ${client.user?.tag} (id: ${client.user?.id}).`);
     log.info(`Serving ${client.guilds.cache.size} guild(s).`);
-    client.user?.setActivity("your tickets & forms");
+    client.user?.setActivity("Discord API");
 
     if (process.env.SKIP_COMMAND_SYNC === "1") {
-      log.info("SKIP_COMMAND_SYNC=1 — not registering commands.");
+      log.info("SKIP_COMMAND_SYNC=1 - not registering commands.");
       return;
     }
 
@@ -39,7 +39,7 @@ const handler: EventHandler<Events.ClientReady> = {
       );
       log.info(`Registered ${body.length} command(s) to guild ${env.DISCORD_GUILD_ID}.`);
     } catch (err) {
-      // Don't take the bot down over this — it still works for buttons/menus,
+      // Don't take the bot down over this - it still works for buttons/menus,
       // and the operator can run `pnpm bot:deploy-commands` manually.
       log.error("Command registration failed (bot still running):", err);
     }

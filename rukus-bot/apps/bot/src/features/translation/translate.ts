@@ -10,7 +10,7 @@ import {
 } from "./lang.js";
 
 /**
- * Translation core — a faithful port of the Python bot's translate_text():
+ * Translation core - a faithful port of the Python bot's translate_text():
  *
  *   1. strip URLs/mentions/emoji, apply a length gate
  *   2. slang-only skip
@@ -111,7 +111,7 @@ if (env.DEEPL_API_KEY) {
     log.warn(`DeepL init failed, using Google only: ${String(e)}`);
   }
 } else {
-  log.info("DeepL not configured — using Google only. Set DEEPL_API_KEY to enable.");
+  log.info("DeepL not configured - using Google only. Set DEEPL_API_KEY to enable.");
 }
 
 async function deeplTranslate(

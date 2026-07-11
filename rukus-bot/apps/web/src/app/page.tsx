@@ -29,7 +29,7 @@ export default async function Home() {
         {[
           ["🎫 Tickets", "Button panels, private channels, transcripts."],
           ["📝 Forms", "Modal applications with approve / deny review."],
-          ["🛡️ Moderation", "Coming soon — warns, mutes, logs."],
+          ["🛡️ Moderation", "Coming soon - warns, mutes, logs."],
         ].map(([title, body]) => (
           <div key={title} className="card text-left">
             <div className="font-semibold text-white">{title}</div>

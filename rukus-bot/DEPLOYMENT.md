@@ -9,12 +9,12 @@ Both pieces deploy to **Railway**, as two services from the same GitHub repo.
 
 > **Why not Cloudflare Pages?** Cloudflare Pages requires Next's *edge runtime*,
 > which breaks React Server Components in this app (every page 500s). Running on
-> Railway under Node works correctly. You can still use your Cloudflare domain —
+> Railway under Node works correctly. You can still use your Cloudflare domain -
 > just point a DNS record at the Railway service (see "Custom domain" below).
 
 ---
 
-## Step 1 — Supabase (one time)
+## Step 1 - Supabase (one time)
 
 The bot's tables live in a `rukus` schema, isolated from your Roblox game's
 `public` tables. The dashboard reads them through Supabase's REST API, which
@@ -25,7 +25,7 @@ needs **two** things:
 2. **Grant the API roles:** paste
    [`packages/db/prisma/grants.sql`](packages/db/prisma/grants.sql) into Supabase
    → **SQL Editor** → Run. (Prisma created the schema, so Supabase never granted
-   its API roles access — without this you get `permission denied for schema rukus`.)
+   its API roles access - without this you get `permission denied for schema rukus`.)
 
 Create the tables (from your PC, once):
 
@@ -38,7 +38,7 @@ Verify everything with `pnpm check-env`.
 
 ---
 
-## Step 2 — Push to GitHub
+## Step 2 - Push to GitHub
 
 ```bash
 git add -A && git commit -m "deploy" && git push
@@ -62,7 +62,7 @@ Instead, the **root `package.json` defaults to the bot**:
 
 | Service | Root Directory | Start command |
 | --- | --- | --- |
-| **bot** | `rukus-bot` | *(leave blank — uses the default `start`)* |
+| **bot** | `rukus-bot` | *(leave blank - uses the default `start`)* |
 | **dashboard** | `rukus-bot` | **override** → `pnpm --filter @rukus/web start` |
 
 So: the bot service needs **no** custom commands, and the dashboard service needs
@@ -70,14 +70,14 @@ So: the bot service needs **no** custom commands, and the dashboard service need
 
 ---
 
-## Step 3 — Railway: the BOT service
+## Step 3 - Railway: the BOT service
 
 > 🔴 **Delete or pause your old `main.py` Railway project first.** It uses the
 > same Discord token, and two processes on one token knock each other offline.
 
 1. Railway → **New Project → Deploy from GitHub repo** → `Xiylah/rukus-bot`
 2. **Settings → Root Directory:** `rukus-bot`
-3. Leave the build and start commands **blank** — the root `package.json`'s
+3. Leave the build and start commands **blank** - the root `package.json`'s
    `build` and `start` scripts default to the bot.
 4. **Variables:**
    ```
@@ -94,11 +94,11 @@ So: the bot service needs **no** custom commands, and the dashboard service need
    Registered 8 command(s) to guild ...
    ```
 
-Slash commands register themselves on boot — no separate step.
+Slash commands register themselves on boot - no separate step.
 
 ---
 
-## Step 4 — Railway: the DASHBOARD service
+## Step 4 - Railway: the DASHBOARD service
 
 In the **same Railway project**, click **New → GitHub Repo** → same repo. Then:
 
@@ -142,7 +142,7 @@ In the **same Railway project**, click **New → GitHub Repo** → same repo. Th
 
 ---
 
-## Step 5 — Let your staff in
+## Step 5 - Let your staff in
 
 1. Sign in yourself (you have Manage Server).
 2. Your server → **🔑 Access** → paste your staff **role IDs**.
@@ -155,9 +155,9 @@ In the **same Railway project**, click **New → GitHub Repo** → same repo. Th
 
 | Symptom | Fix |
 | --- | --- |
-| **`Can't reach database server at db.<ref>.supabase.co`** (works locally, fails on Railway) | You're using Supabase's **direct** host, which is **IPv6-only** — Railway has no IPv6 egress. Switch `DATABASE_URL`/`DIRECT_URL` to the **pooler** host (`aws-N-<region>.pooler.supabase.com`, ports 6543 / 5432). Supabase → **Connect** → Transaction pooler. |
+| **`Can't reach database server at db.<ref>.supabase.co`** (works locally, fails on Railway) | You're using Supabase's **direct** host, which is **IPv6-only** - Railway has no IPv6 egress. Switch `DATABASE_URL`/`DIRECT_URL` to the **pooler** host (`aws-N-<region>.pooler.supabase.com`, ports 6543 / 5432). Supabase → **Connect** → Transaction pooler. |
 | `permission denied for schema rukus` | Run `packages/db/prisma/grants.sql` (Step 1.2). |
-| `Invalid schema: rukus` | Expose `rukus` in Supabase Data API settings (Step 1.1) — and click **Save**. |
+| `Invalid schema: rukus` | Expose `rukus` in Supabase Data API settings (Step 1.1) - and click **Save**. |
 | Dashboard login loops / callback error | `NEXTAUTH_URL` must exactly match the site URL, and that URL + `/api/auth/callback/discord` must be in Discord's OAuth redirects. |
 | Bot online but no slash commands | Check logs for "Registered N command(s)". Or run `pnpm bot:deploy-commands`. |
 | Bot keeps disconnecting/reconnecting | The old `main.py` is still running on the same token. Stop it. |

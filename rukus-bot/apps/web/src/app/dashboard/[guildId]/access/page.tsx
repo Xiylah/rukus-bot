@@ -13,7 +13,7 @@ export default async function AccessPage({
   const { guildId } = await params;
 
   // Granting dashboard access is effectively granting power over every other
-  // setting, so this page is ADMINISTRATOR-only — stricter than the Manage
+  // setting, so this page is ADMINISTRATOR-only - stricter than the Manage
   // Server permission that gates the rest of the dashboard.
   const { guild } = await requireGuildAccess(guildId);
   if (!isGuildAdmin(guild)) redirect(`/dashboard/${guildId}`);
@@ -29,7 +29,7 @@ export default async function AccessPage({
       <h1 className="mb-1 text-2xl font-bold text-white">🔑 Dashboard Access</h1>
       <p className="mb-6 text-sm text-zinc-400">
         Choose who can log into this dashboard. Server{" "}
-        <strong>Administrators</strong> always have access — and only they can see
+        <strong>Administrators</strong> always have access - and only they can see
         or change this page.
       </p>
       <AccessForm

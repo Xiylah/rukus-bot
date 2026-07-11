@@ -60,7 +60,7 @@ const command: Command = {
       }
       const lines = config.forms.map(
         (f) =>
-          `• **${f.name}** (\`${f.id}\`) — ${f.fields.length} field(s), ` +
+          `• **${f.name}** (\`${f.id}\`) - ${f.fields.length} field(s), ` +
           `review: ${f.reviewChannelId ? `<#${f.reviewChannelId}>` : "_none_"}`,
       );
       await interaction.reply({ content: lines.join("\n"), ...ephemeral });
@@ -80,7 +80,7 @@ const command: Command = {
       const target =
         (interaction.options.getChannel("channel") as TextChannel | null) ??
         (interaction.channel as TextChannel);
-      await target.send(formPanelMessage(config.forms));
+      await target.send(formPanelMessage(config));
       await interaction.reply({
         content: `Forms panel posted in <#${target.id}>.`,
         ...ephemeral,

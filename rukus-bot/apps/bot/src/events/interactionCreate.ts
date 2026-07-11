@@ -74,6 +74,8 @@ const handler: EventHandler<Events.InteractionCreate> = {
       }
 
       if (interaction.isModalSubmit()) {
+        if (customId.startsWith(CID.ticketModal))
+          return void (await tickets.handleTicketModal(interaction));
         if (customId.startsWith(CID.formModal))
           return void (await forms.handleModalSubmit(interaction));
       }

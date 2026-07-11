@@ -40,6 +40,11 @@ export const ticketTypeSchema = z.object({
   categoryId: snowflake,
   /** Optional welcome override; falls back to the global welcomeMessage. */
   welcomeMessage: z.string().max(2000).optional(),
+  /**
+   * Optional form to fill BEFORE the ticket opens (id of a form in the forms
+   * config). Answers are posted into the ticket channel for staff.
+   */
+  formId: z.string().optional(),
 });
 
 export type TicketType = z.infer<typeof ticketTypeSchema>;
@@ -75,6 +80,11 @@ export const ticketConfigSchema = z.object({
         .default("Click the button below to open a support ticket."),
       /** Button text (single type) or dropdown placeholder (multiple types). */
       buttonLabel: z.string().max(80).default("Open a ticket"),
+      /** Embed accent color, hex like #5865f2. */
+      color: z
+        .string()
+        .regex(/^#[0-9a-fA-F]{6}$/)
+        .default("#5865f2"),
     })
     .default({}),
 });
@@ -114,6 +124,18 @@ export type Form = z.infer<typeof formSchema>;
 export const formsConfigSchema = z.object({
   enabled: z.boolean().default(false),
   forms: z.array(formSchema).default([]),
+  /** The panel posted by /form panel. */
+  panel: z
+    .object({
+      title: z.string().max(256).default("Applications & Forms"),
+      /** Blank = auto-list the forms with their descriptions. */
+      description: z.string().max(4000).default(""),
+      color: z
+        .string()
+        .regex(/^#[0-9a-fA-F]{6}$/)
+        .default("#5865f2"),
+    })
+    .default({}),
 });
 
 export type FormsConfig = z.infer<typeof formsConfigSchema>;

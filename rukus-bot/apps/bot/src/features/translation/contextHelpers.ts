@@ -23,7 +23,7 @@ export async function contextTranslate(
   if (!result) {
     await interaction.editReply({
       content:
-        "Couldn't translate that — it may be too short, slang, already in " +
+        "Couldn't translate that - it may be too short, slang, already in " +
         "that language, or the service is busy.",
     });
     return;

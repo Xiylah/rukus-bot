@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import type { FormsConfig, Form, FormField } from "@rukus/shared";
 import { Select, type Option } from "@/components/Pickers";
+import { DiscordPreview } from "@/components/DiscordPreview";
 import { saveFormsConfig } from "../actions";
 
 /** Generate a short client-side id for new forms/fields (no crypto needed). */
@@ -43,6 +44,7 @@ export function FormsSettings({
 }) {
   const [enabled, setEnabled] = useState(initial.enabled);
   const [forms, setForms] = useState<Form[]>(initial.forms);
+  const [panel, setPanel] = useState(initial.panel);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -66,7 +68,7 @@ export function FormsSettings({
 
   function onSave() {
     setMsg(null);
-    const payload: FormsConfig = { enabled, forms };
+    const payload: FormsConfig = { enabled, forms, panel };
     startTransition(async () => {
       const res = await saveFormsConfig(guildId, payload);
       setMsg(
@@ -145,7 +147,7 @@ export function FormsSettings({
               onChange={(v) => updateForm(fi, { reviewChannelId: v })}
               options={channels}
               prefix="#"
-              placeholder="— none (submissions won't be posted) —"
+              placeholder="None (submissions won't be posted)"
             />
             <Select
               label="Role granted on approval (optional)"
@@ -153,7 +155,7 @@ export function FormsSettings({
               onChange={(v) => updateForm(fi, { approveRoleId: v })}
               options={roles}
               prefix="@"
-              placeholder="— don't grant a role —"
+              placeholder="Don't grant a role"
             />
             <div>
               <label className="label">Panel description</label>
@@ -245,6 +247,69 @@ export function FormsSettings({
       >
         + Add form
       </button>
+
+      <div className="card space-y-4">
+        <div className="font-medium text-white">Panel appearance</div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="space-y-4">
+            <div>
+              <label className="label">Panel title</label>
+              <input
+                className="input"
+                maxLength={256}
+                value={panel.title}
+                onChange={(e) => setPanel((p) => ({ ...p, title: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="label">Panel description</label>
+              <textarea
+                className="input min-h-20"
+                placeholder="Leave blank to auto-list your forms."
+                value={panel.description}
+                onChange={(e) =>
+                  setPanel((p) => ({ ...p, description: e.target.value }))
+                }
+              />
+            </div>
+            <div>
+              <label className="label">Embed color</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  className="h-9 w-12 cursor-pointer rounded border border-edge bg-panel"
+                  value={panel.color}
+                  onChange={(e) =>
+                    setPanel((p) => ({ ...p, color: e.target.value }))
+                  }
+                />
+                <span className="text-sm text-zinc-400">{panel.color}</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Live preview</label>
+            <DiscordPreview
+              color={panel.color}
+              title={panel.title}
+              description={
+                panel.description.trim() ||
+                forms
+                  .map(
+                    (f) => `• ${f.name}${f.description ? `: ${f.description}` : ""}`,
+                  )
+                  .join("\n") ||
+                "No forms configured yet."
+              }
+              buttons={forms.map((f) => ({ emoji: "📝", label: f.buttonLabel }))}
+            />
+            <p className="mt-1 text-xs text-zinc-500">
+              This is what /form panel will post. It updates as you type.
+            </p>
+          </div>
+        </div>
+      </div>
 
       <div className="flex items-center gap-3 border-t border-edge pt-5">
         <button className="btn-primary" onClick={onSave} disabled={pending}>

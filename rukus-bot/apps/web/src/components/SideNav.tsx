@@ -9,7 +9,7 @@ export interface NavGroup {
 }
 
 /**
- * Sidebar navigation with the current page highlighted — small thing, but it
+ * Sidebar navigation with the current page highlighted - small thing, but it
  * keeps non-technical staff oriented ("which settings am I editing?").
  */
 export function SideNav({ groups }: { groups: NavGroup[] }) {

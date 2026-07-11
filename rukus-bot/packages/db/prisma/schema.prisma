@@ -1,7 +1,7 @@
 // Prisma schema for the Rukus bot + dashboard.
 //
 // IMPORTANT: this database is SHARED with another app (a Roblox game whose
-// tables live in the `public` schema — leaderboard, saves, ratings, etc.).
+// tables live in the `public` schema - leaderboard, saves, ratings, etc.).
 // To keep the two completely isolated, ALL bot tables live in their own
 // dedicated `rukus` Postgres schema. Prisma only ever manages `rukus`, so it
 // can never touch or drop the game's `public` tables.

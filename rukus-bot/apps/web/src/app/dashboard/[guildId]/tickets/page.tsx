@@ -1,4 +1,4 @@
-import { getTicketConfig } from "@rukus/supabase";
+import { getTicketConfig, getFormsConfig } from "@rukus/supabase";
 import { loadGuildOptions } from "@/lib/guildOptions";
 import { TicketSettingsForm } from "./TicketSettingsForm";
 
@@ -8,8 +8,9 @@ export default async function TicketsPage({
   params: Promise<{ guildId: string }>;
 }) {
   const { guildId } = await params;
-  const [config, options] = await Promise.all([
+  const [config, formsCfg, options] = await Promise.all([
     getTicketConfig(guildId),
+    getFormsConfig(guildId),
     loadGuildOptions(guildId),
   ]);
 
@@ -19,7 +20,7 @@ export default async function TicketsPage({
       <p className="mb-6 text-sm text-zinc-400">
         Configure how support tickets work. After saving, run{" "}
         <code className="rounded bg-panel px-1">/ticket panel</code> in Discord to
-        post the button.
+        post the panel.
       </p>
       <TicketSettingsForm
         guildId={guildId}
@@ -27,6 +28,7 @@ export default async function TicketsPage({
         categories={options.categories}
         channels={options.channels}
         roles={options.roles}
+        forms={formsCfg.forms.map((f) => ({ id: f.id, name: f.name }))}
       />
     </div>
   );

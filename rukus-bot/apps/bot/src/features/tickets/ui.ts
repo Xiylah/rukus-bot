@@ -33,9 +33,16 @@ export function resolveTypes(config: TicketConfig): TicketType[] {
  * One ticket type → a button (classic). Multiple → a Ticket-Tool-style
  * dropdown where each option is a type.
  */
+/** Parse "#rrggbb" to the int discord.js wants; fall back to blurple. */
+export function hexToInt(hex: string | undefined): number {
+  if (!hex) return COLORS.primary;
+  const n = parseInt(hex.replace("#", ""), 16);
+  return Number.isNaN(n) ? COLORS.primary : n;
+}
+
 export function panelMessage(config: TicketConfig) {
   const embed = new EmbedBuilder()
-    .setColor(COLORS.primary)
+    .setColor(hexToInt(config.panel.color))
     .setTitle(config.panel.title)
     .setDescription(config.panel.description);
 

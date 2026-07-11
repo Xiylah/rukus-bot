@@ -116,7 +116,7 @@ export function canManageGuild(guild: DiscordGuild): boolean {
 /**
  * True if the user owns the guild or has Administrator.
  *
- * Stricter than canManageGuild — used to gate the Access page, since granting
+ * Stricter than canManageGuild - used to gate the Access page, since granting
  * dashboard access is effectively granting power over every other setting.
  */
 export function isGuildAdmin(guild: DiscordGuild): boolean {
@@ -140,7 +140,7 @@ export function guildIconUrl(guild: DiscordGuild, size = 64): string | null {
  * OAuth's `guilds` scope gives us the user's permissions but NOT their roles,
  * so to gate access by specific staff roles we ask Discord directly with the
  * bot's token. Returns [] if the bot isn't in the guild or the user isn't a
- * member. This is a plain REST call — edge-compatible (no bot process needed).
+ * member. This is a plain REST call - edge-compatible (no bot process needed).
  */
 export async function fetchMemberRoleIds(
   guildId: string,
@@ -223,7 +223,7 @@ export interface DiscordMember {
  * Guild members, for the Access page's user allow-list picker.
  *
  * Discord caps this endpoint at 1000 per call and it needs the Guild Members
- * intent (which the bot has). We fetch a single page — ample for picking staff,
+ * intent (which the bot has). We fetch a single page - ample for picking staff,
  * and it avoids paginating thousands of members just to fill a dropdown.
  */
 export async function fetchGuildMembers(

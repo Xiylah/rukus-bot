@@ -1,7 +1,7 @@
 -- Add DATABASE-level defaults for columns Prisma only defaults CLIENT-side.
 --
 -- Prisma applies @default(cuid()) and @updatedAt inside its own client. Any
--- other writer — here, the dashboard going through Supabase/PostgREST — must
+-- other writer - here, the dashboard going through Supabase/PostgREST - must
 -- supply those columns itself, or Postgres rejects the row:
 --   null value in column "updatedAt" of relation "Guild" violates not-null...
 --

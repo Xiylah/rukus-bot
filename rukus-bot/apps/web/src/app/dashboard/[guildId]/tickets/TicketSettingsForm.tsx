@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import type { TicketConfig, TicketType } from "@rukus/shared";
 import { Toggle } from "@/components/Toggle";
 import { Select, MultiSelect, type Option } from "@/components/Pickers";
+import { DiscordPreview } from "@/components/DiscordPreview";
 import { saveTicketConfig } from "../actions";
 
 /** Short unique id for a new ticket type (client-side is fine here). */
@@ -29,12 +30,14 @@ export function TicketSettingsForm({
   categories,
   channels,
   roles,
+  forms,
 }: {
   guildId: string;
   initial: TicketConfig;
   categories: Option[];
   channels: Option[];
   roles: Option[];
+  forms: Option[];
 }) {
   const [config, setConfig] = useState<TicketConfig>(initial);
   const [pending, startTransition] = useTransition();
@@ -86,7 +89,7 @@ export function TicketSettingsForm({
           value={config.categoryId}
           onChange={(v) => update("categoryId", v)}
           options={categories}
-          placeholder="— no category —"
+          placeholder="No category"
         />
         <Select
           label="Transcript channel"
@@ -95,7 +98,7 @@ export function TicketSettingsForm({
           onChange={(v) => update("transcriptChannelId", v)}
           options={channels}
           prefix="#"
-          placeholder="— don't post transcripts —"
+          placeholder="Don't post transcripts"
         />
         <MultiSelect
           label="Support roles"
@@ -104,7 +107,7 @@ export function TicketSettingsForm({
           onChange={(v) => update("supportRoleIds", v)}
           options={roles}
           prefix="@"
-          emptyText="No support roles — only admins can handle tickets"
+          emptyText="No support roles - only admins can handle tickets"
         />
         <div>
           <label className="label">Max open tickets per user</label>
@@ -137,7 +140,7 @@ export function TicketSettingsForm({
             With 2+ types the panel becomes a dropdown (like Ticket Tool), and
             each type names its channels so staff instantly know what a ticket
             is about. <code className="rounded bg-panel px-1">{"{count}"}</code>{" "}
-            becomes the ticket number — e.g.{" "}
+            becomes the ticket number - e.g.{" "}
             <code className="rounded bg-panel px-1">mute-appeal-{"{count}"}</code>{" "}
             → <code className="rounded bg-panel px-1">mute-appeal-0007</code>.
           </p>
@@ -213,7 +216,7 @@ export function TicketSettingsForm({
                 value={type.categoryId}
                 onChange={(v) => updateType(ti, { categoryId: v })}
                 options={categories}
-                placeholder="— use the default category —"
+                placeholder="Use the default category"
               />
             </div>
             <div>
@@ -229,6 +232,14 @@ export function TicketSettingsForm({
                 }
               />
             </div>
+            <Select
+              label="Ask a form before opening (optional)"
+              hint="The member fills these questions first; their answers get posted in the ticket for staff. Build forms on the Forms page."
+              value={type.formId}
+              onChange={(v) => updateType(ti, { formId: v })}
+              options={forms}
+              placeholder="No form, open the ticket right away"
+            />
           </div>
         ))}
 
@@ -251,33 +262,82 @@ export function TicketSettingsForm({
 
       <div className="card space-y-4">
         <div className="font-medium text-white">Panel appearance</div>
-        <div>
-          <label className="label">Panel title</label>
-          <input
-            className="input"
-            value={config.panel.title}
-            onChange={(e) => updatePanel("title", e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="label">Panel description</label>
-          <textarea
-            className="input min-h-20"
-            value={config.panel.description}
-            onChange={(e) => updatePanel("description", e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="label">Button label / dropdown placeholder</label>
-          <input
-            className="input"
-            value={config.panel.buttonLabel}
-            onChange={(e) => updatePanel("buttonLabel", e.target.value)}
-          />
-          <p className="mt-1 text-xs text-zinc-500">
-            Button text with one ticket type; placeholder text (e.g. “Make a
-            selection”) with several.
-          </p>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="space-y-4">
+            <div>
+              <label className="label">Panel title</label>
+              <input
+                className="input"
+                value={config.panel.title}
+                onChange={(e) => updatePanel("title", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="label">Panel description</label>
+              <textarea
+                className="input min-h-20"
+                value={config.panel.description}
+                onChange={(e) => updatePanel("description", e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="label">Button label / dropdown placeholder</label>
+              <input
+                className="input"
+                value={config.panel.buttonLabel}
+                onChange={(e) => updatePanel("buttonLabel", e.target.value)}
+              />
+              <p className="mt-1 text-xs text-zinc-500">
+                Button text with one ticket type; placeholder text with several.
+              </p>
+            </div>
+            <div>
+              <label className="label">Embed color</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  className="h-9 w-12 cursor-pointer rounded border border-edge bg-panel"
+                  value={config.panel.color}
+                  onChange={(e) => updatePanel("color", e.target.value)}
+                />
+                <span className="text-sm text-zinc-400">{config.panel.color}</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Live preview</label>
+            {config.types.length <= 1 ? (
+              <DiscordPreview
+                color={config.panel.color}
+                title={config.panel.title}
+                description={config.panel.description}
+                buttons={[
+                  {
+                    emoji: config.types[0]?.emoji ?? "🎫",
+                    label: config.panel.buttonLabel,
+                  },
+                ]}
+              />
+            ) : (
+              <DiscordPreview
+                color={config.panel.color}
+                title={config.panel.title}
+                description={config.panel.description}
+                select={{
+                  placeholder: config.panel.buttonLabel,
+                  options: config.types.map((t) => ({
+                    emoji: t.emoji,
+                    label: t.label,
+                    description: t.description || undefined,
+                  })),
+                }}
+              />
+            )}
+            <p className="mt-1 text-xs text-zinc-500">
+              This is what /ticket panel will post. It updates as you type.
+            </p>
+          </div>
         </div>
       </div>
 

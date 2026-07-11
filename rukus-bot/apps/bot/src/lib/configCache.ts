@@ -25,12 +25,12 @@ import { log } from "./logger.js";
  * Postgres. TTL is short so dashboard edits show up within seconds.
  *
  * The dashboard runs in a different process, so it can't invalidate this cache
- * directly — the TTL is our staleness bound. 15s is a fine tradeoff for config.
+ * directly - the TTL is our staleness bound. 15s is a fine tradeoff for config.
  *
  * Resilience: a config read must NEVER throw. A database blip on a message
  * event would otherwise bubble up as an unhandled rejection and kill the whole
  * bot. On failure we serve the last known value (stale beats dead), and if we
- * have none, the schema defaults — every feature defaults to disabled, so the
+ * have none, the schema defaults - every feature defaults to disabled, so the
  * bot degrades to doing nothing rather than crashing.
  */
 const TTL_MS = 15_000;
@@ -62,7 +62,7 @@ async function cached<T>(
     if (now - lastErrorLoggedAt > ERROR_BACKOFF_MS) {
       lastErrorLoggedAt = now;
       log.error(
-        `Config read failed for "${key}" — serving ${
+        `Config read failed for "${key}" - serving ${
           lastGood.has(key) ? "last known value" : "defaults"
         }. The bot stays up.`,
         err instanceof Error ? err.message : err,

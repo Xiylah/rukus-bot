@@ -61,7 +61,7 @@ export async function buildTranscript(
   const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Ticket transcript — #${esc(channel.name)}</title>
+<title>Ticket transcript - #${esc(channel.name)}</title>
 <style>
   :root { color-scheme: dark; }
   body { margin:0; background:#313338; color:#dbdee1;

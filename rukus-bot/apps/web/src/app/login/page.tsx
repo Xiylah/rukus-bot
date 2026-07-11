@@ -9,7 +9,7 @@ export default async function LoginPage({
   const { expired } = await searchParams;
   const session = await auth();
   // A session whose Discord token has expired must be allowed to reach this
-  // page to re-authenticate — auto-redirecting it would loop back to the error.
+  // page to re-authenticate - auto-redirecting it would loop back to the error.
   if (session && !expired) redirect("/dashboard");
 
   return (
@@ -17,7 +17,7 @@ export default async function LoginPage({
       <h1 className="text-2xl font-bold text-white">Sign in</h1>
       {expired && (
         <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-200">
-          Your Discord session expired — sign in again to continue.
+          Your Discord session expired - sign in again to continue.
         </p>
       )}
       <p className="text-zinc-400">

@@ -43,7 +43,7 @@ export function ModerationForm({
           onChange={(v) => setConfig((c) => ({ ...c, imageOnlyChannelId: v }))}
           options={channels}
           prefix="#"
-          placeholder="— disabled —"
+          placeholder="Disabled"
         />
       </div>
 

@@ -3,10 +3,10 @@
 -- Why this is needed: Prisma created the `rukus` schema directly over Postgres,
 -- outside Supabase's UI. Exposing the schema in Settings → API tells PostgREST
 -- to ROUTE requests there, but the API roles still have no Postgres privileges
--- on it — hence "permission denied for schema rukus". These grants close that
+-- on it - hence "permission denied for schema rukus". These grants close that
 -- gap. (Supabase does this automatically for schemas it creates itself.)
 --
--- Safe to re-run. Touches ONLY the `rukus` schema — never `public`, so the
+-- Safe to re-run. Touches ONLY the `rukus` schema - never `public`, so the
 -- Roblox game's tables are unaffected.
 --
 -- `service_role` is what the dashboard uses (server-side, after Discord OAuth).

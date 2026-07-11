@@ -12,7 +12,7 @@ export const COLORS = {
   neutral: 0x2b2d31,
 } as const;
 
-/** Feature keys — used as stable identifiers in the DB and dashboard routes. */
+/** Feature keys - used as stable identifiers in the DB and dashboard routes. */
 export const FEATURES = {
   tickets: "tickets",
   forms: "forms",
@@ -23,7 +23,7 @@ export type FeatureKey = (typeof FEATURES)[keyof typeof FEATURES];
 
 /**
  * Custom-id namespaces for Discord components (buttons, selects, modals).
- * Format: `${NS}:${action}:${...args}` — parsed in the interaction router.
+ * Format: `${NS}:${action}:${...args}` - parsed in the interaction router.
  * Keep these short; Discord custom_ids are capped at 100 characters.
  */
 export const CID = {
@@ -33,6 +33,7 @@ export const CID = {
   ticketCloseConfirm: "tkt:closeconfirm",
   ticketReopen: "tkt:reopen",
   ticketDelete: "tkt:delete",
+  ticketModal: "tkt:modal",
   formOpen: "frm:open",
   formModal: "frm:modal",
   formApprove: "frm:approve",

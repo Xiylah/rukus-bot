@@ -14,7 +14,7 @@ type RukusClient = ReturnType<typeof makeClient>;
  *
  * This is the edge-compatible data door: it works on Cloudflare Pages/Workers
  * where Prisma's raw Postgres connection does not. The BOT still uses Prisma
- * (@rukus/db) on Node.js — both hit the same tables.
+ * (@rukus/db) on Node.js - both hit the same tables.
  *
  * We use the SERVICE ROLE key here, which bypasses row-level security. That is
  * safe ONLY because every call site is server-side code that has already

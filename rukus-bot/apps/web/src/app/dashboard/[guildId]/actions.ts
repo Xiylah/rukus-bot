@@ -22,7 +22,7 @@ import { requireGuildAccess } from "@/lib/guard";
 /**
  * Server actions that persist dashboard config.
  *
- * Every action re-checks guild access via requireGuildAccess — never trust the
+ * Every action re-checks guild access via requireGuildAccess - never trust the
  * guildId from the client alone. Payloads are validated with the same Zod
  * schemas the bot reads with, so a malformed submission is rejected here.
  */
@@ -111,7 +111,7 @@ export async function saveAccessConfig(
   // ADMINISTRATOR-only. Granting dashboard access is effectively granting power
   // over every other setting, so staff-role users must not be able to escalate.
   //
-  // This check is the real security boundary — the page-level redirect is only
+  // This check is the real security boundary - the page-level redirect is only
   // UI. A server action is a callable endpoint, so it must re-verify on its own.
   const { guild } = await requireGuildAccess(guildId);
   const { isGuildAdmin } = await import("@/lib/discord");

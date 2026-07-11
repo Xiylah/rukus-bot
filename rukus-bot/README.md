@@ -1,25 +1,25 @@
-# Rukus Bot — all-in-one Discord bot + dashboard
+# Rukus Bot - all-in-one Discord bot + dashboard
 
 A TypeScript monorepo containing **one all-in-one bot** plus a dashboard:
 
-- **`apps/bot`** — a discord.js v14 bot with:
-  - 🎫 **Tickets** — button panels, private channels, transcripts
-  - 📝 **Forms** — modal applications with approve/deny review
-  - 🌐 **Translation** — auto-translate, flag-reactions, `/translate`, context
+- **`apps/bot`** - a discord.js v14 bot with:
+  - 🎫 **Tickets** - button panels, private channels, transcripts
+  - 📝 **Forms** - modal applications with approve/deny review
+  - 🌐 **Translation** - auto-translate, flag-reactions, `/translate`, context
     menus (DeepL preferred, Google fallback)
-  - 💬 **Auto-responder** — replies to "when's the next event?" / "I lost my
+  - 💬 **Auto-responder** - replies to "when's the next event?" / "I lost my
     items" via keyword matching
-  - 🛡️ **Moderation** — drug-term filter, image-only channel enforcement
-- **`apps/web`** — a Next.js dashboard (Discord OAuth login) to configure every
+  - 🛡️ **Moderation** - drug-term filter, image-only channel enforcement
+- **`apps/web`** - a Next.js dashboard (Discord OAuth login) to configure every
   feature, MEE6 / Ticket Tool style.
-- **`packages/db`** — Prisma schema + client (Postgres / Supabase).
-- **`packages/shared`** — shared types, constants, and Zod schemas.
+- **`packages/db`** - Prisma schema + client (Postgres / Supabase).
+- **`packages/shared`** - shared types, constants, and Zod schemas.
 
-> This **replaces** the old Python bot (`main.py`, since removed — see git
+> This **replaces** the old Python bot (`main.py`, since removed - see git
 > history). Its translation and event/lost-item responder were ported here, with
 > one deliberate change: the responder now uses **keyword matching** rather than
 > the Python sentence-transformer model, so it no longer auto-learns new
-> phrasings — add server-specific wording on the dashboard's Auto-responder page
+> phrasings - add server-specific wording on the dashboard's Auto-responder page
 > instead. One bot, one token.
 
 ---
@@ -61,8 +61,8 @@ A TypeScript monorepo containing **one all-in-one bot** plus a dashboard:
 
 Supabase → **Project Settings → Database → Connection string**:
 
-- **`DATABASE_URL`** — the **Session pooler** URI (port `6543`), used by the app.
-- **`DIRECT_URL`** — the **Direct connection** URI (port `5432`), used by Prisma
+- **`DATABASE_URL`** - the **Session pooler** URI (port `6543`), used by the app.
+- **`DIRECT_URL`** - the **Direct connection** URI (port `5432`), used by Prisma
   for migrations.
 
 Both go in `.env` (see below).
@@ -152,12 +152,12 @@ Dashboard (Cloudflare Pages, edge)          Bot (Railway, Node)
 - Both apps talk to the **same database**, through different clients:
   - the **bot** (Node on Railway) uses **Prisma** (`@rukus/db`)
   - the **dashboard** (edge on Cloudflare Pages) uses the **Supabase JS client**
-    (`@rukus/supabase`) — Prisma's raw Postgres connection doesn't run on the
+    (`@rukus/supabase`) - Prisma's raw Postgres connection doesn't run on the
     edge, so the dashboard goes through Supabase's REST layer instead.
 - Both validate config with the **same Zod schemas** (`@rukus/shared`), so they
   always agree on shape.
 - The dashboard **writes** config; the bot **reads** it on each interaction
-  (cached ~15s). The database is the contract — no direct RPC.
+  (cached ~15s). The database is the contract - no direct RPC.
 
 See **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full hosting walkthrough.
 
@@ -178,18 +178,18 @@ escalate their own access.
 
 ### Tickets
 
-- `/ticket setup` — quick-enable + set category / support role / transcript
+- `/ticket setup` - quick-enable + set category / support role / transcript
   channel from Discord (also editable in the dashboard).
-- `/ticket panel [channel]` — post the "Open a ticket" button.
+- `/ticket panel [channel]` - post the "Open a ticket" button.
 - Opening creates a private channel; **Claim** / **Close** buttons live inside.
 - Closing generates an HTML transcript (posted to the transcript channel if set)
   and shows **Reopen** / **Delete** to staff.
 
 ### Forms
 
-- Build forms in the dashboard (max **5 questions** each — a hard Discord modal
+- Build forms in the dashboard (max **5 questions** each - a hard Discord modal
   limit).
-- `/form panel [channel]` — post a button per form.
+- `/form panel [channel]` - post a button per form.
 - Submissions open a modal; answers are posted to the form's review channel with
   **Approve** / **Deny**. Approval can auto-grant a role and DMs the applicant.
 
@@ -198,11 +198,11 @@ escalate their own access.
 - Configure in the dashboard: **auto-translate** (reply to foreign messages),
   **flag-reactions** (react with 🇫🇷/🇪🇸/etc. to translate), and the auto-translate
   **target language**.
-- `/translate <text> [to]` — translate on demand.
+- `/translate <text> [to]` - translate on demand.
 - Right-click a message → **Apps** → *Translate to English / French / Spanish*
   or *Detect Language*.
 - Uses **DeepL** when `DEEPL_API_KEY` is set, otherwise **Google**. Results are
-  cached and short/slang messages are skipped — same logic as the old bot.
+  cached and short/slang messages are skipped - same logic as the old bot.
 
 ### Auto-responder
 
@@ -211,14 +211,14 @@ escalate their own access.
 - Replies to event questions ("when's the next event/admin abuse?") and
   lost-item statements ("my items are gone") with a channel pointer.
 - Add server-specific phrasings in the dashboard. Note: this uses **keyword +
-  fuzzy matching**, not the Python ML model — it catches common phrasings but
+  fuzzy matching**, not the Python ML model - it catches common phrasings but
   won't match every paraphrase the old bot could.
 
 ### Moderation
 
-- **Drug filter** — deletes messages containing drug/substance terms and posts a
+- **Drug filter** - deletes messages containing drug/substance terms and posts a
   short family-friendly reminder.
-- **Image-only channel** — deletes text-only messages in the configured channel
+- **Image-only channel** - deletes text-only messages in the configured channel
   (e.g. a furniture/showcase channel).
 
 ---
@@ -247,10 +247,10 @@ Two services from this one repo:
 
 - **Channel & role pickers** in the dashboard are currently **ID inputs**
   (enable Discord Developer Mode → right-click → Copy ID). A dropdown picker
-  needs a small bot-side API that lists the guild's channels/roles — a good next
+  needs a small bot-side API that lists the guild's channels/roles - a good next
   addition.
 - **Advanced moderation** (warn/mute/ban/timeout, mod-log, case history) is not
-  built yet — only the basic drug filter + image-only channel are ported. The
+  built yet - only the basic drug filter + image-only channel are ported. The
   schema and dashboard are structured to add the rest as a feature module.
 - The auto-responder uses **keyword matching**, not the ML semantic model the
   Python bot used. If you find it misses phrasings, add them in the dashboard's

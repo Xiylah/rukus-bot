@@ -27,7 +27,7 @@ async function userGuildsOrRelogin(accessToken: string) {
 }
 
 /**
- * Server-side guard for dashboard routes. This is the security boundary — the
+ * Server-side guard for dashboard routes. This is the security boundary - the
  * data helpers trust that the caller has passed through here.
  *
  * Access to a guild is granted when ANY of these is true:
@@ -65,7 +65,7 @@ export async function requireGuildAccess(guildId: string) {
   // The user must at least be a member of the guild.
   if (!guild) redirect("/dashboard");
 
-  // Path 1: Manage Server permission — always allowed.
+  // Path 1: Manage Server permission - always allowed.
   if (canManageGuild(guild)) return { session, guild };
 
   // Paths 2 & 3: staff role or allow-list from the guild's access config.

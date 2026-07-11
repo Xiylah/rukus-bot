@@ -50,7 +50,7 @@ export default async function DashboardHome() {
                 <div className="min-w-0">
                   <div className="truncate font-semibold text-white">{g.name}</div>
                   <div className="text-xs text-zinc-400">
-                    {active ? "Bot active — click to configure" : "Bot not in this server"}
+                    {active ? "Bot active - click to configure" : "Bot not in this server"}
                   </div>
                 </div>
               </Link>

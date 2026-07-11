@@ -24,7 +24,7 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   // Hosts (Railway included) can inject NODE_ENV as an EMPTY STRING. Zod's
   // .default() only fires on `undefined`, so a bare enum would reject "" and
-  // kill the bot on boot. Coerce anything unrecognized to "production" — this
+  // kill the bot on boot. Coerce anything unrecognized to "production" - this
   // is a deploy-time convenience flag, never worth crashing over.
   NODE_ENV: z
     .string()

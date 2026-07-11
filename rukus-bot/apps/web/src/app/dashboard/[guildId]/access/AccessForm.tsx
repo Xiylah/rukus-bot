@@ -33,12 +33,12 @@ export function AccessForm({
       <div className="card space-y-4">
         <MultiSelect
           label="Staff roles"
-          hint="Members with any of these roles can log in and change settings — but not this page."
+          hint="Members with any of these roles can log in and change settings - but not this page."
           values={config.staffRoleIds}
           onChange={(v) => setConfig((c) => ({ ...c, staffRoleIds: v }))}
           options={roles}
           prefix="@"
-          emptyText="No roles — only Administrators can use the dashboard"
+          emptyText="No roles - only Administrators can use the dashboard"
         />
         <MultiSelect
           label="Individual users (optional)"
@@ -53,7 +53,7 @@ export function AccessForm({
       <div className="card border-amber-500/30 bg-amber-500/5">
         <div className="text-sm text-amber-200/90">
           <strong>Note:</strong> staff you grant access to can change every other
-          settings page, but cannot see or edit this Access page — so they can&apos;t
+          settings page, but cannot see or edit this Access page - so they can&apos;t
           grant themselves or anyone else more access. Only server Administrators
           can.
         </div>

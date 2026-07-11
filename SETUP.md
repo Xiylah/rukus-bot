@@ -1,4 +1,4 @@
-# Setup — step by step
+# Setup - step by step
 
 Follow these in order. Each step says exactly what to click and what to paste.
 
@@ -6,23 +6,23 @@ Follow these in order. Each step says exactly what to click and what to paste.
 
 ## ✅ Already done for you
 
-- Database tables created in Supabase (in an isolated `rukus` schema — your
+- Database tables created in Supabase (in an isolated `rukus` schema - your
   Roblox game's tables in `public` are untouched)
 - `rukus-bot/.env` created, with the database URLs, Supabase URL, and a
   generated `AUTH_SECRET` already filled in
-- Git repo initialized and committed (`.env` is git-ignored — your secrets will
+- Git repo initialized and committed (`.env` is git-ignored - your secrets will
   never reach GitHub)
 - Railway build/start commands defined in `rukus-bot/package.json`
 
 ---
 
-## Step 1 — Supabase: expose + grant the `rukus` schema  ✅ DONE
+## Step 1 - Supabase: expose + grant the `rukus` schema  ✅ DONE
 
 *(Recorded here in case you ever rebuild the database.)*
 
 The bot's tables live in a `rukus` schema (isolated from your Roblox game's
 `public` tables). Two separate things are needed for the **dashboard** to read
-them — the bot doesn't need either, since it connects to Postgres directly.
+them - the bot doesn't need either, since it connects to Postgres directly.
 
 **1a. Expose the schema to the API**
 1. Supabase → **Settings** → **API** → **Data API** → **Exposed schemas**
@@ -30,18 +30,18 @@ them — the bot doesn't need either, since it connects to Postgres directly.
 
 **1b. Grant the API roles permission on it**
 
-Exposing only *routes* requests to the schema — it doesn't grant Postgres
+Exposing only *routes* requests to the schema - it doesn't grant Postgres
 privileges. Because Prisma (not Supabase) created `rukus`, Supabase never
 applied its usual grants, so you'd get `permission denied for schema rukus`.
 
-Fix — paste **[`rukus-bot/packages/db/prisma/grants.sql`](rukus-bot/packages/db/prisma/grants.sql)**
+Fix - paste **[`rukus-bot/packages/db/prisma/grants.sql`](rukus-bot/packages/db/prisma/grants.sql)**
 into Supabase → **SQL Editor** → Run. It only touches `rukus`, never `public`.
 
 > `pnpm check-env` verifies both and tells you which one is missing.
 
 ---
 
-## Step 2 — Get your 3 Discord values  ⏱️ 3 min
+## Step 2 - Get your 3 Discord values  ⏱️ 3 min
 
 All three come from the **same Discord application your `main.py` bot uses**.
 
@@ -50,7 +50,7 @@ and click your bot's application.
 
 | Value | Where | Paste into `.env` as |
 | --- | --- | --- |
-| **Bot token** | Old Railway project → your bot service → **Variables** → copy `TOKEN`.<br>(Or Dev Portal → **Bot** → **Reset Token** — but that breaks main.py until you update it.) | `DISCORD_BOT_TOKEN` |
+| **Bot token** | Old Railway project → your bot service → **Variables** → copy `TOKEN`.<br>(Or Dev Portal → **Bot** → **Reset Token** - but that breaks main.py until you update it.) | `DISCORD_BOT_TOKEN` |
 | **Application ID** | Dev Portal → **General Information** → **Application ID** | `DISCORD_CLIENT_ID` |
 | **Client secret** | Dev Portal → **OAuth2** → **Client Secret** → **Reset Secret** | `DISCORD_CLIENT_SECRET` |
 
@@ -72,7 +72,7 @@ http://localhost:3000/api/auth/callback/discord
 
 ---
 
-## Step 3 — Verify everything works  ⏱️ 30 sec
+## Step 3 - Verify everything works  ⏱️ 30 sec
 
 ```bash
 cd rukus-bot
@@ -88,10 +88,10 @@ credentials work. Fix anything it flags, then re-run until you see:
 
 ---
 
-## Step 4 — Run it locally  ⏱️ 2 min
+## Step 4 - Run it locally  ⏱️ 2 min
 
 > ⚠️ **Stop your old main.py bot first.** A Discord token can only run one
-> process at a time — if main.py is still running on Railway with the same
+> process at a time - if main.py is still running on Railway with the same
 > token, the two bots will fight and keep disconnecting each other.
 
 Register the slash commands (once, and after any command change):
@@ -114,7 +114,7 @@ Try it: in Discord run `/ping`. Then open the dashboard, sign in, configure
 
 ---
 
-## Step 5 — Deploy the bot to a NEW Railway project  ⏱️ 5 min
+## Step 5 - Deploy the bot to a NEW Railway project  ⏱️ 5 min
 
 1. **Push to GitHub.** Create a new empty repo on GitHub, then:
    ```bash
@@ -126,7 +126,7 @@ Try it: in Discord run `/ping`. Then open the dashboard, sign in, configure
 2. **Railway** → **New Project** → **Deploy from GitHub repo** → select it.
 
 3. **Settings → Root Directory:** `rukus-bot`
-   *(Leave the build and start commands blank — the root `package.json` defaults
+   *(Leave the build and start commands blank - the root `package.json` defaults
    to the bot. Only the dashboard service overrides the start command.)*
 
 4. **Variables** → add these (copy the values from your local `.env`):
@@ -141,7 +141,7 @@ Try it: in Discord run `/ping`. Then open the dashboard, sign in, configure
    Optional: `DEEPL_API_KEY`
 
    > The bot does **not** need `SUPABASE_*`, `AUTH_SECRET`, or
-   > `DISCORD_CLIENT_SECRET` — those are dashboard-only.
+   > `DISCORD_CLIENT_SECRET` - those are dashboard-only.
 
 5. **Deploy.** Watch the logs for:
    ```
@@ -153,26 +153,26 @@ Try it: in Discord run `/ping`. Then open the dashboard, sign in, configure
 
 ---
 
-## Step 6 — Deploy the dashboard (a 2nd Railway service)  ⏱️ 10 min
+## Step 6 - Deploy the dashboard (a 2nd Railway service)  ⏱️ 10 min
 
 The dashboard runs on **Railway** too, as a second service in the same project.
 (Cloudflare Pages was ruled out: it requires Next's edge runtime, which breaks
 React Server Components in this app. You can still use your **Cloudflare domain**
-— just point a CNAME at the Railway service.)
+- just point a CNAME at the Railway service.)
 
 Full walkthrough, including the custom-domain steps:
 **[rukus-bot/DEPLOYMENT.md](rukus-bot/DEPLOYMENT.md#step-4--railway-the-dashboard-service)**
 
 ---
 
-## Step 7 — Let your staff in  ⏱️ 2 min
+## Step 7 - Let your staff in  ⏱️ 2 min
 
 1. Sign into the dashboard yourself (you have Manage Server).
 2. Open your server → **🔑 Access**.
 3. Paste your staff **role IDs** (Discord Developer Mode → right-click role →
    Copy ID).
 4. Share the dashboard URL. Staff with those roles can now log in and configure
-   the bot — but only Manage-Server users can change the Access page itself.
+   the bot - but only Manage-Server users can change the Access page itself.
 
 ---
 

@@ -1,7 +1,7 @@
 /**
  * Pre-flight check:  pnpm check-env
  *
- * Validates every required environment value and — crucially — actually calls
+ * Validates every required environment value and - crucially - actually calls
  * Discord and Supabase to prove the credentials WORK, rather than just being
  * present. Run this before deploying so failures surface here, not in prod.
  */
@@ -106,14 +106,14 @@ async function main() {
   if (!dbUrl) {
     bad("DATABASE_URL missing", "Supabase → Connect → Connection string (starts with postgresql://)");
   } else if (!dbUrl.startsWith("postgresql://")) {
-    bad("DATABASE_URL is not a Postgres URL", "It must start with postgresql:// — not https://…supabase.co");
+    bad("DATABASE_URL is not a Postgres URL", "It must start with postgresql:// - not https://…supabase.co");
   } else {
     // The Supabase DIRECT host (db.<ref>.supabase.co) is IPv6-only. Railway
     // has no IPv6 egress, so the bot works locally but dies in production with
-    // "Can't reach database server". The pooler host has IPv4 — always use it.
+    // "Can't reach database server". The pooler host has IPv4 - always use it.
     if (/@db\.[a-z0-9]+\.supabase\.co/.test(dbUrl)) {
       warn(
-        "DATABASE_URL uses the IPv6-only DIRECT host — this fails on Railway",
+        "DATABASE_URL uses the IPv6-only DIRECT host - this fails on Railway",
         "Switch to the pooler: Supabase → Connect → Transaction pooler " +
           "(aws-N-<region>.pooler.supabase.com:6543). It works locally but NOT " +
           "in production.",
@@ -193,7 +193,7 @@ async function main() {
   // ---- Optional ----
   console.log("\nOptional");
   if (present("DEEPL_API_KEY")) ok("DEEPL_API_KEY set", "→ higher-quality translations");
-  else console.log(`  ${DIM}· DEEPL_API_KEY not set — translation falls back to Google (fine)${RESET}`);
+  else console.log(`  ${DIM}· DEEPL_API_KEY not set - translation falls back to Google (fine)${RESET}`);
 
   // ---- Summary ----
   console.log("");
