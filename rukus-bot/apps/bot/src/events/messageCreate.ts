@@ -6,10 +6,7 @@ import {
   translationConfig,
   autoResponderConfig,
 } from "../lib/configCache.js";
-import {
-  containsDrugTerm,
-  randomDrugWarning,
-} from "../features/moderation/filters.js";
+import { checkFilters, logFiltered } from "../features/moderation/autoMod.js";
 import { translateText } from "../features/translation/translate.js";
 import { translationEmbed } from "../features/translation/ui.js";
 import { classify } from "../features/autoresponder/classify.js";
@@ -42,15 +39,14 @@ const handler: EventHandler<Events.MessageCreate> = {
       return; // nothing else runs in the image-only channel
     }
 
-    // --- Drug/substance filter: delete + warn ---
-    if (mod.drugFilter && content && containsDrugTerm(content)) {
+    // --- Auto-moderation: drug filter, banned words, invites, mentions ---
+    const hit = checkFilters(message, mod);
+    if (hit) {
+      await logFiltered(message, mod, hit); // log BEFORE deleting (content!)
       await message.delete().catch(() => {});
-      // Warn in any channel the bot can post in (text, announcement, threads).
       if (message.channel.isSendable()) {
         await message.channel
-          .send({
-            content: `${message.author} ${randomDrugWarning()}`,
-          })
+          .send({ content: `${message.author} ${hit.warning}` })
           .then((m) => setTimeout(() => m.delete().catch(() => {}), 10_000))
           .catch(() => {});
       }

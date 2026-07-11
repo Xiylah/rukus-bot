@@ -48,12 +48,22 @@ const command: Command = {
         {
           name: "🛡️ Moderation",
           value:
-            "Drug-term filter and image-only channels.\n" +
-            "`/moderation` configure it (admin)",
+            "Filters: drug terms, banned words, invite links, mass mentions,\n" +
+            "image-only channels, plus a mod-log channel.\n" +
+            "`/moderation` configure it (admin)\n" +
+            "`/purge` bulk-delete messages, `/slowmode` set channel slowmode",
+        },
+        {
+          name: "👋 Welcome",
+          value:
+            "Welcome/leave messages, auto-roles on join, welcome DMs.\n" +
+            "`/welcome` configure it (admin)",
         },
         {
           name: "🔧 Utility",
-          value: "`/ping` check the bot is alive",
+          value:
+            "`/serverinfo` `/userinfo` `/avatar` info commands\n" +
+            "`/ping` check the bot is alive",
         },
       );
     await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });

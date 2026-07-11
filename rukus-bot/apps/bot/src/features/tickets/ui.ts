@@ -24,6 +24,9 @@ export function resolveTypes(config: TicketConfig): TicketType[] {
       nameTemplate: "ticket-{count}",
       categoryId: undefined,
       welcomeMessage: undefined,
+      formId: undefined,
+      transcriptChannelId: undefined,
+      supportRoleIds: [],
     },
   ];
 }

@@ -17,6 +17,7 @@ import {
 import {
   getTicketByChannel,
   claimTicket,
+  allSupportRoleIds,
 } from "../features/tickets/service.js";
 import type { Command } from "../lib/types.js";
 
@@ -92,7 +93,7 @@ const command: Command = {
     // ---- Staff subcommands (support role or admin, inside a ticket) ----
     if (sub === "close" || sub === "claim" || sub === "add" || sub === "remove") {
       const config = await ticketConfig(guildId);
-      if (!hasAnyRole(member, config.supportRoleIds)) {
+      if (!hasAnyRole(member, allSupportRoleIds(config))) {
         await interaction.reply({
           content: "Only support staff can manage tickets.",
           ...ephemeral,

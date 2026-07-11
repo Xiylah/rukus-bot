@@ -27,6 +27,7 @@ export default async function GuildLayout({
         { href: `/dashboard/${guildId}/translation`, label: "🌐 Translation" },
         { href: `/dashboard/${guildId}/autoresponder`, label: "💬 Auto-responder" },
         { href: `/dashboard/${guildId}/moderation`, label: "🛡️ Moderation" },
+        { href: `/dashboard/${guildId}/welcome`, label: "👋 Welcome" },
       ],
     },
   ];

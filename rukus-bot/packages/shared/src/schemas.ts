@@ -45,6 +45,14 @@ export const ticketTypeSchema = z.object({
    * config). Answers are posted into the ticket channel for staff.
    */
   formId: z.string().optional(),
+  /** Optional transcript channel override; falls back to the global one. */
+  transcriptChannelId: snowflake,
+  /**
+   * Optional support-role override. When set, ONLY these roles can see and
+   * handle this type's tickets (e.g. mute appeals visible to admins only).
+   * Empty = use the global supportRoleIds.
+   */
+  supportRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).default([]),
 });
 
 export type TicketType = z.infer<typeof ticketTypeSchema>;
@@ -65,6 +73,8 @@ export const ticketConfigSchema = z.object({
     .default("Thanks for opening a ticket! Staff will be with you shortly."),
   /** Max simultaneously-open tickets per user (0 = unlimited). */
   maxOpenPerUser: z.number().int().min(0).max(50).default(1),
+  /** Ping the support roles when a ticket opens, so staff notice fast. */
+  pingSupportOnOpen: z.boolean().default(false),
   /**
    * Ticket types. Empty = classic single-button panel using the settings
    * above. 2+ = the panel becomes a dropdown (Discord caps options at 25).
@@ -174,9 +184,51 @@ export const moderationConfigSchema = z.object({
   drugFilter: z.boolean().default(false),
   /** Channel where only image posts are allowed (text-only gets deleted). */
   imageOnlyChannelId: snowflake,
+  /** Custom banned words/phrases (case-insensitive, whole-word match). */
+  bannedWordsEnabled: z.boolean().default(false),
+  bannedWords: z.array(z.string().min(1).max(60)).max(200).default([]),
+  /** Delete Discord invite links posted by non-staff. */
+  blockInvites: z.boolean().default(false),
+  /** Delete messages mentioning more than this many users/roles (0 = off). */
+  maxMentions: z.number().int().min(0).max(50).default(0),
+  /** Channel where filtered/deleted messages are logged for staff. */
+  logChannelId: snowflake,
+  /** Roles exempt from all the filters above (staff, bots you trust). */
+  exemptRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).default([]),
 });
 
 export type ModerationConfig = z.infer<typeof moderationConfigSchema>;
+
+// ---------------- Welcome & Leave ----------------
+
+/**
+ * Greeter: welcome/leave messages, auto-roles on join, optional welcome DM.
+ * Message templates support {user} (mention), {username}, {server}, and
+ * {memberCount}.
+ */
+export const welcomeConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** Channel where welcome messages are posted. */
+  channelId: snowflake,
+  message: z
+    .string()
+    .max(2000)
+    .default("Welcome to {server}, {user}! You are member #{memberCount}."),
+  /** Also DM the new member. */
+  dmEnabled: z.boolean().default(false),
+  dmMessage: z
+    .string()
+    .max(2000)
+    .default("Welcome to {server}! Check out the rules channel to get started."),
+  /** Roles granted automatically on join. */
+  joinRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).default([]),
+  /** Leave messages. */
+  leaveEnabled: z.boolean().default(false),
+  leaveChannelId: snowflake,
+  leaveMessage: z.string().max(2000).default("{username} has left {server}."),
+});
+
+export type WelcomeConfig = z.infer<typeof welcomeConfigSchema>;
 
 // ---------------- Dashboard access ----------------
 
@@ -202,6 +254,7 @@ export const FEATURE_SCHEMAS = {
   translation: translationConfigSchema,
   autoresponder: autoResponderConfigSchema,
   moderation: moderationConfigSchema,
+  welcome: welcomeConfigSchema,
   access: accessConfigSchema,
 } as const;
 

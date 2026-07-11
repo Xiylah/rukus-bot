@@ -29,6 +29,7 @@ import {
   claimTicket,
   markClosed,
   countOpenForUser,
+  allSupportRoleIds,
 } from "./service.js";
 import {
   ticketOpenedMessage,
@@ -104,14 +105,20 @@ async function createAndAnnounce(
       type,
     });
 
-    await channel.send(
-      ticketOpenedMessage({
-        config,
-        type,
-        openerId: interaction.user.id,
-        ticketNumber: ticket.number,
-      }),
-    );
+    const opened = ticketOpenedMessage({
+      config,
+      type,
+      openerId: interaction.user.id,
+      ticketNumber: ticket.number,
+    });
+    if (config.pingSupportOnOpen) {
+      const roleIds =
+        type.supportRoleIds.length > 0 ? type.supportRoleIds : config.supportRoleIds;
+      if (roleIds.length > 0) {
+        opened.content = `${roleIds.map((r) => `<@&${r}>`).join(" ")} ${opened.content}`;
+      }
+    }
+    await channel.send(opened);
 
     // Post the pre-ticket form answers so staff have context immediately.
     if (answers && answers.length > 0) {
@@ -232,7 +239,7 @@ export async function handleClaimButton(interaction: ButtonInteraction) {
   const config = await ticketConfig(interaction.guildId);
   const member = interaction.member as GuildMember;
 
-  if (!hasAnyRole(member, config.supportRoleIds)) {
+  if (!hasAnyRole(member, allSupportRoleIds(config))) {
     await interaction.reply({
       content: "Only support staff can claim tickets.",
       ...ephemeral,
@@ -285,6 +292,11 @@ export async function closeTicketFlow(
     return { ok: false, message: "This ticket is already closed." };
   }
 
+  // Per-type transcript channel wins when the type still exists.
+  const ticketType = config.types.find((t) => t.id === ticket.typeId);
+  const transcriptChannelId =
+    ticketType?.transcriptChannelId ?? config.transcriptChannelId;
+
   // Build + post transcript to the configured channel.
   let transcriptNote = "";
   try {
@@ -293,9 +305,9 @@ export async function closeTicketFlow(
       attachment: html,
       name: `transcript-ticket-${String(ticket.number).padStart(4, "0")}.html`,
     };
-    if (config.transcriptChannelId) {
+    if (transcriptChannelId) {
       const tChannel = await channel.guild.channels
-        .fetch(config.transcriptChannelId)
+        .fetch(transcriptChannelId)
         .catch(() => null);
       if (tChannel && tChannel.type === ChannelType.GuildText) {
         await (tChannel as TextChannel).send({
@@ -308,7 +320,7 @@ export async function closeTicketFlow(
           ],
           files: [file],
         });
-        transcriptNote = ` Transcript posted to <#${config.transcriptChannelId}>.`;
+        transcriptNote = ` Transcript posted to <#${transcriptChannelId}>.`;
       }
     }
   } catch (err) {
@@ -349,7 +361,7 @@ export async function handleReopen(interaction: ButtonInteraction) {
   if (!interaction.inCachedGuild()) return;
   const config = await ticketConfig(interaction.guildId);
   const member = interaction.member as GuildMember;
-  if (!hasAnyRole(member, config.supportRoleIds)) {
+  if (!hasAnyRole(member, allSupportRoleIds(config))) {
     await interaction.reply({ content: "Only staff can reopen tickets.", ...ephemeral });
     return;
   }
@@ -382,7 +394,7 @@ export async function handleDelete(interaction: ButtonInteraction) {
   const config = await ticketConfig(interaction.guildId);
   const member = interaction.member as GuildMember;
   if (
-    !hasAnyRole(member, config.supportRoleIds) &&
+    !hasAnyRole(member, allSupportRoleIds(config)) &&
     !member.permissions.has(PermissionFlagsBits.ManageChannels)
   ) {
     await interaction.reply({ content: "Only staff can delete tickets.", ...ephemeral });

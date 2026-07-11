@@ -76,6 +76,9 @@ model Ticket {
   claimedBy String? // staff who claimed it
   status    TicketStatus @default(OPEN)
   subject   String?
+  /// Ticket type id from the guild's ticket config, so close-time logic can
+  /// resolve per-type settings (transcript channel etc.) reliably.
+  typeId    String?
   /// Public URL or storage key of the HTML transcript once closed.
   transcriptUrl String?
 

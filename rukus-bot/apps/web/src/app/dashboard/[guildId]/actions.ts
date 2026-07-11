@@ -7,6 +7,7 @@ import {
   setTranslationConfig,
   setAutoResponderConfig,
   setModerationConfig,
+  setWelcomeConfig,
   setAccessConfig,
 } from "@rukus/supabase";
 import {
@@ -15,6 +16,7 @@ import {
   translationConfigSchema,
   autoResponderConfigSchema,
   moderationConfigSchema,
+  welcomeConfigSchema,
   accessConfigSchema,
 } from "@rukus/shared";
 import { requireGuildAccess } from "@/lib/guard";
@@ -100,6 +102,21 @@ export async function saveModerationConfig(
   }
   await setModerationConfig(guildId, parsed.data);
   revalidatePath(`/dashboard/${guildId}/moderation`);
+  revalidatePath(`/dashboard/${guildId}`);
+  return { ok: true };
+}
+
+export async function saveWelcomeConfig(
+  guildId: string,
+  payload: unknown,
+): Promise<ActionResult> {
+  await requireGuildAccess(guildId);
+  const parsed = welcomeConfigSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  await setWelcomeConfig(guildId, parsed.data);
+  revalidatePath(`/dashboard/${guildId}/welcome`);
   revalidatePath(`/dashboard/${guildId}`);
   return { ok: true };
 }

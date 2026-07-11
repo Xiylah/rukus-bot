@@ -24,6 +24,7 @@ export default async function ModerationPage({
         guildId={guildId}
         initial={config}
         channels={options.channels}
+        roles={options.roles}
       />
     </div>
   );

@@ -5,11 +5,13 @@ import {
   translationConfigSchema,
   autoResponderConfigSchema,
   moderationConfigSchema,
+  welcomeConfigSchema,
   type TicketConfig,
   type FormsConfig,
   type TranslationConfig,
   type AutoResponderConfig,
   type ModerationConfig,
+  type WelcomeConfig,
 } from "@rukus/shared";
 import { prisma } from "./index.js";
 
@@ -87,10 +89,17 @@ export const getModerationConfig = (guildId: string) =>
 export const setModerationConfig = (guildId: string, config: unknown) =>
   writeConfig<ModerationConfig>(guildId, "moderation", config);
 
+export const getWelcomeConfig = (guildId: string) =>
+  readConfig<WelcomeConfig>(guildId, "welcome");
+
+export const setWelcomeConfig = (guildId: string, config: unknown) =>
+  writeConfig<WelcomeConfig>(guildId, "welcome", config);
+
 export {
   ticketConfigSchema,
   formsConfigSchema,
   translationConfigSchema,
   autoResponderConfigSchema,
   moderationConfigSchema,
+  welcomeConfigSchema,
 };

@@ -58,6 +58,17 @@ export function renderChannelName(
   return name || `ticket-${String(number).padStart(4, "0")}`;
 }
 
+/**
+ * Every role that counts as ticket staff: the global support roles plus any
+ * per-type overrides. Used for claim/close/manage permission checks, since at
+ * check time we only know the channel, not always the type.
+ */
+export function allSupportRoleIds(config: TicketConfig): string[] {
+  const ids = new Set(config.supportRoleIds);
+  for (const t of config.types) for (const r of t.supportRoleIds) ids.add(r);
+  return [...ids];
+}
+
 /** Create the private ticket channel and its DB row. Returns both. */
 export async function createTicket(params: {
   guild: Guild;
@@ -67,6 +78,10 @@ export async function createTicket(params: {
 }) {
   const { guild, opener, config, type } = params;
   const number = await nextTicketNumber(guild.id);
+
+  // Per-type support roles win when set; otherwise the global list.
+  const supportRoleIds =
+    type.supportRoleIds.length > 0 ? type.supportRoleIds : config.supportRoleIds;
 
   // Permission overwrites: hide from @everyone, allow opener + support roles.
   const overwrites: OverwriteResolvable[] = [
@@ -84,7 +99,7 @@ export async function createTicket(params: {
         PermissionFlagsBits.EmbedLinks,
       ],
     },
-    ...config.supportRoleIds.map((id) => ({
+    ...supportRoleIds.map((id) => ({
       id,
       allow: [
         PermissionFlagsBits.ViewChannel,
@@ -112,6 +127,7 @@ export async function createTicket(params: {
       openerId: opener.id,
       // The type label doubles as the subject, so staff tooling shows it.
       subject: type.label,
+      typeId: type.id,
       status: "OPEN",
     },
   });

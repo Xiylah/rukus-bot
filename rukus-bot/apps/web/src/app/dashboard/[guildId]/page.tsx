@@ -5,6 +5,7 @@ import {
   getTranslationConfig,
   getAutoResponderConfig,
   getModerationConfig,
+  getWelcomeConfig,
 } from "@rukus/supabase";
 
 export default async function GuildOverview({
@@ -13,13 +14,14 @@ export default async function GuildOverview({
   params: Promise<{ guildId: string }>;
 }) {
   const { guildId } = await params;
-  const [tickets, forms, translation, autoresponder, moderation] =
+  const [tickets, forms, translation, autoresponder, moderation, welcome] =
     await Promise.all([
       getTicketConfig(guildId),
       getFormsConfig(guildId),
       getTranslationConfig(guildId),
       getAutoResponderConfig(guildId),
       getModerationConfig(guildId),
+      getWelcomeConfig(guildId),
     ]);
 
   const cards = [
@@ -50,6 +52,13 @@ export default async function GuildOverview({
       status: autoresponder.enabled ? "Enabled" : "Disabled",
       detail: `${autoresponder.extraEventPhrases.length} custom phrase(s)`,
       on: autoresponder.enabled,
+    },
+    {
+      href: `/dashboard/${guildId}/welcome`,
+      title: "👋 Welcome",
+      status: welcome.enabled ? "Enabled" : "Disabled",
+      detail: `${welcome.joinRoleIds.length} auto-role(s)`,
+      on: welcome.enabled || welcome.joinRoleIds.length > 0,
     },
     {
       href: `/dashboard/${guildId}/moderation`,

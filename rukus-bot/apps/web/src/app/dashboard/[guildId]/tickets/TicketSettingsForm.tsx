@@ -21,6 +21,9 @@ function emptyType(): TicketType {
     nameTemplate: "ticket-{count}",
     categoryId: undefined,
     welcomeMessage: undefined,
+    formId: undefined,
+    transcriptChannelId: undefined,
+    supportRoleIds: [],
   };
 }
 
@@ -108,6 +111,12 @@ export function TicketSettingsForm({
           options={roles}
           prefix="@"
           emptyText="No support roles - only admins can handle tickets"
+        />
+        <Toggle
+          label="Ping support when a ticket opens"
+          hint="Mentions the support roles inside each new ticket so staff notice fast."
+          checked={config.pingSupportOnOpen}
+          onChange={(v) => update("pingSupportOnOpen", v)}
         />
         <div>
           <label className="label">Max open tickets per user</label>
@@ -240,6 +249,26 @@ export function TicketSettingsForm({
               options={forms}
               placeholder="No form, open the ticket right away"
             />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Select
+                label="Transcript channel override (optional)"
+                hint="This type's transcripts go here instead of the default channel. Great for keeping appeal logs separate from support logs."
+                value={type.transcriptChannelId}
+                onChange={(v) => updateType(ti, { transcriptChannelId: v })}
+                options={channels}
+                prefix="#"
+                placeholder="Use the default transcript channel"
+              />
+              <MultiSelect
+                label="Support roles override (optional)"
+                hint="When set, ONLY these roles can see this type's tickets, e.g. mute appeals visible to admins only."
+                values={type.supportRoleIds}
+                onChange={(v) => updateType(ti, { supportRoleIds: v })}
+                options={roles}
+                prefix="@"
+                emptyText="Use the default support roles"
+              />
+            </div>
           </div>
         ))}
 
