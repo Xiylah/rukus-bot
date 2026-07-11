@@ -108,6 +108,17 @@ async function main() {
   } else if (!dbUrl.startsWith("postgresql://")) {
     bad("DATABASE_URL is not a Postgres URL", "It must start with postgresql:// — not https://…supabase.co");
   } else {
+    // The Supabase DIRECT host (db.<ref>.supabase.co) is IPv6-only. Railway
+    // has no IPv6 egress, so the bot works locally but dies in production with
+    // "Can't reach database server". The pooler host has IPv4 — always use it.
+    if (/@db\.[a-z0-9]+\.supabase\.co/.test(dbUrl)) {
+      warn(
+        "DATABASE_URL uses the IPv6-only DIRECT host — this fails on Railway",
+        "Switch to the pooler: Supabase → Connect → Transaction pooler " +
+          "(aws-N-<region>.pooler.supabase.com:6543). It works locally but NOT " +
+          "in production.",
+      );
+    }
     try {
       const { prisma } = await import("@rukus/db");
       await prisma.$queryRawUnsafe("SELECT 1");

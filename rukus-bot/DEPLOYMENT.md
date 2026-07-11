@@ -130,6 +130,7 @@ In the **same Railway project**, click **New → GitHub Repo** → same repo. Th
 
 | Symptom | Fix |
 | --- | --- |
+| **`Can't reach database server at db.<ref>.supabase.co`** (works locally, fails on Railway) | You're using Supabase's **direct** host, which is **IPv6-only** — Railway has no IPv6 egress. Switch `DATABASE_URL`/`DIRECT_URL` to the **pooler** host (`aws-N-<region>.pooler.supabase.com`, ports 6543 / 5432). Supabase → **Connect** → Transaction pooler. |
 | `permission denied for schema rukus` | Run `packages/db/prisma/grants.sql` (Step 1.2). |
 | `Invalid schema: rukus` | Expose `rukus` in Supabase Data API settings (Step 1.1) — and click **Save**. |
 | Dashboard login loops / callback error | `NEXTAUTH_URL` must exactly match the site URL, and that URL + `/api/auth/callback/discord` must be in Discord's OAuth redirects. |
