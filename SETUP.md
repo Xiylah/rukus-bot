@@ -12,7 +12,7 @@ Follow these in order. Each step says exactly what to click and what to paste.
   generated `AUTH_SECRET` already filled in
 - Git repo initialized and committed (`.env` is git-ignored — your secrets will
   never reach GitHub)
-- Railway config (`rukus-bot/railway.json`) written
+- Railway build/start commands defined in `rukus-bot/package.json`
 
 ---
 
@@ -126,8 +126,8 @@ Try it: in Discord run `/ping`. Then open the dashboard, sign in, configure
 2. **Railway** → **New Project** → **Deploy from GitHub repo** → select it.
 
 3. **Settings → Root Directory:** `rukus-bot`
-   *(Everything else — build and start commands — is read automatically from
-   `rukus-bot/railway.json`. You don't need to type them.)*
+   *(Leave the build and start commands blank — the root `package.json` defaults
+   to the bot. Only the dashboard service overrides the start command.)*
 
 4. **Variables** → add these (copy the values from your local `.env`):
 

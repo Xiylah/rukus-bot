@@ -7,15 +7,20 @@
     "node": ">=20"
   },
   "scripts": {
+    "_comment": "Railway/Railpack falls back to the root `build` and `start` scripts when a service has no explicit command. `start` runs the BOT (the default service); the DASHBOARD service overrides it via railway.web.json.",
+    "build": "pnpm --filter @rukus/db exec prisma generate && pnpm --filter @rukus/web build",
+    "start": "pnpm --filter @rukus/bot start",
     "bot:dev": "pnpm --filter @rukus/bot dev",
+    "bot:start": "pnpm --filter @rukus/bot start",
     "bot:deploy-commands": "pnpm --filter @rukus/bot deploy-commands",
     "check-env": "pnpm --filter @rukus/bot check-env",
     "web:dev": "pnpm --filter @rukus/web dev",
+    "web:build": "pnpm --filter @rukus/web build",
+    "web:start": "pnpm --filter @rukus/web start",
     "db:generate": "pnpm --filter @rukus/db generate",
     "db:push": "pnpm --filter @rukus/db push",
     "db:migrate": "pnpm --filter @rukus/db migrate",
     "db:studio": "pnpm --filter @rukus/db studio",
-    "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {

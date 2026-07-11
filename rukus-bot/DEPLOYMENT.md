@@ -46,29 +46,27 @@ git add -A && git commit -m "deploy" && git push
 
 ---
 
-## ⚠️ Two services, one repo — set each service's config file
+## ⚠️ Two services, one repo
 
-Both services share the same repo and root directory, so a plain `railway.json`
-would apply to BOTH — and silently overwrite whatever commands you type into the
-UI. (Symptom: you set the web start command, deploy, and Railway resets it to
-`--filter @rukus/bot start`.)
+Both services deploy from the same repo and the same root directory (`rukus-bot`).
+A shared `railway.json` would apply to BOTH and silently overwrite whatever you
+typed into the dashboard service's UI (symptom: your web start command keeps
+reverting to `--filter @rukus/bot start`). So there is **no `railway.json`**.
 
-So there is **no `railway.json`**. There are two named configs instead:
+Instead, the **root `package.json` defaults to the bot**:
 
-| Service   | Config file        | Set it in |
-| --------- | ------------------ | --------- |
-| bot       | `railway.bot.json` | Settings → **Config as code** |
-| dashboard | `railway.web.json` | Settings → **Config as code** |
+```
+"build": "prisma generate && next build"   ← safe for both services
+"start": "pnpm --filter @rukus/bot start"  ← the BOT
+```
 
-For **each** service: **Settings → Config as code → Path** → enter the filename
-(`railway.bot.json` or `railway.web.json`) → **Save** → **Redeploy**.
+| Service | Root Directory | Start command |
+| --- | --- | --- |
+| **bot** | `rukus-bot` | *(leave blank — uses the default `start`)* |
+| **dashboard** | `rukus-bot` | **override** → `pnpm --filter @rukus/web start` |
 
-That file then supplies the build and start commands, so you don't type them by
-hand and they can't be clobbered.
-
-> If your Railway UI has no "Config as code" field, leave it blank and instead
-> type the commands manually per service (see the two steps below) — with no
-> `railway.json` present, your typed commands will now stick.
+So: the bot service needs **no** custom commands, and the dashboard service needs
+**only** a custom **start** command. That's the whole difference.
 
 ---
 
@@ -79,7 +77,8 @@ hand and they can't be clobbered.
 
 1. Railway → **New Project → Deploy from GitHub repo** → `Xiylah/rukus-bot`
 2. **Settings → Root Directory:** `rukus-bot`
-3. Build/start commands are read automatically from `rukus-bot/railway.json`.
+3. Leave the build and start commands **blank** — the root `package.json`'s
+   `build` and `start` scripts default to the bot.
 4. **Variables:**
    ```
    DATABASE_URL
