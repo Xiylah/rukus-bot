@@ -90,6 +90,14 @@ const command: Command = {
         ),
     )
     .addSubcommand((s) =>
+      s
+        .setName("antispam")
+        .setDescription("Turn anti-spam (scam blast protection) on or off")
+        .addBooleanOption((o) =>
+          o.setName("enabled").setDescription("Enable it?").setRequired(true),
+        ),
+    )
+    .addSubcommand((s) =>
       s.setName("status").setDescription("Show the current moderation settings"),
     ),
 
@@ -103,6 +111,9 @@ const command: Command = {
       await interaction.reply({
         content:
           `**Moderation settings** (more options on the dashboard)\n` +
+          `• Anti-spam: ${config.antiSpamEnabled ? `on (${config.crossPostChannels} channels / ${config.crossPostWindowSec}s, then ${config.spamPunishment})` : "off"}\n` +
+          `• Scam detection: ${config.scamHeuristics ? "on" : "off"}\n` +
+          `• Blocked domains: ${config.blockedDomains.length}\n` +
           `• Drug filter: ${config.drugFilter ? "on" : "off"}\n` +
           `• Banned words: ${config.bannedWordsEnabled ? "on" : "off"} (${config.bannedWords.length} word(s))\n` +
           `• Invite blocking: ${config.blockInvites ? "on" : "off"}\n` +
@@ -120,6 +131,11 @@ const command: Command = {
     } else if (sub === "imageonly") {
       const channel = interaction.options.getChannel("channel");
       next.imageOnlyChannelId = channel?.id ?? undefined;
+    } else if (sub === "antispam") {
+      next.antiSpamEnabled = interaction.options.getBoolean("enabled", true);
+      // Enabling anti-spam without scam heuristics leaves the biggest win on
+      // the table, so turn both on together.
+      if (next.antiSpamEnabled) next.scamHeuristics = true;
     } else if (sub === "invites") {
       next.blockInvites = interaction.options.getBoolean("enabled", true);
     } else if (sub === "mentions") {

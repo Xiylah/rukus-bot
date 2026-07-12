@@ -274,6 +274,42 @@ export const moderationConfigSchema = z.object({
   logChannelId: snowflake,
   /** Roles exempt from all the filters above (staff, bots you trust). */
   exemptRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).default([]),
+
+  // ---------------- Anti-spam / anti-scam ----------------
+  /**
+   * Catch the classic compromised-account crypto scam: the same message
+   * blasted across many channels within seconds. No real member does this.
+   */
+  antiSpamEnabled: z.boolean().default(false),
+  /** Delete + punish when the same text appears in this many channels... */
+  crossPostChannels: z.number().int().min(2).max(20).default(3),
+  /** ...within this many seconds. */
+  crossPostWindowSec: z.number().int().min(5).max(300).default(30),
+  /** Also catch the same message repeated this many times in ONE channel. */
+  duplicateLimit: z.number().int().min(2).max(20).default(4),
+  /** Delete messages that trip the built-in scam-phrase heuristics. */
+  scamHeuristics: z.boolean().default(false),
+  /** What to do with the spammer. */
+  spamPunishment: z
+    .enum(["delete", "timeout", "kick", "ban"])
+    .default("timeout"),
+  /** Timeout length in minutes when spamPunishment is "timeout". */
+  spamTimeoutMin: z.number().int().min(1).max(40320).default(60),
+  /** Delete every copy the spammer posted, not just the triggering one. */
+  purgeAllCopies: z.boolean().default(true),
+
+  /** Block ALL links from members without a role (blocks scam domains). */
+  blockLinks: z.boolean().default(false),
+  /** Domains always blocked, e.g. "kutwon.com". */
+  blockedDomains: z.array(z.string().min(1).max(120)).max(200).default([]),
+  /** Domains always allowed when blockLinks is on. */
+  allowedDomains: z.array(z.string().min(1).max(120)).max(200).default([]),
+  /**
+   * Members whose account is younger than this many days can't post links.
+   * Scam blasts almost always come from throwaway or freshly compromised
+   * accounts. 0 = off.
+   */
+  minAccountAgeDaysForLinks: z.number().int().min(0).max(365).default(0),
 });
 
 export type ModerationConfig = z.infer<typeof moderationConfigSchema>;

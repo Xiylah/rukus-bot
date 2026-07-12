@@ -7,6 +7,8 @@ import {
   autoResponderConfig,
 } from "../lib/configCache.js";
 import { checkFilters, logFiltered } from "../features/moderation/autoMod.js";
+import { checkSpam } from "../features/moderation/antiSpam.js";
+import { enforceSpam } from "../features/moderation/punish.js";
 import { translateText } from "../features/translation/translate.js";
 import { translationEmbed } from "../features/translation/ui.js";
 import { runAutoResponder } from "../features/autoresponder/respond.js";
@@ -34,6 +36,19 @@ const handler: EventHandler<Events.MessageCreate> = {
         await message.delete().catch(() => {});
       }
       return; // nothing else runs in the image-only channel
+    }
+
+    // --- Anti-spam / anti-scam (runs first: this is the damaging stuff) ---
+    // Staff and exempt roles bypass it, same as the other filters.
+    const exempt =
+      message.member?.permissions.has("ManageMessages") ||
+      mod.exemptRoleIds.some((r) => message.member?.roles.cache.has(r));
+    if (!exempt) {
+      const spam = checkSpam(message, mod);
+      if (spam) {
+        await enforceSpam(message, mod, spam);
+        return;
+      }
     }
 
     // --- Auto-moderation: drug filter, banned words, invites, mentions ---
