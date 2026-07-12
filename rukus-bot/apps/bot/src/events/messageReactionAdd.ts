@@ -54,16 +54,32 @@ const handler: EventHandler<Events.MessageReactionAdd> = {
     const trans = await translationConfig(message.guildId);
     if (!trans.flagReactions) return;
 
-    if (alreadyServed(message.id, targetLang)) return;
+    // Once we know this is a supported translation flag, clean it up after
+    // handling so messages don't accumulate flag reactions. Needs Manage
+    // Messages in the channel; failing silently just leaves the flag.
+    const removeFlag = () => reaction.users.remove(user.id).catch(() => {});
+
+    if (alreadyServed(message.id, targetLang)) {
+      await removeFlag(); // translation already posted earlier
+      return;
+    }
 
     // Ensure we have the full message (content may be missing on partials).
     const full = message.partial ? await message.fetch().catch(() => null) : message;
     if (!full || full.author?.bot) return;
     const text = full.content?.trim();
-    if (!text) return;
+    if (!text) {
+      await removeFlag();
+      return;
+    }
 
     const result = await translateText(text, targetLang);
-    if (!result) return;
+    if (!result) {
+      // Too short / already that language / backend hiccup: nothing to post,
+      // but still tidy up the reaction.
+      await removeFlag();
+      return;
+    }
 
     const reactor = user.toString();
     await full
@@ -75,6 +91,7 @@ const handler: EventHandler<Events.MessageReactionAdd> = {
         allowedMentions: { repliedUser: false },
       })
       .catch(() => {});
+    await removeFlag();
   },
 };
 
