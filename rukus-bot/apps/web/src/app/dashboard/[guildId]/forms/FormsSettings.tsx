@@ -410,13 +410,16 @@ export function FormsSettings({
               description={
                 panel.description.trim() ||
                 forms
+                  .filter((f) => f.showOnPanel)
                   .map(
                     (f) => `• ${f.name}${f.description ? `: ${f.description}` : ""}`,
                   )
                   .join("\n") ||
                 "No forms configured yet."
               }
-              buttons={forms.map((f) => ({ emoji: "📝", label: f.buttonLabel }))}
+              buttons={forms
+                .filter((f) => f.showOnPanel)
+                .map((f) => ({ emoji: "📝", label: f.buttonLabel }))}
             />
             <p className="mt-1 text-xs text-zinc-500">
               This is what /form panel will post. It updates as you type.
