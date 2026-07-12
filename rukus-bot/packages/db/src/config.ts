@@ -6,12 +6,14 @@ import {
   autoResponderConfigSchema,
   moderationConfigSchema,
   welcomeConfigSchema,
+  customCommandsConfigSchema,
   type TicketConfig,
   type FormsConfig,
   type TranslationConfig,
   type AutoResponderConfig,
   type ModerationConfig,
   type WelcomeConfig,
+  type CustomCommandsConfig,
 } from "@rukus/shared";
 import { prisma } from "./index.js";
 
@@ -95,6 +97,12 @@ export const getWelcomeConfig = (guildId: string) =>
 export const setWelcomeConfig = (guildId: string, config: unknown) =>
   writeConfig<WelcomeConfig>(guildId, "welcome", config);
 
+export const getCustomCommandsConfig = (guildId: string) =>
+  readConfig<CustomCommandsConfig>(guildId, "customcommands");
+
+export const setCustomCommandsConfig = (guildId: string, config: unknown) =>
+  writeConfig<CustomCommandsConfig>(guildId, "customcommands", config);
+
 export {
   ticketConfigSchema,
   formsConfigSchema,
@@ -102,4 +110,5 @@ export {
   autoResponderConfigSchema,
   moderationConfigSchema,
   welcomeConfigSchema,
+  customCommandsConfigSchema,
 };

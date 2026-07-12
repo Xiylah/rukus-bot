@@ -10,6 +10,7 @@ import {
   setAutoResponderConfig,
   setModerationConfig,
   setWelcomeConfig,
+  setCustomCommandsConfig,
   setAccessConfig,
 } from "@rukus/supabase";
 import {
@@ -19,6 +20,7 @@ import {
   autoResponderConfigSchema,
   moderationConfigSchema,
   welcomeConfigSchema,
+  customCommandsConfigSchema,
   accessConfigSchema,
   buildTicketPanelPayload,
   buildFormsPanelPayload,
@@ -133,6 +135,25 @@ export async function saveWelcomeConfig(
   }
   await setWelcomeConfig(guildId, parsed.data);
   revalidatePath(`/dashboard/${guildId}/welcome`);
+  revalidatePath(`/dashboard/${guildId}`);
+  return { ok: true };
+}
+
+export async function saveCustomCommandsConfig(
+  guildId: string,
+  payload: unknown,
+): Promise<ActionResult> {
+  await requireGuildAccess(guildId);
+  const parsed = customCommandsConfigSchema.safeParse(payload);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return {
+      ok: false,
+      error: issue ? `${issue.path.join(".")}: ${issue.message}` : "Invalid input",
+    };
+  }
+  await setCustomCommandsConfig(guildId, parsed.data);
+  revalidatePath(`/dashboard/${guildId}/commands`);
   revalidatePath(`/dashboard/${guildId}`);
   return { ok: true };
 }

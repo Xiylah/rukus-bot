@@ -5,6 +5,7 @@ import {
   moderationConfig,
   translationConfig,
   autoResponderConfig,
+  customCommandsConfig,
 } from "../lib/configCache.js";
 import { checkFilters, logFiltered } from "../features/moderation/autoMod.js";
 import { checkSpam } from "../features/moderation/antiSpam.js";
@@ -13,6 +14,7 @@ import { translateText } from "../features/translation/translate.js";
 import { translationEmbed } from "../features/translation/ui.js";
 import { runAutoResponder } from "../features/autoresponder/respond.js";
 import { getTicketMeta } from "../features/tickets/isTicket.js";
+import { findCommand, runCustomCommand } from "../features/custom/commands.js";
 
 /**
  * Main message pipeline - the TS equivalent of the Python on_message, but every
@@ -63,6 +65,17 @@ const handler: EventHandler<Events.MessageCreate> = {
           .catch(() => {});
       }
       return;
+    }
+
+    // --- Custom prefix commands (!codes etc.) ---
+    // Before the length gate: commands are short by nature.
+    if (content) {
+      const cc = await customCommandsConfig(guildId);
+      const cmd = findCommand(cc, content);
+      if (cmd) {
+        await runCustomCommand(message, cc, cmd);
+        return;
+      }
     }
 
     if (!content || content.length < 8) return;

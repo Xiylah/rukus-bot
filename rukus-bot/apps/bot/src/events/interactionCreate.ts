@@ -4,6 +4,8 @@ import type { BotClient, EventHandler } from "../lib/types.js";
 import { log } from "../lib/logger.js";
 import * as tickets from "../features/tickets/interactions.js";
 import * as forms from "../features/forms/interactions.js";
+import { handleRevealButton } from "../features/custom/commands.js";
+import { customCommandsConfig } from "../lib/configCache.js";
 
 /**
  * Central interaction router.
@@ -48,6 +50,10 @@ const handler: EventHandler<Events.InteractionCreate> = {
         // that assumes guild context.
         if (customId.startsWith(CID.ticketRate))
           return void (await tickets.handleRateButton(interaction));
+        if (customId.startsWith(CID.customReveal) && interaction.guildId) {
+          const cc = await customCommandsConfig(interaction.guildId);
+          return void (await handleRevealButton(interaction, cc));
+        }
         if (customId.startsWith(CID.ticketOpen))
           return void (await tickets.handleOpenButton(interaction));
         if (customId.startsWith(CID.ticketClaim))

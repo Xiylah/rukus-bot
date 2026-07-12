@@ -5,6 +5,7 @@ import {
   getAutoResponderConfig,
   getModerationConfig,
   getWelcomeConfig,
+  getCustomCommandsConfig,
 } from "@rukus/db";
 import {
   ticketConfigSchema,
@@ -13,12 +14,14 @@ import {
   autoResponderConfigSchema,
   moderationConfigSchema,
   welcomeConfigSchema,
+  customCommandsConfigSchema,
   type TicketConfig,
   type FormsConfig,
   type TranslationConfig,
   type AutoResponderConfig,
   type ModerationConfig,
   type WelcomeConfig,
+  type CustomCommandsConfig,
 } from "@rukus/shared";
 import { log } from "./logger.js";
 
@@ -109,6 +112,13 @@ export const moderationConfig = (guildId: string): Promise<ModerationConfig> =>
 export const welcomeConfig = (guildId: string): Promise<WelcomeConfig> =>
   cached(`welcome:${guildId}`, () => getWelcomeConfig(guildId), () =>
     welcomeConfigSchema.parse({}),
+  );
+
+export const customCommandsConfig = (
+  guildId: string,
+): Promise<CustomCommandsConfig> =>
+  cached(`customcommands:${guildId}`, () => getCustomCommandsConfig(guildId), () =>
+    customCommandsConfigSchema.parse({}),
   );
 
 /** Drop a guild's cached entries (e.g. after an in-bot config command). */

@@ -35,6 +35,7 @@ export const CID = {
   ticketDelete: "tkt:delete",
   ticketModal: "tkt:modal",
   ticketRate: "tkt:rate",
+  customReveal: "cc:show",
   formOpen: "frm:open",
   formModal: "frm:modal",
   formApprove: "frm:approve",

@@ -318,6 +318,72 @@ export const moderationConfigSchema = z.object({
 
 export type ModerationConfig = z.infer<typeof moderationConfigSchema>;
 
+// ---------------- Custom commands ----------------
+
+/**
+ * How the bot replies to a custom prefix command.
+ *
+ * Discord only allows truly-private (ephemeral) replies in response to an
+ * INTERACTION, so a plain `!codes` message can't get one directly. "button"
+ * works around that: the bot posts a button, and clicking it IS an
+ * interaction, so the reveal is genuinely private to whoever clicked.
+ */
+export const customResponseModeSchema = z.enum([
+  "button", // public button -> private (ephemeral) reveal for whoever clicks
+  "dm", // DM the user, delete their command message
+  "autodelete", // reply in channel, delete both after N seconds
+  "public", // ordinary public reply
+]);
+export type CustomResponseMode = z.infer<typeof customResponseModeSchema>;
+
+export const customCommandSchema = z.object({
+  id: z.string().min(1),
+  enabled: z.boolean().default(true),
+  /** The command word, without the prefix. e.g. "codes" for !codes */
+  name: z
+    .string()
+    .min(1)
+    .max(32)
+    .regex(/^[a-z0-9_-]+$/, "Lowercase letters, numbers, - and _ only"),
+  /** Other words that trigger the same command, e.g. "code", "promo". */
+  aliases: z.array(z.string().min(1).max(32)).max(10).default([]),
+  /** What the bot says. Supports {user}, {server}, {channel}. */
+  response: z.string().min(1).max(4000),
+  responseMode: customResponseModeSchema.default("button"),
+  /** Label on the reveal button, in "button" mode. */
+  buttonLabel: z.string().max(80).default("Show me"),
+  /** Seconds before the reply is deleted, in "autodelete" mode. */
+  deleteAfterSec: z.number().int().min(3).max(300).default(30),
+  /** Send the response as an embed. */
+  useEmbed: z.boolean().default(true),
+  embedTitle: z.string().max(256).default(""),
+  embedColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default("#5865f2"),
+  /** Also delete the member's command message (keeps channels tidy). */
+  deleteTrigger: z.boolean().default(false),
+  /** Only usable in these channels. Empty = anywhere. */
+  channelIds: z.array(z.string().regex(/^\d{17,20}$/)).default([]),
+  /** Only usable by members with one of these roles. Empty = everyone. */
+  allowedRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).default([]),
+  /** Per-user cooldown in seconds. */
+  cooldownSec: z.number().int().min(0).max(3600).default(3),
+  /** Bumped every time it's used, so you can see what's popular. */
+  uses: z.number().int().min(0).default(0),
+});
+
+export type CustomCommand = z.infer<typeof customCommandSchema>;
+
+export const customCommandsConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** What members type before the command word, e.g. "!" for !codes */
+  prefix: z.string().min(1).max(5).default("!"),
+  commands: z.array(customCommandSchema).max(100).default([]),
+});
+
+export type CustomCommandsConfig = z.infer<typeof customCommandsConfigSchema>;
+
 // ---------------- Welcome & Leave ----------------
 
 /**
@@ -374,6 +440,7 @@ export const FEATURE_SCHEMAS = {
   autoresponder: autoResponderConfigSchema,
   moderation: moderationConfigSchema,
   welcome: welcomeConfigSchema,
+  customcommands: customCommandsConfigSchema,
   access: accessConfigSchema,
 } as const;
 

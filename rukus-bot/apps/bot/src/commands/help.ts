@@ -64,6 +64,12 @@ const command: Command = {
             "`/welcome` configure it (admin)",
         },
         {
+          name: "⌨️ Custom commands",
+          value:
+            "This server can define its own commands like `!codes`.\n" +
+            "`/commands` lists them all",
+        },
+        {
           name: "🔧 Utility",
           value:
             "`/serverinfo` `/userinfo` `/avatar` info commands\n" +

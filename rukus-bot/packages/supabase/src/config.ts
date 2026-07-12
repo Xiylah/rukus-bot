@@ -6,6 +6,7 @@ import {
   type AutoResponderConfig,
   type ModerationConfig,
   type WelcomeConfig,
+  type CustomCommandsConfig,
   type AccessConfig,
 } from "@rukus/shared";
 import { getSupabase } from "./index.js";
@@ -107,6 +108,11 @@ export const getWelcomeConfig = (guildId: string) =>
   readConfig<WelcomeConfig>(guildId, "welcome");
 export const setWelcomeConfig = (guildId: string, config: unknown) =>
   writeConfig<WelcomeConfig>(guildId, "welcome", config);
+
+export const getCustomCommandsConfig = (guildId: string) =>
+  readConfig<CustomCommandsConfig>(guildId, "customcommands");
+export const setCustomCommandsConfig = (guildId: string, config: unknown) =>
+  writeConfig<CustomCommandsConfig>(guildId, "customcommands", config);
 
 export const getAccessConfig = (guildId: string) =>
   readConfig<AccessConfig>(guildId, "access");

@@ -6,6 +6,7 @@ import {
   getAutoResponderConfig,
   getModerationConfig,
   getWelcomeConfig,
+  getCustomCommandsConfig,
 } from "@rukus/supabase";
 
 export default async function GuildOverview({
@@ -14,7 +15,7 @@ export default async function GuildOverview({
   params: Promise<{ guildId: string }>;
 }) {
   const { guildId } = await params;
-  const [tickets, forms, translation, autoresponder, moderation, welcome] =
+  const [tickets, forms, translation, autoresponder, moderation, welcome, custom] =
     await Promise.all([
       getTicketConfig(guildId),
       getFormsConfig(guildId),
@@ -22,6 +23,7 @@ export default async function GuildOverview({
       getAutoResponderConfig(guildId),
       getModerationConfig(guildId),
       getWelcomeConfig(guildId),
+      getCustomCommandsConfig(guildId),
     ]);
 
   const cards = [
@@ -59,6 +61,13 @@ export default async function GuildOverview({
       status: welcome.enabled ? "Enabled" : "Disabled",
       detail: `${welcome.joinRoleIds.length} auto-role(s)`,
       on: welcome.enabled || welcome.joinRoleIds.length > 0,
+    },
+    {
+      href: `/dashboard/${guildId}/commands`,
+      title: "⌨️ Custom Commands",
+      status: custom.enabled ? "Enabled" : "Disabled",
+      detail: `${custom.commands.length} command(s)`,
+      on: custom.enabled,
     },
     {
       href: `/dashboard/${guildId}/moderation`,
