@@ -49,6 +49,17 @@ const command: Command = {
     )
     .addSubcommand((s) =>
       s
+        .setName("autoclose")
+        .setDescription("Enable/disable inactivity auto-close for THIS ticket (staff)")
+        .addBooleanOption((o) =>
+          o
+            .setName("enabled")
+            .setDescription("False = this ticket never auto-closes")
+            .setRequired(true),
+        ),
+    )
+    .addSubcommand((s) =>
+      s
         .setName("add")
         .setDescription("Add a user to this ticket (staff)")
         .addUserOption((o) =>
@@ -91,7 +102,10 @@ const command: Command = {
     const member = interaction.member as GuildMember;
 
     // ---- Staff subcommands (support role or admin, inside a ticket) ----
-    if (sub === "close" || sub === "claim" || sub === "add" || sub === "remove") {
+    if (
+      sub === "close" || sub === "claim" || sub === "add" ||
+      sub === "remove" || sub === "autoclose"
+    ) {
       const config = await ticketConfig(guildId);
       if (!hasAnyRole(member, allSupportRoleIds(config))) {
         await interaction.reply({
@@ -114,6 +128,26 @@ const command: Command = {
         await interaction.deferReply();
         const result = await closeTicketFlow(channel, config, interaction.user.id);
         await interaction.editReply({ content: result.message });
+        return;
+      }
+
+      if (sub === "autoclose") {
+        const enabled = interaction.options.getBoolean("enabled", true);
+        const { prisma } = await import("@rukus/db");
+        await prisma.ticket.update({
+          where: { channelId: interaction.channelId },
+          data: {
+            autoCloseDisabled: !enabled,
+            // Re-enabling restarts the clock cleanly.
+            autoCloseWarnedAt: null,
+            autoCloseWarnedMsgId: null,
+          },
+        });
+        await interaction.reply({
+          content: enabled
+            ? "⏰ Auto-close re-enabled for this ticket."
+            : "🛡️ This ticket will never auto-close. Staff can re-enable with `/ticket autoclose enabled:True`.",
+        });
         return;
       }
 

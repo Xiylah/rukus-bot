@@ -2,6 +2,7 @@ import { Events, Routes, type Client } from "discord.js";
 import { env } from "../env.js";
 import type { BotClient, EventHandler } from "../lib/types.js";
 import { log } from "../lib/logger.js";
+import { startAutoCloseSweeper } from "../features/tickets/autoclose.js";
 
 /**
  * On startup: log in, then register slash + context-menu commands with Discord.
@@ -18,6 +19,7 @@ const handler: EventHandler<Events.ClientReady> = {
     log.info(`Logged in as ${client.user?.tag} (id: ${client.user?.id}).`);
     log.info(`Serving ${client.guilds.cache.size} guild(s).`);
     client.user?.setActivity("Discord API");
+    startAutoCloseSweeper(client);
 
     if (process.env.SKIP_COMMAND_SYNC === "1") {
       log.info("SKIP_COMMAND_SYNC=1 - not registering commands.");

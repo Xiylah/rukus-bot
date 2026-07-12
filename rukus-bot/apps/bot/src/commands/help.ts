@@ -48,10 +48,11 @@ const command: Command = {
         {
           name: "🛡️ Moderation",
           value:
-            "Filters: drug terms, banned words, invite links, mass mentions,\n" +
-            "image-only channels, plus a mod-log channel.\n" +
-            "`/moderation` configure it (admin)\n" +
-            "`/purge` bulk-delete messages, `/slowmode` set channel slowmode",
+            "`/warn` `/timeout` `/kick` `/ban` take action, each recorded as a case\n" +
+            "`/history` shows a member's full record\n" +
+            "Auto-filters: drug terms, banned words, invite links, mass mentions\n" +
+            "`/moderation` configure filters (admin)\n" +
+            "`/purge` bulk-delete, `/slowmode` set channel slowmode",
         },
         {
           name: "👋 Welcome",

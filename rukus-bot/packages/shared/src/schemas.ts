@@ -79,6 +79,10 @@ export const ticketConfigSchema = z.object({
   panelMessageId: snowflake,
   /** Ping the support roles when a ticket opens, so staff notice fast. */
   pingSupportOnOpen: z.boolean().default(false),
+  /** Auto-close tickets after a period with no messages. */
+  autoCloseEnabled: z.boolean().default(false),
+  /** Hours of inactivity before auto-close (a warning fires ~12h earlier). */
+  autoCloseHours: z.number().int().min(2).max(720).default(48),
   /**
    * Ticket types. Empty = classic single-button panel using the settings
    * above. 2+ = the panel becomes a dropdown (Discord caps options at 25).

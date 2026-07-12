@@ -89,6 +89,13 @@ model Ticket {
   createdAt DateTime  @default(now())
   closedAt  DateTime?
 
+  /// Staff opted this ticket out of inactivity auto-close.
+  autoCloseDisabled   Boolean   @default(false)
+  /// When the inactivity warning was posted (null = not warned).
+  autoCloseWarnedAt   DateTime?
+  /// Id of the warning message, to detect activity after the warning.
+  autoCloseWarnedMsgId String?
+
   @@unique([guildId, number])
   @@index([guildId, status])
   @@index([openerId])
@@ -97,6 +104,47 @@ model Ticket {
 
 /// Counter table so ticket numbers are sequential and race-free per guild.
 model TicketCounter {
+  guildId String @id
+  next    Int    @default(1)
+
+  @@schema("rukus")
+}
+
+enum CaseAction {
+  WARN
+  TIMEOUT
+  UNTIMEOUT
+  KICK
+  BAN
+  UNBAN
+
+  @@schema("rukus")
+}
+
+/// One moderation action = one numbered case, forming a user's record.
+model ModCase {
+  id          String     @id @default(cuid())
+  guildId     String
+  /// Sequential per-guild case number shown to staff (#0001).
+  number      Int
+  action      CaseAction
+  /// The member the action was taken against.
+  userId      String
+  userTag     String?
+  moderatorId String
+  reason      String?
+  /// Timeout length in minutes, when applicable.
+  durationMin Int?
+  createdAt   DateTime   @default(now())
+
+  @@unique([guildId, number])
+  @@index([guildId, userId])
+  @@index([guildId, createdAt])
+  @@schema("rukus")
+}
+
+/// Race-free per-guild case numbering.
+model CaseCounter {
   guildId String @id
   next    Int    @default(1)
 

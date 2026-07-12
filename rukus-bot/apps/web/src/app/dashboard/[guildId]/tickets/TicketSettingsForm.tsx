@@ -130,6 +130,27 @@ export function TicketSettingsForm({
           />
           <p className="mt-1 text-xs text-zinc-500">0 = unlimited.</p>
         </div>
+        <Toggle
+          label="Auto-close inactive tickets"
+          hint="A warning is posted first (about 12h before), and any message resets the clock. Staff can exempt a ticket with /ticket autoclose."
+          checked={config.autoCloseEnabled}
+          onChange={(v) => update("autoCloseEnabled", v)}
+        />
+        {config.autoCloseEnabled && (
+          <div>
+            <label className="label">Close after how many hours of silence?</label>
+            <input
+              type="number"
+              min={2}
+              max={720}
+              className="input"
+              value={config.autoCloseHours}
+              onChange={(e) =>
+                update("autoCloseHours", Number(e.target.value) || 48)
+              }
+            />
+          </div>
+        )}
         <div>
           <label className="label">Welcome message</label>
           <textarea
