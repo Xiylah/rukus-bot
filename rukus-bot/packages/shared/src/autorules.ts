@@ -54,31 +54,91 @@ function wordSimilarity(a: string, b: string): number {
 }
 
 /**
+ * Filler words that carry almost no meaning. A long message inevitably
+ * contains "is", "there", "an", "the"..., so counting them as evidence made
+ * unrelated paragraphs score highly against triggers like "is there an event
+ * today". They still contribute a little, but the real signal is the content
+ * words (event, lost, items, schedule...).
+ */
+const STOPWORDS = new Set([
+  "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
+  "do", "does", "did", "have", "has", "had", "will", "would", "can",
+  "could", "should", "there", "here", "this", "that", "these", "those",
+  "i", "you", "he", "she", "it", "we", "they", "me", "my", "your",
+  "and", "or", "but", "if", "so", "of", "to", "in", "on", "at", "for",
+  "with", "from", "by", "up", "out", "any", "some", "get", "got",
+]);
+
+const STOPWORD_WEIGHT = 0.25;
+
+function wordWeight(word: string): number {
+  return STOPWORDS.has(word) ? STOPWORD_WEIGHT : 1;
+}
+
+/**
  * How well a message matches one trigger phrase, 0-100.
  *
- * Score = the fraction of the trigger's words present in the message (each
- * word can match a near-identical word, so typos still count). Using the
- * TRIGGER as the denominator means a long message containing the trigger still
- * scores high, which is what people expect ("hey guys when is the next event?"
- * fully matches "when is the next event").
+ * Two things stop long, unrelated messages from scoring highly:
+ *
+ * 1. WEIGHTING. Content words count fully; filler words ("is", "there", "an")
+ *    count for a quarter. A rambling bug report contains plenty of filler, but
+ *    it doesn't contain the trigger's *meaningful* words in the right places.
+ *
+ * 2. PROXIMITY. We also check how tightly the trigger's content words cluster
+ *    in the message. In a real question they sit next to each other ("when is
+ *    the next EVENT"); in an unrelated paragraph they're scattered across
+ *    sentences. Matches whose words are spread far apart are scaled down.
  */
 export function phraseScore(message: string, trigger: string): number {
   const msgWords = tokens(message);
   const trigWords = tokens(trigger);
   if (trigWords.length === 0 || msgWords.length === 0) return 0;
 
-  let matched = 0;
+  let matchedWeight = 0;
+  let totalWeight = 0;
+  // Where each matched trigger word was found, to measure how spread out
+  // the match is.
+  const positions: number[] = [];
+
   for (const tw of trigWords) {
+    const weight = wordWeight(tw);
+    totalWeight += weight;
+
     let best = 0;
-    for (const mw of msgWords) {
+    let bestAt = -1;
+    for (let i = 0; i < msgWords.length; i++) {
+      const mw = msgWords[i]!;
       const sim = mw === tw ? 1 : wordSimilarity(mw, tw);
-      if (sim > best) best = sim;
+      if (sim > best) {
+        best = sim;
+        bestAt = i;
+      }
       if (best === 1) break;
     }
     // Below 0.75 similarity we don't count the word as present at all.
-    if (best >= 0.75) matched += best;
+    if (best >= 0.75) {
+      matchedWeight += best * weight;
+      // Only content words tell us anything about WHERE the match is.
+      if (weight === 1 && bestAt >= 0) positions.push(bestAt);
+    }
   }
-  return Math.round((matched / trigWords.length) * 100);
+
+  if (totalWeight === 0) return 0;
+  let score = matchedWeight / totalWeight;
+
+  // Proximity: how tightly did the trigger's content words cluster?
+  if (positions.length >= 2) {
+    positions.sort((a, b) => a - b);
+    const span = positions[positions.length - 1]! - positions[0]! + 1;
+    // Ideal span = the number of content words (they sit next to each other).
+    // Allow generous slack (3x) before penalising, then decay.
+    const ideal = positions.length * 3;
+    if (span > ideal) {
+      score *= Math.max(0.35, ideal / span);
+    }
+  }
+
+  return Math.round(score * 100);
 }
 
 // ---------------- question detection ----------------
@@ -277,12 +337,29 @@ const LEGACY_EVENT_TRIGGERS = [
   "is there a live event",
 ];
 
+/**
+ * Words that mean the message is a bug report, complaint, or story about an
+ * event, not a question asking WHEN one is. These are the false positives that
+ * actually happen in a game server ("the game crashes during the event...").
+ */
 const LEGACY_EVENT_EXCLUSIONS = [
   "that event was fun",
   "the event already ended",
   "we just had an event",
   "there are no events",
   "will be announced",
+  // bug/lag/complaint chatter
+  "bug",
+  "glitch",
+  "crash",
+  "lag",
+  "broken",
+  "kicked",
+  "error",
+  "fix",
+  "issue",
+  "problem",
+  "stuck",
 ];
 
 const LEGACY_LOST_TRIGGERS = [
