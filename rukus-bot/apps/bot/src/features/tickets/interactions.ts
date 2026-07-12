@@ -81,6 +81,8 @@ function buildTicketModal(type: TicketType, form: Form): ModalBuilder {
       )
       .setRequired(field.required);
     if (field.placeholder) input.setPlaceholder(field.placeholder.slice(0, 100));
+    if (field.minLength !== undefined) input.setMinLength(field.minLength);
+    if (field.maxLength !== undefined) input.setMaxLength(field.maxLength);
     modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
   }
   return modal;

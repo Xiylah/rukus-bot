@@ -177,27 +177,92 @@ export function FormsSettings({
                 className="rounded-md border border-edge bg-panel p-3"
               >
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <input
-                    className="input"
-                    placeholder="Question label"
-                    maxLength={45}
-                    value={field.label}
-                    onChange={(e) =>
-                      updateField(fi, qi, { label: e.target.value })
-                    }
-                  />
-                  <select
-                    className="input"
-                    value={field.style}
-                    onChange={(e) =>
-                      updateField(fi, qi, {
-                        style: e.target.value as FormField["style"],
-                      })
-                    }
-                  >
-                    <option value="short">Short answer</option>
-                    <option value="paragraph">Paragraph</option>
-                  </select>
+                  <div>
+                    <label className="label">Question title</label>
+                    <input
+                      className="input"
+                      placeholder="Question label"
+                      maxLength={45}
+                      value={field.label}
+                      onChange={(e) =>
+                        updateField(fi, qi, { label: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Answer style</label>
+                    <select
+                      className="input"
+                      value={field.style}
+                      onChange={(e) =>
+                        updateField(fi, qi, {
+                          style: e.target.value as FormField["style"],
+                        })
+                      }
+                    >
+                      <option value="short">Short answer</option>
+                      <option value="paragraph">Paragraph</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div>
+                    <label className="label">Question placeholder (optional)</label>
+                    <input
+                      className="input"
+                      placeholder="e.g. Base - Gold - Galaxy - Rainbow - Diamond"
+                      maxLength={100}
+                      value={field.placeholder ?? ""}
+                      onChange={(e) =>
+                        updateField(fi, qi, {
+                          placeholder: e.target.value || undefined,
+                        })
+                      }
+                    />
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Greyed-out hint text shown inside the empty answer box.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="label">Min length</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={4000}
+                        className="input"
+                        placeholder="0"
+                        value={field.minLength ?? ""}
+                        onChange={(e) =>
+                          updateField(fi, qi, {
+                            minLength:
+                              e.target.value === ""
+                                ? undefined
+                                : Math.max(0, Number(e.target.value)),
+                          })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="label">Max length</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={4000}
+                        className="input"
+                        placeholder="4000"
+                        value={field.maxLength ?? ""}
+                        onChange={(e) =>
+                          updateField(fi, qi, {
+                            maxLength:
+                              e.target.value === ""
+                                ? undefined
+                                : Math.min(4000, Number(e.target.value)),
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div className="mt-2 flex items-center justify-between">
                   <label className="flex items-center gap-2 text-sm text-zinc-400">
