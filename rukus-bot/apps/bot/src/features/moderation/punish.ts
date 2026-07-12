@@ -88,9 +88,10 @@ export async function enforceSpam(
     log.warn(`Anti-spam punishment failed: ${String(err)}`);
   }
 
-  // 3. Tell staff.
-  if (!config.logChannelId) return;
-  const logChannel = guild.channels.cache.get(config.logChannelId);
+  // 3. Tell staff, in the spam-specific channel when one is set.
+  const logChannelId = config.spamLogChannelId ?? config.logChannelId;
+  if (!logChannelId) return;
+  const logChannel = guild.channels.cache.get(logChannelId);
   if (!logChannel?.isSendable()) return;
 
   const accountAgeDays = Math.floor(

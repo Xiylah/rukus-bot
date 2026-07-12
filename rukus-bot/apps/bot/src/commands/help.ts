@@ -50,8 +50,9 @@ const command: Command = {
         {
           name: "🛡️ Moderation",
           value:
-            "`/warn` `/timeout` `/kick` `/ban` take action, each recorded as a case\n" +
-            "`/history` shows a member's full record\n" +
+            "`/warn` `/mute` `/timeout` `/kick` `/ban` each recorded as a case\n" +
+            "`/unmute` `/history` `/case view|delete|clear`\n" +
+            "Anti-spam blocks scam blasts automatically\n" +
             "Auto-filters: drug terms, banned words, invite links, mass mentions\n" +
             "`/moderation` configure filters (admin)\n" +
             "`/purge` bulk-delete, `/slowmode` set channel slowmode",

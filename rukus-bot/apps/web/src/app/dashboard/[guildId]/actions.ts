@@ -25,6 +25,7 @@ import {
 } from "@rukus/shared";
 import { requireGuildAccess } from "@/lib/guard";
 import { postChannelMessage, editChannelMessage } from "@/lib/discord";
+import { getSupabase } from "@rukus/supabase";
 
 /**
  * Server actions that persist dashboard config.
@@ -216,4 +217,32 @@ export async function publishTicketPanel(guildId: string, channelId: string) {
 
 export async function publishFormsPanel(guildId: string, channelId: string) {
   return publishPanel(guildId, channelId, "forms");
+}
+
+/**
+ * Delete moderation cases from the dashboard. Administrator-only: removing
+ * records is more sensitive than creating them, and a staff member should not
+ * be able to erase their own history.
+ */
+export async function deleteCases(
+  guildId: string,
+  numbers: number[],
+): Promise<ActionResult> {
+  const { guild } = await requireGuildAccess(guildId);
+  const { isGuildAdmin } = await import("@/lib/discord");
+  if (!isGuildAdmin(guild)) {
+    return { ok: false, error: "Only server Administrators can delete cases." };
+  }
+  if (numbers.length === 0) return { ok: false, error: "Nothing selected." };
+
+  const { error } = await getSupabase()
+    .from("ModCase")
+    .delete()
+    .eq("guildId", guildId)
+    .in("number", numbers);
+
+  if (error) return { ok: false, error: `Delete failed: ${error.message}` };
+
+  revalidatePath(`/dashboard/${guildId}/cases`);
+  return { ok: true };
 }

@@ -1,4 +1,6 @@
 import { getSupabase } from "@rukus/supabase";
+import { requireGuildAccess } from "@/lib/guard";
+import { isGuildAdmin } from "@/lib/discord";
 import { CasesTable, type CaseRow } from "./CasesTable";
 
 export default async function CasesPage({
@@ -7,6 +9,9 @@ export default async function CasesPage({
   params: Promise<{ guildId: string }>;
 }) {
   const { guildId } = await params;
+  // Only Administrators may delete case records.
+  const { guild } = await requireGuildAccess(guildId);
+  const canDelete = isGuildAdmin(guild);
 
   const { data } = await getSupabase()
     .from("ModCase")
@@ -31,10 +36,11 @@ export default async function CasesPage({
     <div>
       <h1 className="mb-1 text-2xl font-bold text-white">📋 Cases</h1>
       <p className="mb-6 text-sm text-zinc-400">
-        Every /warn, /timeout, /kick and /ban is recorded here. Use /history in
-        Discord for a single member's record.
+        Every /warn, /mute, /timeout, /kick and /ban is recorded here. Use
+        /history in Discord for a single member&apos;s record.
+        {canDelete && " Tick cases to delete them (e.g. test cases)."}
       </p>
-      <CasesTable cases={cases} />
+      <CasesTable cases={cases} guildId={guildId} canDelete={canDelete} />
     </div>
   );
 }

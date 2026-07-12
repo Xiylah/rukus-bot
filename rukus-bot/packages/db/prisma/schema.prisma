@@ -121,6 +121,8 @@ enum CaseAction {
   WARN
   TIMEOUT
   UNTIMEOUT
+  MUTE
+  UNMUTE
   KICK
   BAN
   UNBAN

@@ -54,6 +54,8 @@ const ACTION_STYLE: Record<CaseAction, { emoji: string; color: number; verb: str
   WARN: { emoji: "⚠️", color: COLORS.warning, verb: "warned" },
   TIMEOUT: { emoji: "🔇", color: COLORS.warning, verb: "timed out" },
   UNTIMEOUT: { emoji: "🔊", color: COLORS.success, verb: "un-timed out" },
+  MUTE: { emoji: "🤐", color: COLORS.warning, verb: "muted" },
+  UNMUTE: { emoji: "🗣️", color: COLORS.success, verb: "unmuted" },
   KICK: { emoji: "👢", color: COLORS.danger, verb: "kicked" },
   BAN: { emoji: "🔨", color: COLORS.danger, verb: "banned" },
   UNBAN: { emoji: "🕊️", color: COLORS.success, verb: "unbanned" },

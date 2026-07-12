@@ -270,10 +270,14 @@ export const moderationConfigSchema = z.object({
   blockInvites: z.boolean().default(false),
   /** Delete messages mentioning more than this many users/roles (0 = off). */
   maxMentions: z.number().int().min(0).max(50).default(0),
-  /** Channel where filtered/deleted messages are logged for staff. */
+  /** Channel where filtered/deleted messages and mod cases are logged. */
   logChannelId: snowflake,
+  /** Optional separate channel just for anti-spam reports. Falls back to logChannelId. */
+  spamLogChannelId: snowflake,
   /** Roles exempt from all the filters above (staff, bots you trust). */
   exemptRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).default([]),
+  /** Role given by /mute. Set it up so the role denies Send Messages. */
+  mutedRoleId: snowflake,
 
   // ---------------- Anti-spam / anti-scam ----------------
   /**

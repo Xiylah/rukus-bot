@@ -173,6 +173,16 @@ export function ModerationForm({
               checked={config.purgeAllCopies}
               onChange={(v) => set("purgeAllCopies", v)}
             />
+
+            <Select
+              label="Spam report channel"
+              hint="Where the 'Spam blocked' reports go. Leave empty to use the mod-log channel below."
+              value={config.spamLogChannelId}
+              onChange={(v) => set("spamLogChannelId", v)}
+              options={channels}
+              prefix="#"
+              placeholder="Use the mod-log channel"
+            />
           </>
         )}
       </div>
@@ -279,6 +289,15 @@ export function ModerationForm({
 
       <div className="card space-y-4">
         <div className="font-medium text-white">Staff settings</div>
+        <Select
+          label="Muted role"
+          hint="The role /mute gives. Create a role that denies Send Messages in your channels, then pick it here. Keep it BELOW the bot's role or the bot can't assign it."
+          value={config.mutedRoleId}
+          onChange={(v) => set("mutedRoleId", v)}
+          options={roles}
+          prefix="@"
+          placeholder="No muted role (/mute disabled)"
+        />
         <MultiSelect
           label="Exempt roles"
           hint="These roles bypass every filter above. Anyone with Manage Messages is always exempt."
