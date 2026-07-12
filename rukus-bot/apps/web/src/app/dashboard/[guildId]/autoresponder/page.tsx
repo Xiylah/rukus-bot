@@ -17,13 +17,15 @@ export default async function AutoResponderPage({
     <div>
       <h1 className="mb-1 text-2xl font-bold text-white">💬 Auto-responder</h1>
       <p className="mb-6 text-sm text-zinc-400">
-        Automatically replies to common questions like &quot;when&apos;s the next
-        event?&quot; or &quot;I lost my items&quot; using keyword matching.
+        Build your own rules: what phrases to answer, what to ignore, how loosely
+        to match, where it applies, and exactly what the bot says back. Test any
+        message at the bottom before you save.
       </p>
       <AutoResponderForm
         guildId={guildId}
         initial={config}
         channels={options.channels}
+        roles={options.roles}
       />
     </div>
   );

@@ -1,11 +1,12 @@
 import {
   SlashCommandBuilder,
   PermissionFlagsBits,
-  ChannelType,
   MessageFlags,
+  EmbedBuilder,
   type ChatInputCommandInteraction,
 } from "discord.js";
 import { getAutoResponderConfig, setAutoResponderConfig } from "@rukus/db";
+import { COLORS, evaluateAll, migrateLegacyRules } from "@rukus/shared";
 import { invalidate } from "../lib/configCache.js";
 import type { Command } from "../lib/types.js";
 
@@ -14,7 +15,7 @@ const ephemeral = { flags: MessageFlags.Ephemeral as const };
 const command: Command = {
   data: new SlashCommandBuilder()
     .setName("autoresponder")
-    .setDescription("Configure the event/lost-item auto-responder")
+    .setDescription("Auto-responder rules (build them on the dashboard)")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setDMPermission(false)
     .addSubcommand((s) =>
@@ -26,77 +27,87 @@ const command: Command = {
         ),
     )
     .addSubcommand((s) =>
-      s
-        .setName("channels")
-        .setDescription("Set the channels the replies point members to")
-        .addChannelOption((o) =>
-          o
-            .setName("events")
-            .setDescription("Channel for event questions")
-            .addChannelTypes(ChannelType.GuildText),
-        )
-        .addChannelOption((o) =>
-          o
-            .setName("support")
-            .setDescription("Channel for lost-item reports")
-            .addChannelTypes(ChannelType.GuildText),
-        ),
+      s.setName("rules").setDescription("List the configured rules"),
     )
     .addSubcommand((s) =>
       s
-        .setName("addphrase")
-        .setDescription("Teach the responder a new event phrasing")
+        .setName("test")
+        .setDescription("See which rule a message would trigger")
         .addStringOption((o) =>
           o
-            .setName("phrase")
-            .setDescription('e.g. "when is the tournament"')
+            .setName("message")
+            .setDescription("The message to test")
             .setRequired(true),
         ),
-    )
-    .addSubcommand((s) =>
-      s.setName("status").setDescription("Show the current auto-responder settings"),
     ),
 
   execute: async (interaction: ChatInputCommandInteraction) => {
     if (!interaction.inCachedGuild()) return;
     const guildId = interaction.guildId;
     const sub = interaction.options.getSubcommand();
-    const config = await getAutoResponderConfig(guildId);
+    const config = migrateLegacyRules(await getAutoResponderConfig(guildId));
 
-    if (sub === "status") {
+    if (sub === "toggle") {
+      const enabled = interaction.options.getBoolean("enabled", true);
+      await setAutoResponderConfig(guildId, { ...config, enabled });
+      invalidate(guildId);
       await interaction.reply({
-        content:
-          `**Auto-responder settings**\n` +
-          `• Enabled: ${config.enabled ? "yes" : "no"}\n` +
-          `• Events channel: ${config.eventChannelId ? `<#${config.eventChannelId}>` : "not set"}\n` +
-          `• Support channel: ${config.supportChannelId ? `<#${config.supportChannelId}>` : "not set"}\n` +
-          `• Custom phrases: ${config.extraEventPhrases.length}`,
+        content: `✅ Auto-responder is now **${enabled ? "on" : "off"}** with ${config.rules.length} rule(s).`,
         ...ephemeral,
       });
       return;
     }
 
-    const next = { ...config };
-    if (sub === "toggle") {
-      next.enabled = interaction.options.getBoolean("enabled", true);
-    } else if (sub === "channels") {
-      const events = interaction.options.getChannel("events");
-      const support = interaction.options.getChannel("support");
-      if (events) next.eventChannelId = events.id;
-      if (support) next.supportChannelId = support.id;
-    } else if (sub === "addphrase") {
-      const phrase = interaction.options.getString("phrase", true).trim();
-      if (!next.extraEventPhrases.includes(phrase)) {
-        next.extraEventPhrases = [...next.extraEventPhrases, phrase];
+    if (sub === "rules") {
+      if (config.rules.length === 0) {
+        await interaction.reply({
+          content: "No rules yet. Build them on the dashboard's Auto-responder page.",
+          ...ephemeral,
+        });
+        return;
       }
+      const lines = config.rules.map(
+        (r) =>
+          `${r.enabled ? "🟢" : "⚪"} **${r.name}** - ${r.matchMode}` +
+          (r.matchMode === "fuzzy" ? ` @ ${r.threshold}%` : "") +
+          `, ${r.triggers.length} trigger(s)` +
+          (r.questionsOnly ? ", questions only" : ""),
+      );
+      await interaction.reply({
+        content: `**Auto-responder** (${config.enabled ? "on" : "off"})\n${lines.join("\n")}`,
+        ...ephemeral,
+      });
+      return;
     }
 
-    await setAutoResponderConfig(guildId, next);
-    invalidate(guildId);
-    await interaction.reply({
-      content: `✅ Saved. Auto-responder is **${next.enabled ? "on" : "off"}** with ${next.extraEventPhrases.length} custom phrase(s).`,
-      ...ephemeral,
+    // test
+    const text = interaction.options.getString("message", true);
+    const { evaluations, best } = evaluateAll(config, text, {
+      channelId: interaction.channelId,
     });
+
+    const embed = new EmbedBuilder()
+      .setColor(best ? COLORS.success : COLORS.neutral)
+      .setTitle(best ? `Would reply: ${best.rule.name}` : "No rule would fire")
+      .setDescription(
+        `Testing: "${text.slice(0, 200)}"` +
+          (best ? `\nMatched trigger: "${best.trigger}" (${best.score}%)` : ""),
+      );
+
+    const detail = evaluations
+      .slice(0, 10)
+      .map((e) => {
+        const status = e.matched
+          ? `✅ ${e.score}%`
+          : e.skip === "no-trigger-matched" && e.score > 0
+            ? `❌ ${e.score}% (needs ${e.rule.threshold}%)`
+            : `❌ ${e.skip}`;
+        return `**${e.rule.name}**: ${status}`;
+      })
+      .join("\n");
+    if (detail) embed.addFields({ name: "All rules", value: detail.slice(0, 1024) });
+
+    await interaction.reply({ embeds: [embed], ...ephemeral });
   },
 };
 

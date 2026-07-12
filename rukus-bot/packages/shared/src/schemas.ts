@@ -182,13 +182,75 @@ export type TranslationConfig = z.infer<typeof translationConfigSchema>;
 
 // ---------------- Auto-responder (events / lost items) ----------------
 
+/** How a rule decides whether a message matches its trigger phrases. */
+export const matchModeSchema = z.enum(["fuzzy", "contains", "word", "regex"]);
+export type MatchMode = z.infer<typeof matchModeSchema>;
+
+/**
+ * One auto-response rule. Entirely server-defined: what to match, what NOT to
+ * match, how loosely, where, how often, and what to say back.
+ */
+export const autoRuleSchema = z.object({
+  id: z.string().min(1),
+  enabled: z.boolean().default(true),
+  /** Staff-facing name, e.g. "Event questions". */
+  name: z.string().min(1).max(80).default("New rule"),
+
+  // ---- Matching ----
+  /** Phrases that should trigger this rule. */
+  triggers: z.array(z.string().min(1).max(300)).max(200).default([]),
+  /** If any of these appear, never respond (e.g. "the event was fun"). */
+  exclusions: z.array(z.string().min(1).max(300)).max(200).default([]),
+  matchMode: matchModeSchema.default("fuzzy"),
+  /**
+   * How closely a message must match a trigger, 0-100. Only used in fuzzy
+   * mode. Higher = stricter. ~60 is a good starting point.
+   */
+  threshold: z.number().int().min(0).max(100).default(60),
+  /** Only fire on messages that look like questions. */
+  questionsOnly: z.boolean().default(false),
+  /** Ignore messages shorter than this (characters). */
+  minLength: z.number().int().min(0).max(200).default(8),
+
+  // ---- Response ----
+  /** Plain message text. Supports {user}, {server}, {channel}. */
+  responseText: z.string().max(2000).default(""),
+  /** Send as an embed instead of plain text. */
+  useEmbed: z.boolean().default(true),
+  embedTitle: z.string().max(256).default(""),
+  embedColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default("#5865f2"),
+  /** Reply to the triggering message (vs posting a standalone message). */
+  replyToUser: z.boolean().default(true),
+  /** Delete the response after N seconds (0 = keep it). */
+  deleteAfterSec: z.number().int().min(0).max(3600).default(0),
+
+  // ---- Scoping ----
+  /** Only run in these channels. Empty = every channel. */
+  channelIds: z.array(z.string().regex(/^\d{17,20}$/)).default([]),
+  /** Never run in these channels. */
+  ignoredChannelIds: z.array(z.string().regex(/^\d{17,20}$/)).default([]),
+  /** Members with any of these roles are ignored (e.g. staff). */
+  ignoredRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).default([]),
+  /** Don't fire this rule again in the same channel for N seconds. */
+  cooldownSec: z.number().int().min(0).max(86400).default(30),
+});
+
+export type AutoRule = z.infer<typeof autoRuleSchema>;
+
 export const autoResponderConfigSchema = z.object({
   enabled: z.boolean().default(false),
-  /** Channel referenced in the "check the events channel" reply. */
+  /** Fully custom rules. Any server can build whatever responses it wants. */
+  rules: z.array(autoRuleSchema).max(50).default([]),
+
+  // ---- Legacy fields, kept so old configs still parse and can be migrated ----
+  /** @deprecated Migrated into `rules`. */
   eventChannelId: snowflake,
-  /** Channel referenced in the "open a support ticket" reply for lost items. */
+  /** @deprecated Migrated into `rules`. */
   supportChannelId: snowflake,
-  /** Extra event phrasings learned/added on top of the built-in bank. */
+  /** @deprecated Migrated into `rules`. */
   extraEventPhrases: z.array(z.string()).default([]),
 });
 

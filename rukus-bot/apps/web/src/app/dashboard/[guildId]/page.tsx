@@ -50,7 +50,7 @@ export default async function GuildOverview({
       href: `/dashboard/${guildId}/autoresponder`,
       title: "💬 Auto-responder",
       status: autoresponder.enabled ? "Enabled" : "Disabled",
-      detail: `${autoresponder.extraEventPhrases.length} custom phrase(s)`,
+      detail: `${autoresponder.rules.length} rule(s)`,
       on: autoresponder.enabled,
     },
     {

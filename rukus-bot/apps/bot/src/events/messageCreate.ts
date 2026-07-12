@@ -9,12 +9,8 @@ import {
 import { checkFilters, logFiltered } from "../features/moderation/autoMod.js";
 import { translateText } from "../features/translation/translate.js";
 import { translationEmbed } from "../features/translation/ui.js";
-import { classify } from "../features/autoresponder/classify.js";
-import {
-  eventEmbed,
-  supportEmbed,
-} from "../features/autoresponder/ui.js";
-import { isTicketChannel, getTicketMeta } from "../features/tickets/isTicket.js";
+import { runAutoResponder } from "../features/autoresponder/respond.js";
+import { getTicketMeta } from "../features/tickets/isTicket.js";
 
 /**
  * Main message pipeline - the TS equivalent of the Python on_message, but every
@@ -102,24 +98,14 @@ const handler: EventHandler<Events.MessageCreate> = {
       }
     }
 
-    // --- Event / lost-item auto-responder ---
+    // --- Auto-responder (custom rules) ---
     const ar = await autoResponderConfig(guildId);
     if (ar.enabled) {
-      const intent = classify(content, ar.extraEventPhrases);
       // Never auto-respond inside a ticket: staff are already helping there,
       // and "open a support ticket" advice inside a ticket is nonsense.
-      // (Checked only when we'd actually reply, and cached, so ordinary chat
-      // costs no database lookups. Translation still works in tickets.)
-      if (intent && (await isTicketChannel(message.channelId))) return;
-      if (intent === "lost_items") {
-        await message
-          .reply({ embeds: [supportEmbed(ar.supportChannelId)] })
-          .catch(() => {});
-      } else if (intent === "event") {
-        await message
-          .reply({ embeds: [eventEmbed(ar.eventChannelId)] })
-          .catch(() => {});
-      }
+      // ticketMeta is already loaded above, so this costs nothing extra.
+      if (ticketMeta) return;
+      await runAutoResponder(message, ar);
     }
   },
 };
