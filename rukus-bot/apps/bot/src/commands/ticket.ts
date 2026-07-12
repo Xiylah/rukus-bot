@@ -19,6 +19,9 @@ import {
   claimTicket,
   allSupportRoleIds,
 } from "../features/tickets/service.js";
+import { detectLanguage } from "../features/translation/translate.js";
+import { LANGUAGE_CHOICES } from "../features/translation/lang.js";
+import { invalidateTicketMeta } from "../features/tickets/isTicket.js";
 import type { Command } from "../lib/types.js";
 
 const ephemeral = { flags: MessageFlags.Ephemeral as const };
@@ -58,6 +61,27 @@ const command: Command = {
             .setRequired(true),
         ),
     )
+    .addSubcommand((s) => {
+      s
+        .setName("translate")
+        .setDescription("Two-way live translation with the ticket opener (staff)")
+        .addBooleanOption((o) =>
+          o
+            .setName("enabled")
+            .setDescription("Turn conversation translation on or off")
+            .setRequired(true),
+        );
+      s.addStringOption((o) => {
+        o.setName("language").setDescription(
+          "The opener's language (leave empty to auto-detect from their messages)",
+        );
+        for (const [name, value] of Object.entries(LANGUAGE_CHOICES)) {
+          o.addChoices({ name, value });
+        }
+        return o;
+      });
+      return s;
+    })
     .addSubcommand((s) =>
       s
         .setName("add")
@@ -104,7 +128,7 @@ const command: Command = {
     // ---- Staff subcommands (support role or admin, inside a ticket) ----
     if (
       sub === "close" || sub === "claim" || sub === "add" ||
-      sub === "remove" || sub === "autoclose"
+      sub === "remove" || sub === "autoclose" || sub === "translate"
     ) {
       const config = await ticketConfig(guildId);
       if (!hasAnyRole(member, allSupportRoleIds(config))) {
@@ -128,6 +152,63 @@ const command: Command = {
         await interaction.deferReply();
         const result = await closeTicketFlow(channel, config, interaction.user.id);
         await interaction.editReply({ content: result.message });
+        return;
+      }
+
+      if (sub === "translate") {
+        const enabled = interaction.options.getBoolean("enabled", true);
+        const { prisma } = await import("@rukus/db");
+
+        if (!enabled) {
+          await prisma.ticket.update({
+            where: { channelId: interaction.channelId },
+            data: { translateLang: null },
+          });
+          invalidateTicketMeta(interaction.channelId);
+          await interaction.reply({
+            content: "🌐 Conversation translation turned off.",
+          });
+          return;
+        }
+
+        let lang = interaction.options.getString("language") ?? undefined;
+        if (!lang) {
+          // Auto-detect from the opener's most recent substantial message.
+          await interaction.deferReply();
+          const recent = await channel.messages.fetch({ limit: 50 });
+          const openerMsg = [...recent.values()].find(
+            (m) => m.author.id === ticket.openerId && m.content.trim().length >= 12,
+          );
+          const detected = openerMsg
+            ? await detectLanguage(openerMsg.content)
+            : null;
+          if (!detected) {
+            await interaction.editReply({
+              content:
+                "I couldn't detect the opener's language from their messages. " +
+                "Run the command again and pick the `language` option.",
+            });
+            return;
+          }
+          lang = detected.code.split("-")[0]!.toLowerCase();
+          if (lang === "zh") lang = "zh-CN";
+        }
+
+        await prisma.ticket.update({
+          where: { channelId: interaction.channelId },
+          data: { translateLang: lang },
+        });
+        invalidateTicketMeta(interaction.channelId);
+
+        const reply = {
+          content:
+            `🌐 Conversation translation is ON (\`${lang}\`). ` +
+            `The opener's messages get translated for staff, and staff messages ` +
+            `get translated to \`${lang}\` for the opener. ` +
+            "Turn off with `/ticket translate enabled:False`.",
+        };
+        if (interaction.deferred) await interaction.editReply(reply);
+        else await interaction.reply(reply);
         return;
       }
 

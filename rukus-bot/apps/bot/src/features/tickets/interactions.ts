@@ -1,5 +1,7 @@
 import {
   ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   ChannelType,
   EmbedBuilder,
   MessageFlags,
@@ -396,7 +398,101 @@ export async function closeTicketFlow(
   }
 
   await channel.send(closedControlsMessage(closedById));
+
+  // Ask the opener how it went (5-star DM). Never blocks the close.
+  try {
+    if (!ticket.rating) {
+      const opener = await channel.client.users.fetch(ticket.openerId);
+      const stars = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        [1, 2, 3, 4, 5].map((n) =>
+          new ButtonBuilder()
+            .setCustomId(`${CID.ticketRate}:${ticket.id}:${n}`)
+            .setLabel("⭐".repeat(n))
+            .setStyle(ButtonStyle.Secondary),
+        ),
+      );
+      await opener.send({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(COLORS.primary)
+            .setTitle("How was your support?")
+            .setDescription(
+              `Your **${ticket.subject ?? "Support"}** ticket in ` +
+                `**${channel.guild.name}** was just closed. ` +
+                `Mind rating the help you received?`,
+            ),
+        ],
+        components: [stars],
+      });
+    }
+  } catch {
+    /* DMs closed is normal */
+  }
+
   return { ok: true, message: `🔒 Ticket closed.${transcriptNote}` };
+}
+
+/**
+ * Opener clicked a star in the rating DM. Runs OUTSIDE a guild, so it must
+ * not assume guild context; everything it needs comes from the ticket row.
+ */
+export async function handleRateButton(interaction: ButtonInteraction) {
+  const parts = interaction.customId.split(":");
+  const ticketId = parts[2];
+  const stars = Number(parts[3]);
+  if (!ticketId || !Number.isInteger(stars) || stars < 1 || stars > 5) return;
+
+  const { prisma } = await import("@rukus/db");
+  const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+  if (!ticket) {
+    await interaction.update({ embeds: [], components: [], content: "This ticket no longer exists." });
+    return;
+  }
+  if (ticket.rating) {
+    await interaction.reply({
+      content: `You already rated this ticket ${"⭐".repeat(ticket.rating)}.`,
+      ...ephemeral,
+    });
+    return;
+  }
+
+  await prisma.ticket.update({ where: { id: ticketId }, data: { rating: stars } });
+
+  await interaction.update({
+    embeds: [
+      new EmbedBuilder()
+        .setColor(COLORS.success)
+        .setTitle("Thanks for the feedback!")
+        .setDescription(`You rated your support ${"⭐".repeat(stars)} (${stars}/5).`),
+    ],
+    components: [],
+  });
+
+  // Surface the rating to staff in the ticket's transcript channel.
+  try {
+    const guild = interaction.client.guilds.cache.get(ticket.guildId);
+    if (!guild) return;
+    const config = await ticketConfig(ticket.guildId);
+    const type = config.types.find((t) => t.id === ticket.typeId);
+    const logChannelId = type?.transcriptChannelId ?? config.transcriptChannelId;
+    if (!logChannelId) return;
+    const logChannel = guild.channels.cache.get(logChannelId);
+    if (!logChannel?.isSendable()) return;
+    await logChannel.send({
+      embeds: [
+        new EmbedBuilder()
+          .setColor(stars >= 4 ? COLORS.success : stars >= 3 ? COLORS.warning : COLORS.danger)
+          .setDescription(
+            `${"⭐".repeat(stars)} (${stars}/5) rating for ticket ` +
+              `**#${String(ticket.number).padStart(4, "0")}** (${ticket.subject ?? "Support"})` +
+              `\nOpened by <@${ticket.openerId}>` +
+              (ticket.claimedBy ? ` • handled by <@${ticket.claimedBy}>` : ""),
+          ),
+      ],
+    });
+  } catch {
+    /* log failure is non-fatal */
+  }
 }
 
 /** Close confirmed via the button. */

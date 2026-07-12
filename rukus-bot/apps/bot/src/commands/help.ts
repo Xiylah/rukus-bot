@@ -23,7 +23,9 @@ const command: Command = {
           value:
             "`/ticket panel` post the ticket panel\n" +
             "`/ticket setup` quick setup\n" +
-            "`/ticket close` `claim` `add` `remove` manage a ticket (staff)",
+            "`/ticket close` `claim` `add` `remove` manage a ticket (staff)\n" +
+            "`/ticket translate` two-way live translation with the opener\n" +
+            "Openers get a 5-star rating DM when their ticket closes",
         },
         {
           name: "📝 Forms",

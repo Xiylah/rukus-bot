@@ -44,6 +44,10 @@ const handler: EventHandler<Events.InteractionCreate> = {
         "customId" in interaction ? (interaction.customId as string) : "";
 
       if (interaction.isButton()) {
+        // Rating buttons live in DMs, so this must come before any handler
+        // that assumes guild context.
+        if (customId.startsWith(CID.ticketRate))
+          return void (await tickets.handleRateButton(interaction));
         if (customId.startsWith(CID.ticketOpen))
           return void (await tickets.handleOpenButton(interaction));
         if (customId.startsWith(CID.ticketClaim))

@@ -14,7 +14,7 @@ import {
   eventEmbed,
   supportEmbed,
 } from "../features/autoresponder/ui.js";
-import { isTicketChannel } from "../features/tickets/isTicket.js";
+import { isTicketChannel, getTicketMeta } from "../features/tickets/isTicket.js";
 
 /**
  * Main message pipeline - the TS equivalent of the Python on_message, but every
@@ -56,9 +56,33 @@ const handler: EventHandler<Events.MessageCreate> = {
 
     if (!content || content.length < 8) return;
 
-    // --- Auto-translation ---
+    // --- Translation ---
     const trans = await translationConfig(guildId);
-    if (trans.autoTranslate) {
+    const ticketMeta = await getTicketMeta(message.channelId);
+
+    if (ticketMeta?.translateLang) {
+      // Two-way ticket conversation mode: the opener's messages get translated
+      // to the guild's language for staff; everyone else's messages get
+      // translated to the opener's language. translateText() returns null when
+      // the text is already in the target language, so nothing double-posts.
+      const target =
+        message.author.id === ticketMeta.openerId
+          ? trans.targetLang || "en"
+          : ticketMeta.translateLang;
+      try {
+        const result = await translateText(content, target);
+        if (result) {
+          await message.reply({
+            embeds: [
+              translationEmbed({ translated: result.text, src: result.src, target }),
+            ],
+            allowedMentions: { repliedUser: false },
+          });
+        }
+      } catch (e) {
+        log.warn(`Ticket conversation translate failed: ${String(e)}`);
+      }
+    } else if (trans.autoTranslate) {
       try {
         const result = await translateText(content, trans.targetLang);
         if (result) {

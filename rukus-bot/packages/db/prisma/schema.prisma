@@ -89,6 +89,13 @@ model Ticket {
   createdAt DateTime  @default(now())
   closedAt  DateTime?
 
+  /// Two-way conversation translation: the opener's language code (e.g.
+  /// "fr"). Staff messages get translated to it, opener messages to the
+  /// guild's target language. Null = mode off.
+  translateLang String?
+  /// Post-close satisfaction rating from the opener (1-5 stars).
+  rating        Int?
+
   /// Staff opted this ticket out of inactivity auto-close.
   autoCloseDisabled   Boolean   @default(false)
   /// When the inactivity warning was posted (null = not warned).
