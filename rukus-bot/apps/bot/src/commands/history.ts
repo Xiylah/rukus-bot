@@ -35,11 +35,13 @@ const command: Command = {
     const summary = counts
       .map((c) => `${c._count}x ${c.action}`)
       .join(" • ");
+    const base = process.env.DASHBOARD_URL?.replace(/\/+$/, "");
     const lines = cases.map((c) => {
       const style = ACTION_STYLE[c.action];
       const when = `<t:${Math.floor(c.createdAt.getTime() / 1000)}:R>`;
       const dur = c.durationMin ? ` (${formatMinutes(c.durationMin)})` : "";
-      return `${style.emoji} **#${String(c.number).padStart(4, "0")}** ${c.action}${dur} by <@${c.moderatorId}> ${when}\n${c.reason ? `> ${c.reason.slice(0, 120)}` : "> no reason"}`;
+      const proof = c.proofToken && base ? ` [📎 proof](${base}/proof/${c.proofToken})` : "";
+      return `${style.emoji} **#${String(c.number).padStart(4, "0")}** ${c.action}${dur} by <@${c.moderatorId}> ${when}${proof}\n${c.reason ? `> ${c.reason.slice(0, 120)}` : "> no reason"}`;
     });
 
     const embed = new EmbedBuilder()

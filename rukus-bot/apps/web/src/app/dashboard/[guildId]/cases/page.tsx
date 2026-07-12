@@ -10,7 +10,7 @@ export default async function CasesPage({
 
   const { data } = await getSupabase()
     .from("ModCase")
-    .select("number, action, userId, userTag, moderatorId, reason, durationMin, createdAt")
+    .select("number, action, userId, userTag, moderatorId, reason, durationMin, createdAt, proofToken")
     .eq("guildId", guildId)
     .order("number", { ascending: false })
     .limit(200);
@@ -24,6 +24,7 @@ export default async function CasesPage({
     reason: c.reason ?? "",
     durationMin: c.durationMin,
     createdAt: c.createdAt,
+    proofToken: c.proofToken ?? null,
   }));
 
   return (

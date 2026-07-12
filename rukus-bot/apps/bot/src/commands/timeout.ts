@@ -39,6 +39,9 @@ const command: Command = {
     b.addStringOption((o) =>
       o.setName("reason").setDescription("Why").setMaxLength(500),
     );
+    b.addAttachmentOption((o) =>
+      o.setName("proof").setDescription("Screenshot or image evidence (stored permanently)"),
+    );
     return b;
   })(),
 
@@ -68,19 +71,24 @@ const command: Command = {
       `${interaction.user.tag}: ${reason ?? "no reason"}`,
     );
 
-    const number = await createCase({
+    const { number, proofUrl, proofError } = await createCase({
       guild: interaction.guild,
       action: removing ? "UNTIMEOUT" : "TIMEOUT",
       target,
       moderatorId: interaction.user.id,
       reason,
       durationMin: removing ? undefined : minutes,
+      proof: interaction.options.getAttachment("proof"),
     });
 
     await interaction.reply({
       content: removing
         ? `🔊 Timeout removed for ${target}. Case #${String(number).padStart(4, "0")}.`
-        : `🔇 ${target} timed out for ${formatMinutes(minutes)}. Case #${String(number).padStart(4, "0")}.${reason ? ` Reason: ${reason}` : ""}`,
+        : `🔇 ${target} timed out for ${formatMinutes(minutes)}. Case #${String(number).padStart(4, "0")}.${reason ? ` Reason: ${reason}` : ""}` +
+          (proofUrl ? `
+Proof: ${proofUrl}` : "") +
+          (proofError ? `
+(Proof skipped: ${proofError})` : ""),
     });
   },
 };

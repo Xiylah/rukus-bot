@@ -24,6 +24,9 @@ const command: Command = {
         .addStringOption((o) =>
           o.setName("reason").setDescription("Why").setMaxLength(500),
         )
+        .addAttachmentOption((o) =>
+          o.setName("proof").setDescription("Screenshot or image evidence (stored permanently)"),
+        )
         .addIntegerOption((o) =>
           o
             .setName("delete_messages")
@@ -67,12 +70,13 @@ const command: Command = {
       }
 
       // Record + DM BEFORE the ban, or the DM can no longer be delivered.
-      const number = await createCase({
+      const { number, proofUrl, proofError } = await createCase({
         guild: interaction.guild,
         action: "BAN",
         target,
         moderatorId: interaction.user.id,
         reason,
+        proof: interaction.options.getAttachment("proof"),
       });
       await interaction.guild.members.ban(target.id, {
         reason: `${interaction.user.tag}: ${reason ?? "no reason"}`,
@@ -80,7 +84,12 @@ const command: Command = {
       });
 
       await interaction.reply({
-        content: `🔨 ${target.tag} was banned. Case #${String(number).padStart(4, "0")}.${reason ? ` Reason: ${reason}` : ""}`,
+        content:
+          `🔨 ${target.tag} was banned. Case #${String(number).padStart(4, "0")}.${reason ? ` Reason: ${reason}` : ""}` +
+          (proofUrl ? `
+Proof: ${proofUrl}` : "") +
+          (proofError ? `
+(Proof skipped: ${proofError})` : ""),
       });
       return;
     }
@@ -107,7 +116,7 @@ const command: Command = {
       return;
     }
     const target = await interaction.client.users.fetch(userId).catch(() => null);
-    const number = await createCase({
+    const { number } = await createCase({
       guild: interaction.guild,
       action: "UNBAN",
       target: target ?? ({ id: userId, tag: userId, send: async () => {} } as never),

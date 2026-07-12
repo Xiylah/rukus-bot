@@ -135,6 +135,11 @@ model ModCase {
   reason      String?
   /// Timeout length in minutes, when applicable.
   durationMin Int?
+  /// Proof image: stored as base64 so it outlives Discord's expiring CDN
+  /// links, served by the dashboard at /proof/<token>.
+  proofToken       String? @unique
+  proofData        String?
+  proofContentType String?
   createdAt   DateTime   @default(now())
 
   @@unique([guildId, number])

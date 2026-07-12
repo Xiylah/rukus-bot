@@ -11,6 +11,7 @@ export interface CaseRow {
   reason: string;
   durationMin: number | null;
   createdAt: string;
+  proofToken: string | null;
 }
 
 const ACTION_BADGE: Record<string, string> = {
@@ -69,6 +70,7 @@ export function CasesTable({ cases }: { cases: CaseRow[] }) {
                 <th className="px-4 py-3">Moderator</th>
                 <th className="px-4 py-3">Reason</th>
                 <th className="px-4 py-3">When</th>
+                <th className="px-4 py-3">Proof</th>
               </tr>
             </thead>
             <tbody>
@@ -94,6 +96,20 @@ export function CasesTable({ cases }: { cases: CaseRow[] }) {
                   </td>
                   <td className="whitespace-nowrap px-4 py-2.5 text-zinc-400">
                     {new Date(c.createdAt).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {c.proofToken ? (
+                      <a
+                        href={`/proof/${c.proofToken}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blurple hover:underline"
+                      >
+                        📎 View
+                      </a>
+                    ) : (
+                      <span className="text-zinc-600">-</span>
+                    )}
                   </td>
                 </tr>
               ))}

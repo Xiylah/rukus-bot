@@ -19,6 +19,9 @@ const command: Command = {
     )
     .addStringOption((o) =>
       o.setName("reason").setDescription("Why").setMaxLength(500),
+    )
+    .addAttachmentOption((o) =>
+      o.setName("proof").setDescription("Screenshot or image evidence (stored permanently)"),
     ),
 
   execute: async (interaction: ChatInputCommandInteraction) => {
@@ -41,17 +44,23 @@ const command: Command = {
     }
 
     // Record + DM BEFORE the kick, or the DM can no longer be delivered.
-    const number = await createCase({
+    const { number, proofUrl, proofError } = await createCase({
       guild: interaction.guild,
       action: "KICK",
       target,
       moderatorId: interaction.user.id,
       reason,
+      proof: interaction.options.getAttachment("proof"),
     });
     await member.kick(`${interaction.user.tag}: ${reason ?? "no reason"}`);
 
     await interaction.reply({
-      content: `👢 ${target.tag} was kicked. Case #${String(number).padStart(4, "0")}.${reason ? ` Reason: ${reason}` : ""}`,
+      content:
+        `👢 ${target.tag} was kicked. Case #${String(number).padStart(4, "0")}.${reason ? ` Reason: ${reason}` : ""}` +
+        (proofUrl ? `
+Proof: ${proofUrl}` : "") +
+        (proofError ? `
+(Proof skipped: ${proofError})` : ""),
     });
   },
 };

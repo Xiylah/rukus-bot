@@ -19,6 +19,9 @@ const command: Command = {
     )
     .addStringOption((o) =>
       o.setName("reason").setDescription("Why").setRequired(true).setMaxLength(500),
+    )
+    .addAttachmentOption((o) =>
+      o.setName("proof").setDescription("Screenshot or image evidence (stored permanently)"),
     ),
 
   execute: async (interaction: ChatInputCommandInteraction) => {
@@ -33,16 +36,22 @@ const command: Command = {
       return;
     }
 
-    const number = await createCase({
+    const { number, proofUrl, proofError } = await createCase({
       guild: interaction.guild,
       action: "WARN",
       target,
       moderatorId: interaction.user.id,
       reason,
+      proof: interaction.options.getAttachment("proof"),
     });
 
     await interaction.reply({
-      content: `⚠️ ${target} has been warned. Case #${String(number).padStart(4, "0")}. Reason: ${reason}`,
+      content:
+        `⚠️ ${target} has been warned. Case #${String(number).padStart(4, "0")}. Reason: ${reason}` +
+        (proofUrl ? `
+Proof: ${proofUrl}` : "") +
+        (proofError ? `
+(Proof skipped: ${proofError})` : ""),
     });
   },
 };

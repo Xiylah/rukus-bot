@@ -1,8 +1,48 @@
-import { EmbedBuilder, type Guild, type User } from "discord.js";
+import { EmbedBuilder, type Attachment, type Guild, type User } from "discord.js";
+import { randomBytes } from "node:crypto";
 import { prisma, type CaseAction } from "@rukus/db";
 import { COLORS } from "@rukus/shared";
 import { moderationConfig } from "../../lib/configCache.js";
 import { log } from "../../lib/logger.js";
+
+const MAX_PROOF_BYTES = 8 * 1024 * 1024; // Discord's default upload cap
+const PROOF_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+
+/**
+ * Download a proof attachment and prepare it for storage. Discord CDN links
+ * EXPIRE after a couple of weeks, so we keep the bytes ourselves and the
+ * dashboard serves them forever at /proof/<token>.
+ * Returns null (with a human reason) when the attachment can't be used.
+ */
+async function fetchProof(
+  attachment: Attachment,
+): Promise<
+  | { token: string; data: string; contentType: string; url?: string }
+  | { error: string }
+> {
+  const type = attachment.contentType?.split(";")[0]?.trim() ?? "";
+  if (!PROOF_TYPES.has(type)) {
+    return { error: "Proof must be an image (png, jpg, gif, or webp)." };
+  }
+  if (attachment.size > MAX_PROOF_BYTES) {
+    return { error: "Proof image is too large (max 8 MB)." };
+  }
+  try {
+    const res = await fetch(attachment.url);
+    if (!res.ok) return { error: "Couldn't download the attachment from Discord." };
+    const buf = Buffer.from(await res.arrayBuffer());
+    const token = randomBytes(24).toString("hex");
+    const base = process.env.DASHBOARD_URL?.replace(/\/+$/, "");
+    return {
+      token,
+      data: buf.toString("base64"),
+      contentType: type,
+      url: base ? `${base}/proof/${token}` : undefined,
+    };
+  } catch {
+    return { error: "Couldn't download the attachment from Discord." };
+  }
+}
 
 /**
  * Moderation case system: every action (/warn, /timeout, /kick, /ban, ...)
@@ -36,15 +76,34 @@ export interface NewCase {
   moderatorId: string;
   reason?: string;
   durationMin?: number;
+  /** Optional proof image attached by the moderator. */
+  proof?: Attachment | null;
+}
+
+export interface CaseResult {
+  number: number;
+  /** Hosted proof URL, when a proof image was stored and DASHBOARD_URL set. */
+  proofUrl?: string;
+  /** Why the proof was skipped, when it was. */
+  proofError?: string;
 }
 
 /**
  * Record a case, DM the target, and post to the mod-log channel.
  * Returns the case number. DM/log failures never block the action itself.
  */
-export async function createCase(params: NewCase): Promise<number> {
-  const { guild, action, target, moderatorId, reason, durationMin } = params;
+export async function createCase(params: NewCase): Promise<CaseResult> {
+  const { guild, action, target, moderatorId, reason, durationMin, proof } = params;
   const number = await nextCaseNumber(guild.id);
+
+  let stored: { token: string; data: string; contentType: string; url?: string } | null =
+    null;
+  let proofError: string | undefined;
+  if (proof) {
+    const result = await fetchProof(proof);
+    if ("error" in result) proofError = result.error;
+    else stored = result;
+  }
 
   await prisma.modCase.create({
     data: {
@@ -56,22 +115,27 @@ export async function createCase(params: NewCase): Promise<number> {
       moderatorId,
       reason: reason ?? null,
       durationMin: durationMin ?? null,
+      proofToken: stored?.token ?? null,
+      proofData: stored?.data ?? null,
+      proofContentType: stored?.contentType ?? null,
     },
   });
 
   const style = ACTION_STYLE[action];
   const durationText = durationMin ? ` for ${formatMinutes(durationMin)}` : "";
+  const proofUrl = stored?.url;
 
   // DM the member (best effort; closed DMs are normal).
   await target
     .send(
       `${style.emoji} You were ${style.verb}${durationText} in **${guild.name}**.` +
         (reason ? `\nReason: ${reason}` : "") +
+        (proofUrl ? `\nProof: ${proofUrl}` : "") +
         `\nCase #${String(number).padStart(4, "0")}`,
     )
     .catch(() => {});
 
-  // Mod-log embed.
+  // Mod-log embed, with the proof image shown inline when available.
   try {
     const mod = await moderationConfig(guild.id);
     if (mod.logChannelId) {
@@ -89,14 +153,27 @@ export async function createCase(params: NewCase): Promise<number> {
             { name: "Reason", value: reason || "No reason provided" },
           )
           .setTimestamp();
-        await channel.send({ embeds: [embed] });
+        if (proofUrl) {
+          embed.setImage(proofUrl).addFields({ name: "Proof", value: proofUrl });
+        }
+        // No dashboard URL configured: attach the image directly instead.
+        const files =
+          stored && !proofUrl
+            ? [
+                {
+                  attachment: Buffer.from(stored.data, "base64"),
+                  name: `proof-case-${number}.${stored.contentType.split("/")[1]}`,
+                },
+              ]
+            : [];
+        await channel.send({ embeds: [embed], files });
       }
     }
   } catch (err) {
     log.warn(`Case log post failed: ${String(err)}`);
   }
 
-  return number;
+  return { number, proofUrl, proofError };
 }
 
 export function formatMinutes(min: number): string {
