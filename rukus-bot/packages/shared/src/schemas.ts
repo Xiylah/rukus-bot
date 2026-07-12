@@ -130,6 +130,11 @@ export const formSchema = z.object({
   title: z.string().min(1).max(45), // becomes the modal title
   description: z.string().max(4000).default(""),
   buttonLabel: z.string().max(80).default("Apply"),
+  /**
+   * Whether this form gets a button on the /form panel. Turn OFF for forms
+   * that only exist as pre-ticket questionnaires attached to ticket types.
+   */
+  showOnPanel: z.boolean().default(true),
   /** Channel where completed submissions are posted for review. */
   reviewChannelId: snowflake,
   /** Role granted automatically on approval (e.g. an "Applicant" role). */

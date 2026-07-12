@@ -108,11 +108,19 @@ export function buildTicketPanelPayload(config: TicketConfig): PanelPayload {
   };
 }
 
-/** The forms panel: embed + one button per form. */
+/**
+ * The forms panel: embed + one button per PANEL form. Forms with showOnPanel
+ * off (pre-ticket questionnaires attached to ticket types) are excluded.
+ */
+export function panelForms(config: FormsConfig) {
+  return config.forms.filter((f) => f.showOnPanel);
+}
+
 export function buildFormsPanelPayload(config: FormsConfig): PanelPayload {
+  const forms = panelForms(config);
   const description =
     config.panel.description.trim() ||
-    config.forms
+    forms
       .map((f) => `• **${f.name}**${f.description ? `: ${f.description}` : ""}`)
       .join("\n") ||
     "No forms configured yet.";
@@ -125,10 +133,10 @@ export function buildFormsPanelPayload(config: FormsConfig): PanelPayload {
 
   // Max 5 buttons per row, max 5 rows.
   const rows: object[] = [];
-  for (let i = 0; i < config.forms.length && rows.length < 5; i += 5) {
+  for (let i = 0; i < forms.length && rows.length < 5; i += 5) {
     rows.push({
       type: 1,
-      components: config.forms.slice(i, i + 5).map((f) => ({
+      components: forms.slice(i, i + 5).map((f) => ({
         type: 2,
         style: 1,
         label: (f.buttonLabel || "Apply").slice(0, 80),

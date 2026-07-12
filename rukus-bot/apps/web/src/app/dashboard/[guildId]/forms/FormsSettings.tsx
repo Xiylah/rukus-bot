@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import type { FormsConfig, Form, FormField } from "@rukus/shared";
 import { Select, type Option } from "@/components/Pickers";
+import { Toggle } from "@/components/Toggle";
 import { DiscordPreview } from "@/components/DiscordPreview";
 import { saveFormsConfig } from "../actions";
 
@@ -27,6 +28,7 @@ function emptyForm(): Form {
     title: "Application",
     description: "",
     buttonLabel: "Apply",
+    showOnPanel: true,
     fields: [emptyField()],
   };
 }
@@ -214,6 +216,13 @@ export function FormsSettings({
               />
             </div>
           </div>
+
+          <Toggle
+            label="Show on the forms panel"
+            hint="Turn OFF for forms that only exist as pre-ticket questions attached to a ticket type; they keep working in tickets but get no panel button."
+            checked={form.showOnPanel}
+            onChange={(v) => updateForm(fi, { showOnPanel: v })}
+          />
 
           <div className="space-y-3">
             <div className="text-sm font-medium text-zinc-300">

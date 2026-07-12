@@ -8,6 +8,7 @@ import {
   type GuildMember,
 } from "discord.js";
 import { getFormsConfig } from "@rukus/db";
+import { panelForms } from "@rukus/shared";
 import { canManageGuild } from "../lib/perms.js";
 import { formPanelMessage } from "../features/forms/ui.js";
 import type { Command } from "../lib/types.js";
@@ -61,14 +62,15 @@ const command: Command = {
       const lines = config.forms.map(
         (f) =>
           `• **${f.name}** (\`${f.id}\`) - ${f.fields.length} field(s), ` +
-          `review: ${f.reviewChannelId ? `<#${f.reviewChannelId}>` : "_none_"}`,
+          `review: ${f.reviewChannelId ? `<#${f.reviewChannelId}>` : "_none_"}` +
+          (f.showOnPanel ? "" : " - hidden from panel (ticket form)"),
       );
       await interaction.reply({ content: lines.join("\n"), ...ephemeral });
       return;
     }
 
     if (sub === "panel") {
-      if (!config.enabled || config.forms.length === 0) {
+      if (!config.enabled || panelForms(config).length === 0) {
         await interaction.reply({
           content:
             "Forms aren't enabled or none are configured. Set them up in the " +
