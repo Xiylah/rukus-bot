@@ -45,6 +45,26 @@ export function TicketSettingsForm({
   const [config, setConfig] = useState<TicketConfig>(initial);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  // Ticket-Tool-style editing: pick ONE type from a dropdown instead of
+  // scrolling through every editor stacked on the page.
+  const [selectedTypeId, setSelectedTypeId] = useState<string | undefined>(
+    initial.types[0]?.id,
+  );
+  const ti = config.types.findIndex((t) => t.id === selectedTypeId);
+  const type = ti >= 0 ? config.types[ti] : undefined;
+
+  function addType() {
+    const t = emptyType();
+    setConfig((c) => ({ ...c, types: [...c.types, t] }));
+    setSelectedTypeId(t.id);
+  }
+  function removeSelectedType() {
+    setConfig((c) => {
+      const types = c.types.filter((t) => t.id !== selectedTypeId);
+      setSelectedTypeId(types[0]?.id);
+      return { ...c, types };
+    });
+  }
 
   function update<K extends keyof TicketConfig>(key: K, value: TicketConfig[K]) {
     setConfig((c) => ({ ...c, [key]: value }));
@@ -176,24 +196,43 @@ export function TicketSettingsForm({
           </p>
         </div>
 
-        {config.types.map((type, ti) => (
-          <div
-            key={type.id}
-            className="space-y-3 rounded-md border border-edge bg-panel p-3"
+        <div className="flex gap-2">
+          <select
+            className="input flex-1"
+            value={selectedTypeId ?? ""}
+            onChange={(e) => setSelectedTypeId(e.target.value || undefined)}
           >
+            {config.types.length === 0 && (
+              <option value="">No ticket types yet, add one →</option>
+            )}
+            {config.types.map((t, i) => (
+              <option key={t.id} value={t.id}>
+                {i + 1} | {t.emoji} {t.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn-primary whitespace-nowrap"
+            onClick={addType}
+            disabled={config.types.length >= 25}
+          >
+            + New type
+          </button>
+        </div>
+
+        {type && ti >= 0 && (
+          <div className="space-y-3 rounded-md border border-edge bg-panel p-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-zinc-500">Type: {type.id}</span>
+              <span className="text-xs text-zinc-500">
+                Editing type {ti + 1} of {config.types.length} ({type.id})
+              </span>
               <button
                 type="button"
                 className="text-sm text-red-400 hover:underline"
-                onClick={() =>
-                  setConfig((c) => ({
-                    ...c,
-                    types: c.types.filter((_, i) => i !== ti),
-                  }))
-                }
+                onClick={removeSelectedType}
               >
-                Remove
+                Remove this type
               </button>
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -291,22 +330,11 @@ export function TicketSettingsForm({
               />
             </div>
           </div>
-        ))}
+        )}
 
-        <button
-          type="button"
-          className="btn-ghost text-sm"
-          onClick={() =>
-            setConfig((c) => ({ ...c, types: [...c.types, emptyType()] }))
-          }
-          disabled={config.types.length >= 25}
-        >
-          + Add ticket type
-        </button>
         <p className="text-xs text-zinc-500">
-          After changing types, re-run{" "}
-          <code className="rounded bg-panel px-1">/ticket panel</code> in Discord
-          so the posted panel picks up the new options.
+          After changing types, save and republish the panel (button at the
+          bottom of this page) so Discord picks up the new options.
         </p>
       </div>
 

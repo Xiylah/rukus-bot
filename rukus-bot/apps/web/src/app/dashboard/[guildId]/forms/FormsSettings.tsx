@@ -47,6 +47,26 @@ export function FormsSettings({
   const [panel, setPanel] = useState(initial.panel);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  // Edit ONE form at a time, picked from a dropdown, instead of stacking
+  // every form's editor down the page.
+  const [selectedFormId, setSelectedFormId] = useState<string | undefined>(
+    initial.forms[0]?.id,
+  );
+  const fi = forms.findIndex((f) => f.id === selectedFormId);
+  const form = fi >= 0 ? forms[fi] : undefined;
+
+  function addForm() {
+    const f = emptyForm();
+    setForms((fs) => [...fs, f]);
+    setSelectedFormId(f.id);
+  }
+  function removeSelectedForm() {
+    setForms((fs) => {
+      const next = fs.filter((f) => f.id !== selectedFormId);
+      setSelectedFormId(next[0]?.id);
+      return next;
+    });
+  }
 
   function updateForm(idx: number, patch: Partial<Form>) {
     setForms((fs) => fs.map((f, i) => (i === idx ? { ...f, ...patch } : f)));
@@ -101,16 +121,44 @@ export function FormsSettings({
         </button>
       </div>
 
-      {forms.map((form, fi) => (
-        <div key={form.id} className="card space-y-4">
+      <div className="card">
+        <div className="flex gap-2">
+          <select
+            className="input flex-1"
+            value={selectedFormId ?? ""}
+            onChange={(e) => setSelectedFormId(e.target.value || undefined)}
+          >
+            {forms.length === 0 && (
+              <option value="">No forms yet, add one →</option>
+            )}
+            {forms.map((f, i) => (
+              <option key={f.id} value={f.id}>
+                {i + 1} | {f.name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn-primary whitespace-nowrap"
+            onClick={addForm}
+          >
+            + New form
+          </button>
+        </div>
+      </div>
+
+      {form && fi >= 0 && (
+        <div className="card space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-zinc-500">Form id: {form.id}</span>
+            <span className="text-xs text-zinc-500">
+              Editing form {fi + 1} of {forms.length} ({form.id})
+            </span>
             <button
               type="button"
               className="text-sm text-red-400 hover:underline"
-              onClick={() => setForms((fs) => fs.filter((_, i) => i !== fi))}
+              onClick={removeSelectedForm}
             >
-              Delete form
+              Delete this form
             </button>
           </div>
 
@@ -303,15 +351,7 @@ export function FormsSettings({
             )}
           </div>
         </div>
-      ))}
-
-      <button
-        type="button"
-        className="btn-ghost"
-        onClick={() => setForms((fs) => [...fs, emptyForm()])}
-      >
-        + Add form
-      </button>
+      )}
 
       <div className="card space-y-4">
         <div className="font-medium text-white">Panel appearance</div>
