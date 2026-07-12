@@ -14,6 +14,7 @@ import {
   eventEmbed,
   supportEmbed,
 } from "../features/autoresponder/ui.js";
+import { isTicketChannel } from "../features/tickets/isTicket.js";
 
 /**
  * Main message pipeline - the TS equivalent of the Python on_message, but every
@@ -81,6 +82,11 @@ const handler: EventHandler<Events.MessageCreate> = {
     const ar = await autoResponderConfig(guildId);
     if (ar.enabled) {
       const intent = classify(content, ar.extraEventPhrases);
+      // Never auto-respond inside a ticket: staff are already helping there,
+      // and "open a support ticket" advice inside a ticket is nonsense.
+      // (Checked only when we'd actually reply, and cached, so ordinary chat
+      // costs no database lookups. Translation still works in tickets.)
+      if (intent && (await isTicketChannel(message.channelId))) return;
       if (intent === "lost_items") {
         await message
           .reply({ embeds: [supportEmbed(ar.supportChannelId)] })
