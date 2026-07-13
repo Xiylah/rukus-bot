@@ -16,9 +16,10 @@ export interface TranscriptParticipant {
 
 export async function buildTranscript(
   channel: TextChannel,
-  opts: { maxMessages?: number } = {},
+  opts: { maxMessages?: number; title?: string } = {},
 ): Promise<{ html: Buffer; count: number; participants: TranscriptParticipant[] }> {
   const max = opts.maxMessages ?? 2000;
+  const title = opts.title ?? channel.name;
   const collected: {
     author: string;
     avatar: string;
@@ -75,7 +76,7 @@ export async function buildTranscript(
   const html = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Ticket transcript - #${esc(channel.name)}</title>
+<title>Ticket transcript - #${esc(title)}</title>
 <style>
   :root { color-scheme: dark; }
   body { margin:0; background:#313338; color:#dbdee1;
@@ -92,7 +93,7 @@ export async function buildTranscript(
 </style></head>
 <body>
 <header>
-  <h1>#${esc(channel.name)}</h1>
+  <h1>#${esc(title)}</h1>
   <p>${collected.length} message(s) • exported ${new Date().toISOString()}</p>
 </header>
 <main>${rows}</main>

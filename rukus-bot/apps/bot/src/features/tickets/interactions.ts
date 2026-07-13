@@ -322,9 +322,12 @@ export async function closeTicketFlow(
   let transcriptNote = "";
   let transcript: { url?: string; token?: string; html?: string } | undefined;
   try {
-    const { html, count, participants } = await buildTranscript(channel);
-    const fileName = `transcript-${channel.name}.html`;
-    const file = { attachment: html, name: fileName };
+    // Name it after the ticket, not the live channel: "closed-0020" reads the
+    // same whether or not the channel was ever renamed.
+    const ticketName = `closed-${String(ticket.number).padStart(4, "0")}`;
+    const { html, count, participants } = await buildTranscript(channel, {
+      title: ticketName,
+    });
 
     const { randomBytes } = await import("node:crypto");
     const token = randomBytes(24).toString("hex");
@@ -356,7 +359,7 @@ export async function closeTicketFlow(
               color: hexToInt(config.panel.color),
               fields: [
                 { name: "Ticket Owner", value: `<@${ticket.openerId}>`, inline: true },
-                { name: "Ticket Name", value: channel.name, inline: true },
+                { name: "Ticket Name", value: ticketName, inline: true },
                 { name: "Panel", value: ticket.subject ?? "Support", inline: true },
                 { name: "Closed By", value: `<@${closedById}>`, inline: true },
                 { name: "Messages", value: String(count), inline: true },
@@ -365,7 +368,9 @@ export async function closeTicketFlow(
               timestamp: new Date().toISOString(),
             },
           ],
-          files: [file],
+          // No HTML attachment: Discord inlines a preview of the whole file,
+          // which dumps the stylesheet into the channel. The Direct Link below
+          // serves the same transcript from /transcript/<token>.
           components: url
             ? [
                 {
