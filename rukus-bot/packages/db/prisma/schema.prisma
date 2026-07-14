@@ -223,6 +223,8 @@ model MemberLevel {
   xp       Int      @default(0)
   level    Int      @default(0)
   messages Int      @default(0)
+  /// Minutes spent in voice that earned XP, shown on the rank card.
+  voiceMinutes Int  @default(0)
   /// Last time XP was awarded, for the per-message cooldown.
   lastXpAt DateTime @default(now())
 
@@ -348,6 +350,50 @@ model Afk {
   since   DateTime @default(now())
 
   @@unique([guildId, userId])
+  @@schema("rukus")
+}
+
+/// A member's birthday in one guild. Year is optional because plenty of people
+/// will happily share the day but not their age.
+model Birthday {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  day       Int
+  month     Int
+  year      Int?
+  createdAt DateTime @default(now())
+
+  @@unique([guildId, userId])
+  /// The daily sweep's query: everyone whose birthday is today.
+  @@index([guildId, month, day])
+  @@schema("rukus")
+}
+
+/// One join attributed to an inviter. Rows, not a counter, so a leaver can be
+/// discounted and a suspicious burst of invites can be inspected.
+model InviteUse {
+  id           String   @id @default(cuid())
+  guildId      String
+  inviterId    String
+  joinedUserId String
+  code         String
+  createdAt    DateTime @default(now())
+
+  @@index([guildId, inviterId])
+  @@schema("rukus")
+}
+
+/// A personal voice channel created from the temp-voice lobby. Deleted with the
+/// channel when it empties.
+model TempVoice {
+  id        String   @id @default(cuid())
+  guildId   String
+  channelId String   @unique
+  ownerId   String
+  createdAt DateTime @default(now())
+
+  @@index([guildId])
   @@schema("rukus")
 }
 

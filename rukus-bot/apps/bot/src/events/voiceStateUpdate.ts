@@ -8,12 +8,20 @@ import {
   shouldLog,
   userLine,
 } from "../features/logging/index.js";
+import { handleVoiceStateXp } from "../features/leveling/voice.js";
+import { handleVoiceState } from "../features/tempvoice/tempvoice.js";
 
 const handler: EventHandler<Events.VoiceStateUpdate> = {
   name: Events.VoiceStateUpdate,
   execute: async (before: VoiceState, after: VoiceState) => {
     const guild = after.guild ?? before.guild;
     if (!guild) return;
+
+    handleVoiceStateXp(before, after);
+
+    // Join-to-create. Runs ahead of the logging returns below, and swallows its
+    // own errors, so a guild with logging switched off still gets temp channels.
+    void handleVoiceState(before, after);
 
     // Mute/deafen/stream toggles fire this event too, and nobody wants a log
     // line every time someone taps their mic.

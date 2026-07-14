@@ -8,10 +8,15 @@ import {
   shouldLog,
   userLine,
 } from "../features/logging/index.js";
+import { rememberInvite } from "../features/invites/cache.js";
 
 const handler: EventHandler<Events.InviteCreate> = {
   name: Events.InviteCreate,
   execute: async (invite: Invite) => {
+    // Keep the invite tracker's snapshot current: a code we have never seen
+    // would otherwise look like it was created AND used the moment it is used.
+    rememberInvite(invite);
+
     const guild = invite.guild;
     // Group-DM invites have no guild, and `guild` is typed loosely enough that
     // the id check is the only reliable way to know we have a real one.

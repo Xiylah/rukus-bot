@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.2",
     "@rukus/db": "workspace:*",
     "@rukus/shared": "workspace:*",
     "@vitalets/google-translate-api": "^9.2.1",

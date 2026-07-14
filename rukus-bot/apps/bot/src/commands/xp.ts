@@ -6,6 +6,7 @@ import {
 } from "discord.js";
 import { levelProgress } from "@rukus/shared";
 import type { Command } from "../lib/types.js";
+import { canManageGuild } from "../lib/perms.js";
 import { levelingConfig } from "../lib/configCache.js";
 import { addXp, setXp, getRank, applyRoleRewards } from "../features/leveling/service.js";
 
@@ -69,6 +70,16 @@ const command: Command = {
   execute: async (interaction: ChatInputCommandInteraction) => {
     if (!interaction.inCachedGuild()) return;
 
+    // setDefaultMemberPermissions is only a default that admins can override, so
+    // the authority is re-checked here.
+    if (!canManageGuild(interaction.member)) {
+      await interaction.reply({
+        content: "You need Manage Server to do that.",
+        ...ephemeral,
+      });
+      return;
+    }
+
     const sub = interaction.options.getSubcommand();
     const user = interaction.options.getUser("user", true);
     const amount = interaction.options.getInteger("amount", true);
@@ -101,6 +112,8 @@ const command: Command = {
 
     // The reward ladder has to follow a manual change, or /xp set becomes a way
     // to hand out a level without the role that is supposed to come with it.
+    // Downwards too: applyRoleRewards honours removeRoleOnLevelDown, so /xp take
+    // can demote someone out of a role they no longer qualify for.
     const member = await interaction.guild.members.fetch(user.id).catch(() => null);
     if (member) await applyRoleRewards(member, config, p.level);
 

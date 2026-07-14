@@ -37,3 +37,34 @@ export async function getLeaderboardRows(
     messages: r.messages ?? 0,
   }));
 }
+
+/**
+ * One page of the leaderboard, plus the total row count.
+ *
+ * The public /leaderboard page pages through the top 100, so it needs an offset
+ * and the total to render "page 2 of 5" without pulling every row in the guild.
+ */
+export async function getLeaderboardPage(
+  guildId: string,
+  offset: number,
+  limit: number,
+): Promise<{ rows: LeaderboardRow[]; total: number }> {
+  const { data, error, count } = await getSupabase()
+    .from("MemberLevel")
+    .select("userId, xp, level, messages", { count: "exact" })
+    .eq("guildId", guildId)
+    .order("xp", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) return { rows: [], total: 0 };
+
+  return {
+    rows: (data ?? []).map((r) => ({
+      userId: r.userId,
+      xp: r.xp ?? 0,
+      level: r.level ?? 0,
+      messages: r.messages ?? 0,
+    })),
+    total: count ?? 0,
+  };
+}

@@ -1,12 +1,15 @@
 import {
   SlashCommandBuilder,
   MessageFlags,
+  AttachmentBuilder,
   type ChatInputCommandInteraction,
 } from "discord.js";
+import { levelProgress } from "@rukus/shared";
 import type { Command } from "../lib/types.js";
 import { levelingConfig } from "../lib/configCache.js";
 import { getRank } from "../features/leveling/service.js";
 import { rankEmbed } from "../features/leveling/ui.js";
+import { renderRankCard } from "../features/leveling/card.js";
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -54,7 +57,33 @@ const command: Command = {
       .fetch(user.id)
       .catch(() => null);
 
-    await interaction.reply({
+    // Rendering the card may fetch a remote background, so the 3s reply window
+    // is not something we can count on.
+    await interaction.deferReply();
+
+    const progress = levelProgress(result.row.xp);
+    const png = await renderRankCard({
+      username: member?.displayName || user.displayName || user.username,
+      avatarUrl: (member ?? user).displayAvatarURL({
+        extension: "png",
+        size: 256,
+      }),
+      level: progress.level,
+      rank: result.rank,
+      xpInLevel: progress.currentXp,
+      xpForLevel: progress.neededXp,
+      totalXp: progress.totalXp,
+      card: config.card,
+    });
+
+    if (png) {
+      await interaction.editReply({
+        files: [new AttachmentBuilder(png, { name: "rank.png" })],
+      });
+      return;
+    }
+
+    await interaction.editReply({
       embeds: [
         rankEmbed(
           user,

@@ -782,6 +782,54 @@ export const xpMultiplierRoleSchema = z.object({
 
 export type XpMultiplierRole = z.infer<typeof xpMultiplierRoleSchema>;
 
+/** Per-channel XP weighting: 0 kills XP in a channel, 2 doubles it. */
+export const channelMultiplierSchema = z.object({
+  channelId: z.string().regex(/^\d{17,20}$/),
+  multiplier: z.number().min(0).max(10).default(1),
+});
+
+export type ChannelMultiplier = z.infer<typeof channelMultiplierSchema>;
+
+/**
+ * The rank card image. This is the whole reason members care about leveling, so
+ * every part of it is server-editable rather than a hardcoded theme.
+ */
+export const rankCardSchema = z.object({
+  /** Image drawn behind the card. Empty = flat backgroundColor. */
+  backgroundUrl: z.string().url().or(z.literal("")).default(""),
+  backgroundColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default("#23272a"),
+  /** Progress bar fill. */
+  accentColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default("#5865f2"),
+  textColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default("#ffffff"),
+  subTextColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default("#b9bbbe"),
+  barBackground: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default("#484b51"),
+  showRank: z.boolean().default(true),
+  showXpNumbers: z.boolean().default(true),
+  /**
+   * Strength of the dark scrim drawn over backgroundUrl, 0-100. A member's
+   * chosen wallpaper is arbitrary, and white text on a bright image is
+   * unreadable, so the card always has a dimmer it can lean on.
+   */
+  opacity: z.number().int().min(0).max(100).default(60),
+});
+
+export type RankCard = z.infer<typeof rankCardSchema>;
+
 export const levelingConfigSchema = z.object({
   enabled: z.boolean().default(false),
   /** XP per qualifying message is rolled in this range, so it can't be farmed
@@ -809,6 +857,36 @@ export const levelingConfigSchema = z.object({
   /** Members with these roles earn no XP (bots-with-roles, staff alt accounts). */
   ignoreRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).max(100).default([]),
   xpMultiplierRoles: z.array(xpMultiplierRoleSchema).max(50).default([]),
+
+  /** The /rank image. */
+  card: rankCardSchema.default({}),
+
+  // ---- Voice XP ----
+  /** Award XP for time spent in voice, not just for typing. */
+  voiceXpEnabled: z.boolean().default(false),
+  voiceXpPerMinute: z.number().int().min(0).max(100).default(5),
+  /** No XP for sitting alone in a channel: that is a farm, not a conversation. */
+  voiceMinMembers: z.number().int().min(1).max(50).default(2),
+  /** No XP in the server's AFK channel. */
+  voiceIgnoreAfk: z.boolean().default(true),
+  /** Self-muted means not participating, so it earns nothing. */
+  voiceIgnoreMuted: z.boolean().default(true),
+  voiceIgnoreChannelIds: z
+    .array(z.string().regex(/^\d{17,20}$/))
+    .max(200)
+    .default([]),
+
+  // ---- Depth ----
+  /** Weight XP per channel, e.g. half XP in #spam, none in #bot-commands. */
+  channelMultipliers: z.array(channelMultiplierSchema).max(50).default([]),
+  /** DM the level-up instead of posting it, for servers that hate the noise. */
+  levelUpDm: z.boolean().default(false),
+  /** Take the reward role back when a member drops below its level. */
+  removeRoleOnLevelDown: z.boolean().default(true),
+  /** Server-wide difficulty slider applied on top of every other multiplier. */
+  xpRate: z.number().min(0.25).max(3).default(1),
+  /** Serve /leaderboard/<guildId> to anyone, not just dashboard staff. */
+  publicLeaderboard: z.boolean().default(true),
 });
 
 export type LevelingConfig = z.infer<typeof levelingConfigSchema>;
@@ -903,6 +981,102 @@ export const utilityConfigSchema = z.object({
 
 export type UtilityConfig = z.infer<typeof utilityConfigSchema>;
 
+// ---------------- Social alerts ----------------
+
+/** Where a feed comes from. Each type reads `source` differently. */
+export const socialFeedTypeSchema = z.enum(["youtube", "twitch", "rss"]);
+export type SocialFeedType = z.infer<typeof socialFeedTypeSchema>;
+
+/** One watched creator/feed and the announcement it produces. */
+export const socialFeedSchema = z.object({
+  id: z.string().min(1),
+  enabled: z.boolean().default(true),
+  type: socialFeedTypeSchema.default("youtube"),
+  /** Channel/user id for youtube, login name for twitch, url for rss. */
+  source: z.string().min(1).max(300),
+  /** Staff-facing name, also the {name} placeholder. */
+  displayName: z.string().min(1).max(80),
+  postChannelId: snowflake,
+  /** Supports {name}, {link}, {title}, {everyone}, {here}, {role}. */
+  message: z
+    .string()
+    .max(2000)
+    .default("{everyone} **{name}** is live!\n{link}"),
+  mentionRoleId: snowflake,
+  /** Twitch only: give this role while they are live, remove when offline. */
+  liveRoleId: snowflake,
+  embedColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default("#5865f2"),
+  /**
+   * Last video/stream/item we announced. The dedupe key: without it a poll that
+   * restarts re-announces the newest item on every tick.
+   */
+  lastItemId: z.string().default(""),
+});
+
+export type SocialFeed = z.infer<typeof socialFeedSchema>;
+
+export const socialAlertsConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  feeds: z.array(socialFeedSchema).max(25).default([]),
+});
+
+export type SocialAlertsConfig = z.infer<typeof socialAlertsConfigSchema>;
+
+// ---------------- Birthdays ----------------
+
+/**
+ * Birthdays themselves are per-user data and live in the Birthday table; only
+ * the guild-wide announcement settings are config.
+ */
+export const birthdaysConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** Where the announcement is posted. */
+  channelId: snowflake,
+  /** Supports {user}, {username}, {server}, {age}. */
+  message: z.string().max(2000).default("🎂 Happy birthday {user}!"),
+  /** Given for the day, then taken back. */
+  birthdayRoleId: snowflake,
+  /** Local hour (in `timezone`) the announcement fires at. */
+  announceHour: z.number().int().min(0).max(23).default(12),
+  /** IANA zone, e.g. "Europe/London". The guild's day, not the server's. */
+  timezone: z.string().min(1).max(64).default("UTC"),
+});
+
+export type BirthdaysConfig = z.infer<typeof birthdaysConfigSchema>;
+
+// ---------------- Invite tracker ----------------
+
+export const inviteTrackerConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  logChannelId: snowflake,
+  /** Supports {user}, {username}, {inviter}, {invites}, {code}, {server}. */
+  message: z
+    .string()
+    .max(2000)
+    .default("{user} joined, invited by {inviter} ({invites} invites)"),
+});
+
+export type InviteTrackerConfig = z.infer<typeof inviteTrackerConfigSchema>;
+
+// ---------------- Temp voice ----------------
+
+export const tempVoiceConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** Joining this channel creates a personal voice channel. */
+  lobbyChannelId: snowflake,
+  /** Where the personal channels are created. */
+  categoryId: snowflake,
+  /** Supports {user}, {username}. */
+  nameTemplate: z.string().min(1).max(90).default("{username}'s channel"),
+  /** Discord's own cap; 0 = unlimited. */
+  userLimit: z.number().int().min(0).max(99).default(0),
+});
+
+export type TempVoiceConfig = z.infer<typeof tempVoiceConfigSchema>;
+
 // ---------------- Registry ----------------
 
 /** Map a feature key to its schema so callers can validate generically. */
@@ -926,6 +1100,10 @@ export const FEATURE_SCHEMAS = {
   highlights: highlightsConfigSchema,
   afk: afkConfigSchema,
   utility: utilityConfigSchema,
+  socialalerts: socialAlertsConfigSchema,
+  birthdays: birthdaysConfigSchema,
+  invitetracker: inviteTrackerConfigSchema,
+  tempvoice: tempVoiceConfigSchema,
 } as const;
 
 export { z };

@@ -18,6 +18,10 @@ import {
   highlightsConfigSchema,
   afkConfigSchema,
   utilityConfigSchema,
+  socialAlertsConfigSchema,
+  birthdaysConfigSchema,
+  inviteTrackerConfigSchema,
+  tempVoiceConfigSchema,
   type TicketConfig,
   type FormsConfig,
   type TranslationConfig,
@@ -36,6 +40,10 @@ import {
   type HighlightsConfig,
   type AfkConfig,
   type UtilityConfig,
+  type SocialAlertsConfig,
+  type BirthdaysConfig,
+  type InviteTrackerConfig,
+  type TempVoiceConfig,
 } from "@rukus/shared";
 import { prisma } from "./index.js";
 
@@ -191,6 +199,30 @@ export const getUtilityConfig = (guildId: string) =>
 export const setUtilityConfig = (guildId: string, config: unknown) =>
   writeConfig<UtilityConfig>(guildId, "utility", config);
 
+export const getSocialAlertsConfig = (guildId: string) =>
+  readConfig<SocialAlertsConfig>(guildId, "socialalerts");
+
+export const setSocialAlertsConfig = (guildId: string, config: unknown) =>
+  writeConfig<SocialAlertsConfig>(guildId, "socialalerts", config);
+
+export const getBirthdaysConfig = (guildId: string) =>
+  readConfig<BirthdaysConfig>(guildId, "birthdays");
+
+export const setBirthdaysConfig = (guildId: string, config: unknown) =>
+  writeConfig<BirthdaysConfig>(guildId, "birthdays", config);
+
+export const getInviteTrackerConfig = (guildId: string) =>
+  readConfig<InviteTrackerConfig>(guildId, "invitetracker");
+
+export const setInviteTrackerConfig = (guildId: string, config: unknown) =>
+  writeConfig<InviteTrackerConfig>(guildId, "invitetracker", config);
+
+export const getTempVoiceConfig = (guildId: string) =>
+  readConfig<TempVoiceConfig>(guildId, "tempvoice");
+
+export const setTempVoiceConfig = (guildId: string, config: unknown) =>
+  writeConfig<TempVoiceConfig>(guildId, "tempvoice", config);
+
 export {
   ticketConfigSchema,
   formsConfigSchema,
@@ -210,4 +242,8 @@ export {
   highlightsConfigSchema,
   afkConfigSchema,
   utilityConfigSchema,
+  socialAlertsConfigSchema,
+  birthdaysConfigSchema,
+  inviteTrackerConfigSchema,
+  tempVoiceConfigSchema,
 };

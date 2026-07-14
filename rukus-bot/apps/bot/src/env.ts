@@ -40,6 +40,12 @@ const schema = z.object({
   // Optional: the dashboard's public URL. When set, ticket transcripts get a
   // hosted "Direct Link" (DASHBOARD_URL/transcript/<token>).
   DASHBOARD_URL: z.string().optional(),
+  // Optional pair: Twitch live alerts. YouTube and RSS feeds need no credentials
+  // at all, so an operator who only cares about those should not be forced to
+  // register a Twitch app. When either is missing, Twitch feeds are skipped and
+  // everything else keeps polling.
+  TWITCH_CLIENT_ID: z.string().optional(),
+  TWITCH_CLIENT_SECRET: z.string().optional(),
 });
 
 // Treat empty-string vars as absent, so an unset-but-present var (common on

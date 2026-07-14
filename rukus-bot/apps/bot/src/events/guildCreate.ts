@@ -3,6 +3,7 @@ import { COLORS } from "@rukus/shared";
 import { prisma } from "@rukus/db";
 import type { EventHandler } from "../lib/types.js";
 import { log } from "../lib/logger.js";
+import { primeGuild } from "../features/invites/cache.js";
 
 /**
  * The bot was added to a server.
@@ -27,6 +28,10 @@ const handler: EventHandler<Events.GuildCreate> = {
   name: Events.GuildCreate,
   execute: async (guild: Guild) => {
     log.info(`Joined guild ${guild.name} (${guild.id}), ${guild.memberCount} members.`);
+
+    // Snapshot the guild's invites now, so the invite tracker has something to
+    // diff against if a member joins before the next restart primes it.
+    void primeGuild(guild);
 
     try {
       await prisma.guild.upsert({

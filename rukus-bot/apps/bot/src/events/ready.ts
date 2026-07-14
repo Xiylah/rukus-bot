@@ -6,6 +6,11 @@ import { startAutoCloseSweeper } from "../features/tickets/autoclose.js";
 import { startGiveawaySweeper } from "../features/giveaways/sweeper.js";
 import { startReminderSweeper } from "../features/reminders/sweeper.js";
 import { startRoleSweeper } from "../features/roles/sweeper.js";
+import { startBirthdaySweeper } from "../features/birthdays/sweeper.js";
+import { primeAll } from "../features/invites/cache.js";
+import { cleanupOrphans } from "../features/tempvoice/tempvoice.js";
+import { startSocialPoller } from "../features/social/poller.js";
+import { startVoiceXpSweeper } from "../features/leveling/voice.js";
 
 /**
  * On startup: log in, then register slash + context-menu commands with Discord.
@@ -32,6 +37,18 @@ const handler: EventHandler<Events.ClientReady> = {
     startGiveawaySweeper(client);
     startReminderSweeper(client);
     startRoleSweeper(client);
+    startSocialPoller(client);
+    startVoiceXpSweeper(client);
+    startBirthdaySweeper(client);
+
+    // Invite tracking is a diff against a snapshot, so the snapshot has to exist
+    // before the first join. Not awaited: a slow fetch across many guilds must
+    // not hold up command registration below.
+    void primeAll(client);
+
+    // Temp channels that emptied while the bot was down have nobody left to
+    // delete them, so reconcile the table against reality once we are back.
+    void cleanupOrphans(client);
 
     if (process.env.SKIP_COMMAND_SYNC === "1") {
       log.info("SKIP_COMMAND_SYNC=1 - not registering commands.");

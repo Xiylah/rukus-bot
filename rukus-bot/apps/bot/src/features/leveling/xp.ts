@@ -7,6 +7,7 @@ import {
   onCooldown,
   applyRoleRewards,
   announceChannel,
+  announceLevelUp,
 } from "./service.js";
 
 /**
@@ -35,10 +36,20 @@ export async function handleMessageXp(message: Message<true>): Promise<void> {
       .filter((m) => member.roles.cache.has(m.roleId))
       .map((m) => m.multiplier);
 
-    const amount = rollXp(
+    const base = rollXp(
       config.xpPerMessageMin,
       config.xpPerMessageMax,
       multipliers,
+    );
+
+    // Role multipliers pick the single best one (rollXp's rule). The channel
+    // weight and the server-wide rate are a different axis, so they stack on top:
+    // "double XP weekend in #events" has to be expressible.
+    const channel = config.channelMultipliers.find(
+      (c) => c.channelId === message.channelId,
+    );
+    const amount = Math.round(
+      base * (channel?.multiplier ?? 1) * config.xpRate,
     );
     if (amount <= 0) return;
 
@@ -49,6 +60,13 @@ export async function handleMessageXp(message: Message<true>): Promise<void> {
     await applyRoleRewards(member, config, level);
 
     if (!config.announceLevelUp) return;
+
+    // A DM (or a dedicated announce channel) is not tied to this message, so it
+    // goes through the shared path; only the reply-in-place case is local.
+    if (config.levelUpDm || config.announceChannelId) {
+      await announceLevelUp(member, config, level);
+      return;
+    }
 
     const text = renderLevelUp(config.announceMessage, {
       userId: member.id,

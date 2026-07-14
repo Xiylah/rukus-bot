@@ -1,6 +1,11 @@
 import type { Guild, GuildMember } from "discord.js";
 import { prisma } from "@rukus/db";
-import { levelFromXp, rewardRolesFor, type LevelingConfig } from "@rukus/shared";
+import {
+  levelFromXp,
+  renderLevelUp,
+  rewardRolesFor,
+  type LevelingConfig,
+} from "@rukus/shared";
 import { log } from "../../lib/logger.js";
 
 /**
@@ -76,6 +81,64 @@ export async function setXp(
     update: { xp: clamped, level },
   });
   return { xp: clamped, level, leveledUpTo: null };
+}
+
+/**
+ * Bank voice XP and the minutes that earned it.
+ *
+ * Deliberately does NOT touch `messages` or `lastXpAt`: a sweeper tick is not a
+ * message, and bumping lastXpAt here would silently extend the message cooldown
+ * of everyone sitting in a call.
+ */
+export async function addVoiceXp(
+  guildId: string,
+  userId: string,
+  amount: number,
+  minutes: number,
+): Promise<XpResult> {
+  const row = await prisma.memberLevel.upsert({
+    where: { guildId_userId: { guildId, userId } },
+    create: {
+      guildId,
+      userId,
+      xp: Math.max(0, amount),
+      level: levelFromXp(Math.max(0, amount)),
+      voiceMinutes: minutes,
+    },
+    update: {
+      xp: { increment: amount },
+      voiceMinutes: { increment: minutes },
+    },
+  });
+
+  const level = levelFromXp(row.xp);
+  const leveledUp = level > row.level;
+
+  if (row.level !== level) {
+    await prisma.memberLevel.update({
+      where: { guildId_userId: { guildId, userId } },
+      data: { level },
+    });
+  }
+
+  return { xp: row.xp, level, leveledUpTo: leveledUp ? level : null };
+}
+
+/** Wipe one member's XP row. Returns false when they had none to begin with. */
+export async function resetMember(
+  guildId: string,
+  userId: string,
+): Promise<boolean> {
+  const deleted = await prisma.memberLevel.deleteMany({
+    where: { guildId, userId },
+  });
+  return deleted.count > 0;
+}
+
+/** Wipe every XP row in a guild. Returns how many rows went. */
+export async function resetGuild(guildId: string): Promise<number> {
+  const deleted = await prisma.memberLevel.deleteMany({ where: { guildId } });
+  return deleted.count;
 }
 
 /** Whether this member is still inside their XP cooldown window. */
@@ -171,6 +234,17 @@ export async function applyRoleRewards(
     config.stackRoleRewards,
   );
 
+  // rewardRolesFor demotes only inside the ladder it is collapsing. Rewards for
+  // levels ABOVE the member are a different case: they exist only when the
+  // member was knocked back down (/xp take, /xp set), and whether to claw them
+  // back is exactly what removeRoleOnLevelDown decides.
+  const above = new Set(
+    config.roleRewards.filter((r) => r.level > level).map((r) => r.roleId),
+  );
+  const toRemove = config.removeRoleOnLevelDown
+    ? [...new Set([...remove, ...above])]
+    : remove.filter((id) => !above.has(id));
+
   const granted: string[] = [];
   const manageable = (roleId: string) => {
     const role = member.guild.roles.cache.get(roleId);
@@ -187,7 +261,7 @@ export async function applyRoleRewards(
     }
   }
 
-  for (const roleId of remove) {
+  for (const roleId of toRemove) {
     if (!member.roles.cache.has(roleId) || !manageable(roleId)) continue;
     try {
       await member.roles.remove(roleId, "Level reward superseded");
@@ -204,4 +278,38 @@ export function announceChannel(guild: Guild, config: LevelingConfig) {
   if (!config.announceChannelId) return null;
   const channel = guild.channels.cache.get(config.announceChannelId);
   return channel?.isTextBased() && channel.isSendable() ? channel : null;
+}
+
+/**
+ * Announce a level-up when there is no message to reply to (voice XP, or
+ * levelUpDm). The message path in xp.ts still prefers replying in place, which
+ * this cannot do, so it keeps its own branch.
+ *
+ * A closed DM is a 50007 from Discord and is entirely normal, so a failed DM
+ * falls back to the announce channel rather than being lost.
+ */
+export async function announceLevelUp(
+  member: GuildMember,
+  config: LevelingConfig,
+  level: number,
+): Promise<void> {
+  if (!config.announceLevelUp) return;
+
+  const text = renderLevelUp(config.announceMessage, {
+    userId: member.id,
+    username: member.displayName,
+    level,
+    serverName: member.guild.name,
+  });
+
+  if (config.levelUpDm) {
+    const sent = await member
+      .send({ content: text })
+      .then(() => true)
+      .catch(() => false);
+    if (sent) return;
+  }
+
+  const target = announceChannel(member.guild, config);
+  if (target) await target.send({ content: text }).catch(() => {});
 }

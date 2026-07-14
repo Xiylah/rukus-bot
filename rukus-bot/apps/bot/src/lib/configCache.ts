@@ -17,6 +17,10 @@ import {
   getHighlightsConfig,
   getAfkConfig,
   getUtilityConfig,
+  getSocialAlertsConfig,
+  getBirthdaysConfig,
+  getInviteTrackerConfig,
+  getTempVoiceConfig,
 } from "@rukus/db";
 import {
   ticketConfigSchema,
@@ -37,6 +41,10 @@ import {
   highlightsConfigSchema,
   afkConfigSchema,
   utilityConfigSchema,
+  socialAlertsConfigSchema,
+  birthdaysConfigSchema,
+  inviteTrackerConfigSchema,
+  tempVoiceConfigSchema,
   type TicketConfig,
   type FormsConfig,
   type TranslationConfig,
@@ -55,6 +63,10 @@ import {
   type HighlightsConfig,
   type AfkConfig,
   type UtilityConfig,
+  type SocialAlertsConfig,
+  type BirthdaysConfig,
+  type InviteTrackerConfig,
+  type TempVoiceConfig,
 } from "@rukus/shared";
 import { log } from "./logger.js";
 
@@ -234,6 +246,30 @@ export const afkConfig = (guildId: string): Promise<AfkConfig> =>
 export const utilityConfig = (guildId: string): Promise<UtilityConfig> =>
   cached(`utility:${guildId}`, () => getUtilityConfig(guildId), () =>
     utilityConfigSchema.parse({}),
+  );
+
+export const socialAlertsConfig = (
+  guildId: string,
+): Promise<SocialAlertsConfig> =>
+  cached(`socialalerts:${guildId}`, () => getSocialAlertsConfig(guildId), () =>
+    socialAlertsConfigSchema.parse({}),
+  );
+
+export const birthdaysConfig = (guildId: string): Promise<BirthdaysConfig> =>
+  cached(`birthdays:${guildId}`, () => getBirthdaysConfig(guildId), () =>
+    birthdaysConfigSchema.parse({}),
+  );
+
+export const inviteTrackerConfig = (
+  guildId: string,
+): Promise<InviteTrackerConfig> =>
+  cached(`invitetracker:${guildId}`, () => getInviteTrackerConfig(guildId), () =>
+    inviteTrackerConfigSchema.parse({}),
+  );
+
+export const tempVoiceConfig = (guildId: string): Promise<TempVoiceConfig> =>
+  cached(`tempvoice:${guildId}`, () => getTempVoiceConfig(guildId), () =>
+    tempVoiceConfigSchema.parse({}),
   );
 
 /** Drop a guild's cached entries (e.g. after an in-bot config command). */

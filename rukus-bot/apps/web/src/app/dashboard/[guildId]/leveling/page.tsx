@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { getLevelingConfig, getLeaderboardRows } from "@rukus/supabase";
 import { loadGuildOptions } from "@/lib/guildOptions";
+import { fetchGuildChannels, CHANNEL_TYPE } from "@/lib/discord";
 import { LevelingForm } from "./LevelingForm";
 import { LeaderboardTable } from "./LeaderboardTable";
 
@@ -9,11 +11,21 @@ export default async function LevelingPage({
   params: Promise<{ guildId: string }>;
 }) {
   const { guildId } = await params;
-  const [config, options, rows] = await Promise.all([
+  // loadGuildOptions only exposes text channels; voice XP needs to exclude voice
+  // ones, so those are pulled here (the fetch is deduped and cached by Next).
+  const [config, options, allChannels, rows] = await Promise.all([
     getLevelingConfig(guildId),
     loadGuildOptions(guildId),
+    fetchGuildChannels(guildId),
     getLeaderboardRows(guildId, 100),
   ]);
+
+  // 13 is a stage channel, which CHANNEL_TYPE does not name; the bot awards
+  // voice XP in stages too, so they belong in the ignore picker.
+  const STAGE = 13;
+  const voiceChannels = allChannels
+    .filter((c) => c.type === CHANNEL_TYPE.voice || c.type === STAGE)
+    .map((c) => ({ id: c.id, name: c.name }));
 
   return (
     <div>
@@ -28,6 +40,7 @@ export default async function LevelingPage({
         guildId={guildId}
         initial={config}
         channels={options.channels}
+        voiceChannels={voiceChannels}
         roles={options.roles}
         grantableRoles={options.grantableRoles}
       />
@@ -36,7 +49,25 @@ export default async function LevelingPage({
         🏆 Leaderboard
       </h2>
       <p className="mb-4 text-sm text-zinc-400">
-        The top 100 members by XP, live from the bot.
+        The top 100 members by XP, live from the bot.{" "}
+        {config.publicLeaderboard ? (
+          <>
+            Anyone can see this at{" "}
+            <Link
+              href={`/leaderboard/${guildId}`}
+              target="_blank"
+              className="text-blurple hover:underline"
+            >
+              /leaderboard/{guildId}
+            </Link>
+            , no login needed.
+          </>
+        ) : (
+          <>
+            The public page is switched off, so only staff can see this. Turn on
+            &ldquo;Public leaderboard page&rdquo; above to share it.
+          </>
+        )}
       </p>
       <LeaderboardTable rows={rows} />
     </div>

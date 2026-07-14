@@ -5,6 +5,7 @@ import { welcomeConfig } from "../lib/configCache.js";
 import { renderTemplate } from "../features/welcome/template.js";
 import { logMemberJoin } from "../features/logging/members.js";
 import { applyAutoRoles } from "../features/autoroles/autoroles.js";
+import { trackJoin } from "../features/invites/tracker.js";
 
 const handler: EventHandler<Events.GuildMemberAdd> = {
   name: Events.GuildMemberAdd,
@@ -12,6 +13,11 @@ const handler: EventHandler<Events.GuildMemberAdd> = {
     // Fire-and-forget: server logging is a separate concern from welcoming and
     // must never delay (or fail) the auto-roles below.
     void logMemberJoin(member);
+
+    // Awaited, unlike the log above: it re-reads Discord's invite list to see
+    // which counter moved, and a second join landing first would make the answer
+    // ambiguous. It swallows its own errors, so it cannot break the join.
+    await trackJoin(member).catch(() => {});
 
     // Bot roles, timed roles, and the role restore for a returning member. This
     // is the autoroles feature; welcome's own joinRoleIds below are the legacy
