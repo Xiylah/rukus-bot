@@ -6,6 +6,8 @@ import * as tickets from "../features/tickets/interactions.js";
 import * as forms from "../features/forms/interactions.js";
 import { handleRevealButton } from "../features/custom/commands.js";
 import { customCommandsConfig } from "../lib/configCache.js";
+import { handleEnterButton } from "../features/giveaways/interactions.js";
+import { GIVEAWAY_ENTER_CID } from "../features/giveaways/service.js";
 
 /**
  * Central interaction router.
@@ -54,6 +56,8 @@ const handler: EventHandler<Events.InteractionCreate> = {
           const cc = await customCommandsConfig(interaction.guildId);
           return void (await handleRevealButton(interaction, cc));
         }
+        if (customId.startsWith(GIVEAWAY_ENTER_CID))
+          return void (await handleEnterButton(interaction));
         if (customId.startsWith(CID.ticketOpen))
           return void (await tickets.handleOpenButton(interaction));
         if (customId.startsWith(CID.ticketClaim))

@@ -3,10 +3,21 @@ import type { EventHandler } from "../lib/types.js";
 import { log } from "../lib/logger.js";
 import { welcomeConfig } from "../lib/configCache.js";
 import { renderTemplate } from "../features/welcome/template.js";
+import { logMemberJoin } from "../features/logging/members.js";
+import { applyAutoRoles } from "../features/autoroles/autoroles.js";
 
 const handler: EventHandler<Events.GuildMemberAdd> = {
   name: Events.GuildMemberAdd,
   execute: async (member: GuildMember) => {
+    // Fire-and-forget: server logging is a separate concern from welcoming and
+    // must never delay (or fail) the auto-roles below.
+    void logMemberJoin(member);
+
+    // Bot roles, timed roles, and the role restore for a returning member. This
+    // is the autoroles feature; welcome's own joinRoleIds below are the legacy
+    // path and both are additive, so a guild can use either or both.
+    await applyAutoRoles(member);
+
     const config = await welcomeConfig(member.guild.id);
 
     // Auto-roles run even when messages are disabled: they are independent.

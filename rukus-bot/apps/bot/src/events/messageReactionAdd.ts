@@ -10,6 +10,7 @@ import { translationConfig } from "../lib/configCache.js";
 import { translateText } from "../features/translation/translate.js";
 import { translationEmbed } from "../features/translation/ui.js";
 import { flagToCountryCode, COUNTRY_TO_LANG } from "../features/translation/lang.js";
+import { handleStarReaction } from "../features/starboard/starboard.js";
 
 // Dedup: one reply per (message, language), bounded so it can't grow forever.
 const served = new Map<string, true>();
@@ -33,6 +34,12 @@ const handler: EventHandler<Events.MessageReactionAdd> = {
     user: User | PartialUser,
   ) => {
     if (user.bot) return;
+
+    // Starboard owns a different emoji than the flags below and must see every
+    // reaction, so it runs first and independently. It is awaited rather than
+    // fired-and-forgotten so a throw surfaces here instead of as an unhandled
+    // rejection; it swallows its own errors internally.
+    await handleStarReaction(reaction, user);
 
     // Resolve partials (reactions on uncached messages arrive partial).
     if (reaction.partial) {

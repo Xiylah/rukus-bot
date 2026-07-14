@@ -24,12 +24,32 @@ export default async function GuildLayout({
       items: [
         { href: `/dashboard/${guildId}/tickets`, label: "🎫 Tickets" },
         { href: `/dashboard/${guildId}/forms`, label: "📝 Forms" },
+        { href: `/dashboard/${guildId}/reactionroles`, label: "🎭 Reaction Roles" },
         { href: `/dashboard/${guildId}/translation`, label: "🌐 Translation" },
         { href: `/dashboard/${guildId}/autoresponder`, label: "💬 Auto-responder" },
-        { href: `/dashboard/${guildId}/moderation`, label: "🛡️ Moderation" },
-        { href: `/dashboard/${guildId}/welcome`, label: "👋 Welcome" },
         { href: `/dashboard/${guildId}/commands`, label: "⌨️ Custom Commands" },
+        { href: `/dashboard/${guildId}/leveling`, label: "📈 Leveling" },
+        { href: `/dashboard/${guildId}/starboard`, label: "⭐ Starboard" },
+        { href: `/dashboard/${guildId}/suggestions`, label: "💡 Suggestions" },
+        { href: `/dashboard/${guildId}/giveaways`, label: "🎉 Giveaways" },
+      ],
+    },
+    {
+      title: "Moderation",
+      items: [
+        { href: `/dashboard/${guildId}/moderation`, label: "🛡️ Moderation" },
+        { href: `/dashboard/${guildId}/logging`, label: "📜 Logging" },
         { href: `/dashboard/${guildId}/cases`, label: "📋 Cases" },
+      ],
+    },
+    {
+      title: "Community",
+      items: [
+        { href: `/dashboard/${guildId}/welcome`, label: "👋 Welcome" },
+        { href: `/dashboard/${guildId}/autoroles`, label: "🏷️ Auto-roles" },
+        { href: `/dashboard/${guildId}/reminders`, label: "⏰ Reminders" },
+        { href: `/dashboard/${guildId}/highlights`, label: "🔔 Highlights" },
+        { href: `/dashboard/${guildId}/utility`, label: "🔧 Utility" },
       ],
     },
   ];

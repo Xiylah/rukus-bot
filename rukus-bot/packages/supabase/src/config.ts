@@ -8,6 +8,17 @@ import {
   type WelcomeConfig,
   type CustomCommandsConfig,
   type AccessConfig,
+  type ReactionRolesConfig,
+  type LoggingConfig,
+  type StarboardConfig,
+  type AutoRolesConfig,
+  type LevelingConfig,
+  type SuggestionsConfig,
+  type GiveawaysConfig,
+  type RemindersConfig,
+  type HighlightsConfig,
+  type AfkConfig,
+  type UtilityConfig,
 } from "@rukus/shared";
 import { getSupabase } from "./index.js";
 
@@ -118,3 +129,58 @@ export const getAccessConfig = (guildId: string) =>
   readConfig<AccessConfig>(guildId, "access");
 export const setAccessConfig = (guildId: string, config: unknown) =>
   writeConfig<AccessConfig>(guildId, "access", config);
+
+export const getReactionRolesConfig = (guildId: string) =>
+  readConfig<ReactionRolesConfig>(guildId, "reactionroles");
+export const setReactionRolesConfig = (guildId: string, config: unknown) =>
+  writeConfig<ReactionRolesConfig>(guildId, "reactionroles", config);
+
+export const getLoggingConfig = (guildId: string) =>
+  readConfig<LoggingConfig>(guildId, "logging");
+export const setLoggingConfig = (guildId: string, config: unknown) =>
+  writeConfig<LoggingConfig>(guildId, "logging", config);
+
+export const getStarboardConfig = (guildId: string) =>
+  readConfig<StarboardConfig>(guildId, "starboard");
+export const setStarboardConfig = (guildId: string, config: unknown) =>
+  writeConfig<StarboardConfig>(guildId, "starboard", config);
+
+export const getAutoRolesConfig = (guildId: string) =>
+  readConfig<AutoRolesConfig>(guildId, "autoroles");
+export const setAutoRolesConfig = (guildId: string, config: unknown) =>
+  writeConfig<AutoRolesConfig>(guildId, "autoroles", config);
+
+export const getLevelingConfig = (guildId: string) =>
+  readConfig<LevelingConfig>(guildId, "leveling");
+export const setLevelingConfig = (guildId: string, config: unknown) =>
+  writeConfig<LevelingConfig>(guildId, "leveling", config);
+
+export const getSuggestionsConfig = (guildId: string) =>
+  readConfig<SuggestionsConfig>(guildId, "suggestions");
+export const setSuggestionsConfig = (guildId: string, config: unknown) =>
+  writeConfig<SuggestionsConfig>(guildId, "suggestions", config);
+
+export const getGiveawaysConfig = (guildId: string) =>
+  readConfig<GiveawaysConfig>(guildId, "giveaways");
+export const setGiveawaysConfig = (guildId: string, config: unknown) =>
+  writeConfig<GiveawaysConfig>(guildId, "giveaways", config);
+
+export const getRemindersConfig = (guildId: string) =>
+  readConfig<RemindersConfig>(guildId, "reminders");
+export const setRemindersConfig = (guildId: string, config: unknown) =>
+  writeConfig<RemindersConfig>(guildId, "reminders", config);
+
+export const getHighlightsConfig = (guildId: string) =>
+  readConfig<HighlightsConfig>(guildId, "highlights");
+export const setHighlightsConfig = (guildId: string, config: unknown) =>
+  writeConfig<HighlightsConfig>(guildId, "highlights", config);
+
+export const getAfkConfig = (guildId: string) =>
+  readConfig<AfkConfig>(guildId, "afk");
+export const setAfkConfig = (guildId: string, config: unknown) =>
+  writeConfig<AfkConfig>(guildId, "afk", config);
+
+export const getUtilityConfig = (guildId: string) =>
+  readConfig<UtilityConfig>(guildId, "utility");
+export const setUtilityConfig = (guildId: string, config: unknown) =>
+  writeConfig<UtilityConfig>(guildId, "utility", config);

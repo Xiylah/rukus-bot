@@ -196,3 +196,173 @@ model FormSubmission {
   @@index([userId])
   @@schema("rukus")
 }
+
+/// A message that crossed the star threshold and got mirrored to the board.
+/// Keyed by the SOURCE message so a second star on an already-posted message
+/// updates the existing board post instead of creating a duplicate.
+model StarboardPost {
+  id                 String   @id @default(cuid())
+  guildId            String
+  sourceMessageId    String   @unique
+  sourceChannelId    String
+  /// The message we posted in the starboard channel, so we can edit the count.
+  starboardMessageId String
+  authorId           String
+  starCount          Int      @default(0)
+  createdAt          DateTime @default(now())
+
+  @@index([guildId])
+  @@schema("rukus")
+}
+
+/// A member's XP/level progress in one guild.
+model MemberLevel {
+  id       String   @id @default(cuid())
+  guildId  String
+  userId   String
+  xp       Int      @default(0)
+  level    Int      @default(0)
+  messages Int      @default(0)
+  /// Last time XP was awarded, for the per-message cooldown.
+  lastXpAt DateTime @default(now())
+
+  @@unique([guildId, userId])
+  /// Serves the leaderboard: top XP within a guild, without a full scan.
+  @@index([guildId, xp])
+  @@schema("rukus")
+}
+
+/// Snapshot of a member's roles, taken when they leave, so autoroles can hand
+/// them back on rejoin. One row per member: the latest snapshot wins.
+model MemberRoleBackup {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  roleIds   String[]
+  updatedAt DateTime @updatedAt
+
+  @@unique([guildId, userId])
+  @@schema("rukus")
+}
+
+/// A pending /remind. The scheduler polls by dueAt.
+model Reminder {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  channelId String
+  text      String
+  dueAt     DateTime
+  /// Null = one-shot. Set = reschedule this many seconds after firing.
+  repeatSec Int?
+  createdAt DateTime @default(now())
+
+  @@index([dueAt])
+  @@index([guildId, userId])
+  @@schema("rukus")
+}
+
+/// One word a member wants to be DM'd about when it's said in the guild.
+model Highlight {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  word      String
+  createdAt DateTime @default(now())
+
+  @@unique([guildId, userId, word])
+  @@index([guildId])
+  @@schema("rukus")
+}
+
+/// A running or finished giveaway. The message is the entry surface, so it is
+/// the natural unique key when a reaction comes in.
+model Giveaway {
+  id             String   @id @default(cuid())
+  guildId        String
+  channelId      String
+  messageId      String   @unique
+  hostId         String
+  prize          String
+  winnerCount    Int      @default(1)
+  endsAt         DateTime
+  ended          Boolean  @default(false)
+  /// Everyone who pressed Enter. Kept on the row so a reroll after the giveaway
+  /// ends does not depend on the Discord message still existing.
+  entrantIds     String[]
+  winnerIds      String[]
+  /// Only members with this role may enter. Null = anyone.
+  requiredRoleId String?
+  createdAt      DateTime @default(now())
+
+  /// The scheduler's query: giveaways past their end time that haven't ended.
+  @@index([endsAt, ended])
+  @@index([guildId])
+  @@schema("rukus")
+}
+
+enum SuggestionStatus {
+  PENDING
+  APPROVED
+  DENIED
+  CONSIDERED
+  IMPLEMENTED
+
+  @@schema("rukus")
+}
+
+/// A member suggestion, numbered per guild so staff can refer to "#12".
+model Suggestion {
+  id        String           @id @default(cuid())
+  guildId   String
+  number    Int
+  channelId String
+  messageId String
+  authorId  String
+  text      String
+  status    SuggestionStatus @default(PENDING)
+  /// Staff's public explanation for the decision.
+  reason    String?
+  staffId   String?
+  createdAt DateTime         @default(now())
+
+  @@unique([guildId, number])
+  @@index([guildId, status])
+  @@schema("rukus")
+}
+
+/// Race-free per-guild suggestion numbering.
+model SuggestionCounter {
+  guildId String @id
+  next    Int    @default(1)
+
+  @@schema("rukus")
+}
+
+/// A member's active AFK status. One row per member; cleared when they talk.
+model Afk {
+  id      String   @id @default(cuid())
+  guildId String
+  userId  String
+  message String
+  since   DateTime @default(now())
+
+  @@unique([guildId, userId])
+  @@schema("rukus")
+}
+
+/// A user-created TagScript tag, recalled by name.
+model Tag {
+  id        String   @id @default(cuid())
+  guildId   String
+  name      String
+  content   String
+  ownerId   String
+  uses      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([guildId, name])
+  @@index([guildId])
+  @@schema("rukus")
+}

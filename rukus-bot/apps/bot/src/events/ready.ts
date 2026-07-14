@@ -3,6 +3,9 @@ import { env } from "../env.js";
 import type { BotClient, EventHandler } from "../lib/types.js";
 import { log } from "../lib/logger.js";
 import { startAutoCloseSweeper } from "../features/tickets/autoclose.js";
+import { startGiveawaySweeper } from "../features/giveaways/sweeper.js";
+import { startReminderSweeper } from "../features/reminders/sweeper.js";
+import { startRoleSweeper } from "../features/roles/sweeper.js";
 
 /**
  * On startup: log in, then register slash + context-menu commands with Discord.
@@ -20,6 +23,9 @@ const handler: EventHandler<Events.ClientReady> = {
     log.info(`Serving ${client.guilds.cache.size} guild(s).`);
     client.user?.setActivity("Discord API");
     startAutoCloseSweeper(client);
+    startGiveawaySweeper(client);
+    startReminderSweeper(client);
+    startRoleSweeper(client);
 
     if (process.env.SKIP_COMMAND_SYNC === "1") {
       log.info("SKIP_COMMAND_SYNC=1 - not registering commands.");

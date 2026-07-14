@@ -16,6 +16,9 @@ import { translationEmbed } from "../features/translation/ui.js";
 import { runAutoResponder } from "../features/autoresponder/respond.js";
 import { getTicketMeta } from "../features/tickets/isTicket.js";
 import { findCommand, runCustomCommand } from "../features/custom/commands.js";
+import { runHighlights } from "../features/highlights/notify.js";
+import { runAfk } from "../features/afk/afk.js";
+import { handleMessageXp } from "../features/leveling/xp.js";
 
 /** Post a translation, honouring the guild's output settings. */
 async function postTranslation(
@@ -101,6 +104,18 @@ const handler: EventHandler<Events.MessageCreate> = {
       }
       return;
     }
+
+    // --- Leveling XP ---
+    // Above the returns below: an image post or a one-word "gg" is still a real
+    // message and earns XP. It only has to survive moderation to count.
+    await handleMessageXp(message);
+
+    // --- AFK + highlights ---
+    // Also above the returns: someone coming back from AFK, or saying a word
+    // another member watches, does not depend on the message being long enough
+    // for the auto-responder to care about it.
+    await runAfk(message);
+    await runHighlights(message);
 
     // --- Custom prefix commands (!codes etc.) ---
     // Before the length gate: commands are short by nature.

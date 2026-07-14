@@ -6,6 +6,17 @@ import {
   getModerationConfig,
   getWelcomeConfig,
   getCustomCommandsConfig,
+  getReactionRolesConfig,
+  getLoggingConfig,
+  getStarboardConfig,
+  getAutoRolesConfig,
+  getLevelingConfig,
+  getSuggestionsConfig,
+  getGiveawaysConfig,
+  getRemindersConfig,
+  getHighlightsConfig,
+  getAfkConfig,
+  getUtilityConfig,
 } from "@rukus/db";
 import {
   ticketConfigSchema,
@@ -15,6 +26,17 @@ import {
   moderationConfigSchema,
   welcomeConfigSchema,
   customCommandsConfigSchema,
+  reactionRolesConfigSchema,
+  loggingConfigSchema,
+  starboardConfigSchema,
+  autoRolesConfigSchema,
+  levelingConfigSchema,
+  suggestionsConfigSchema,
+  giveawaysConfigSchema,
+  remindersConfigSchema,
+  highlightsConfigSchema,
+  afkConfigSchema,
+  utilityConfigSchema,
   type TicketConfig,
   type FormsConfig,
   type TranslationConfig,
@@ -22,6 +44,17 @@ import {
   type ModerationConfig,
   type WelcomeConfig,
   type CustomCommandsConfig,
+  type ReactionRolesConfig,
+  type LoggingConfig,
+  type StarboardConfig,
+  type AutoRolesConfig,
+  type LevelingConfig,
+  type SuggestionsConfig,
+  type GiveawaysConfig,
+  type RemindersConfig,
+  type HighlightsConfig,
+  type AfkConfig,
+  type UtilityConfig,
 } from "@rukus/shared";
 import { log } from "./logger.js";
 
@@ -119,6 +152,65 @@ export const customCommandsConfig = (
 ): Promise<CustomCommandsConfig> =>
   cached(`customcommands:${guildId}`, () => getCustomCommandsConfig(guildId), () =>
     customCommandsConfigSchema.parse({}),
+  );
+
+export const reactionRolesConfig = (
+  guildId: string,
+): Promise<ReactionRolesConfig> =>
+  cached(`reactionroles:${guildId}`, () => getReactionRolesConfig(guildId), () =>
+    reactionRolesConfigSchema.parse({}),
+  );
+
+export const loggingConfig = (guildId: string): Promise<LoggingConfig> =>
+  cached(`logging:${guildId}`, () => getLoggingConfig(guildId), () =>
+    loggingConfigSchema.parse({}),
+  );
+
+export const starboardConfig = (guildId: string): Promise<StarboardConfig> =>
+  cached(`starboard:${guildId}`, () => getStarboardConfig(guildId), () =>
+    starboardConfigSchema.parse({}),
+  );
+
+export const autoRolesConfig = (guildId: string): Promise<AutoRolesConfig> =>
+  cached(`autoroles:${guildId}`, () => getAutoRolesConfig(guildId), () =>
+    autoRolesConfigSchema.parse({}),
+  );
+
+export const levelingConfig = (guildId: string): Promise<LevelingConfig> =>
+  cached(`leveling:${guildId}`, () => getLevelingConfig(guildId), () =>
+    levelingConfigSchema.parse({}),
+  );
+
+export const suggestionsConfig = (
+  guildId: string,
+): Promise<SuggestionsConfig> =>
+  cached(`suggestions:${guildId}`, () => getSuggestionsConfig(guildId), () =>
+    suggestionsConfigSchema.parse({}),
+  );
+
+export const giveawaysConfig = (guildId: string): Promise<GiveawaysConfig> =>
+  cached(`giveaways:${guildId}`, () => getGiveawaysConfig(guildId), () =>
+    giveawaysConfigSchema.parse({}),
+  );
+
+export const remindersConfig = (guildId: string): Promise<RemindersConfig> =>
+  cached(`reminders:${guildId}`, () => getRemindersConfig(guildId), () =>
+    remindersConfigSchema.parse({}),
+  );
+
+export const highlightsConfig = (guildId: string): Promise<HighlightsConfig> =>
+  cached(`highlights:${guildId}`, () => getHighlightsConfig(guildId), () =>
+    highlightsConfigSchema.parse({}),
+  );
+
+export const afkConfig = (guildId: string): Promise<AfkConfig> =>
+  cached(`afk:${guildId}`, () => getAfkConfig(guildId), () =>
+    afkConfigSchema.parse({}),
+  );
+
+export const utilityConfig = (guildId: string): Promise<UtilityConfig> =>
+  cached(`utility:${guildId}`, () => getUtilityConfig(guildId), () =>
+    utilityConfigSchema.parse({}),
   );
 
 /** Drop a guild's cached entries (e.g. after an in-bot config command). */

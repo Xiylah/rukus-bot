@@ -421,6 +421,12 @@ export const customCommandSchema = z.object({
   cooldownSec: z.number().int().min(0).max(3600).default(3),
   /** Bumped every time it's used, so you can see what's popular. */
   uses: z.number().int().min(0).default(0),
+  /**
+   * Run the response through the TagScript engine ({user}, {if}, {random}...).
+   * Off means the response is sent verbatim, which is the escape hatch for
+   * text that legitimately contains braces.
+   */
+  tagscript: z.boolean().default(true),
 });
 
 export type CustomCommand = z.infer<typeof customCommandSchema>;
@@ -480,6 +486,385 @@ export const accessConfigSchema = z.object({
 
 export type AccessConfig = z.infer<typeof accessConfigSchema>;
 
+// ---------------- Reaction roles ----------------
+
+/**
+ * How a panel treats a member picking one of its roles.
+ *
+ * normal   - toggle: pick to add, pick again to remove
+ * unique   - only one role from this panel at a time (picking swaps)
+ * verify   - add only; a member can never take the role back off
+ * drop     - remove only; picking takes the role away
+ * reversed - inverted toggle: reacting REMOVES, un-reacting adds
+ * binding  - verify + unique: one role, and it can never be swapped or removed
+ * limit    - up to maxRoles from this panel
+ * lock     - frozen: nothing is granted or removed (an announcement/pause state)
+ */
+export const reactionRoleModeSchema = z.enum([
+  "normal",
+  "unique",
+  "verify",
+  "drop",
+  "reversed",
+  "binding",
+  "limit",
+  "lock",
+]);
+export type ReactionRoleMode = z.infer<typeof reactionRoleModeSchema>;
+
+/**
+ * How the panel is rendered. Reactions are the legacy Carl-style approach and
+ * are fragile (a member can strip a reaction, Discord rate-limits them, and the
+ * emoji must be usable in the guild). Buttons and dropdowns are interactions:
+ * they are instant, ephemeral-confirmable, and cannot be spoofed, so they are
+ * the recommended default.
+ */
+export const reactionRoleStyleSchema = z.enum([
+  "reactions",
+  "buttons",
+  "dropdown",
+]);
+export type ReactionRoleStyle = z.infer<typeof reactionRoleStyleSchema>;
+
+/** Discord's button colors, for "buttons" style panels. */
+export const buttonStyleSchema = z.enum([
+  "primary",
+  "secondary",
+  "success",
+  "danger",
+]);
+export type ButtonStyle = z.infer<typeof buttonStyleSchema>;
+
+/** One emoji/button/option on a panel, bound to exactly one role. */
+export const reactionRolePairSchema = z.object({
+  /** Unicode emoji or a custom emoji like <:name:id>. Optional for buttons. */
+  emoji: z.string().max(64).default(""),
+  roleId: z.string().regex(/^\d{17,20}$/),
+  /**
+   * Button label / dropdown option description. In "reactions" style this is
+   * what gets listed in the embed body next to the emoji.
+   */
+  description: z.string().max(100).default(""),
+});
+
+export type ReactionRolePair = z.infer<typeof reactionRolePairSchema>;
+
+export const reactionRolePanelSchema = z.object({
+  id: z.string().min(1),
+  channelId: snowflake,
+  /**
+   * Null until the panel is posted. Stored so re-publishing edits the existing
+   * message in place instead of littering the channel with duplicates.
+   */
+  messageId: z.string().regex(/^\d{17,20}$/).nullable().default(null),
+  title: z.string().max(256).default("Pick your roles"),
+  description: z.string().max(4000).default(""),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default("#5865f2"),
+  mode: reactionRoleModeSchema.default("normal"),
+  style: reactionRoleStyleSchema.default("buttons"),
+  /** Only used in "limit" mode: how many of this panel's roles are allowed. */
+  maxRoles: z.number().int().min(1).max(25).default(1),
+  /** Button color, for "buttons" style panels. */
+  buttonStyle: buttonStyleSchema.default("secondary"),
+  /** Dropdown placeholder text, for "dropdown" style panels. */
+  placeholder: z.string().max(150).default("Select a role"),
+  /** Member must hold one of these to use the panel (e.g. Verified). */
+  requiredRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).default([]),
+  /** Member holding any of these is refused (e.g. Muted can't self-role). */
+  blockedRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).default([]),
+  /** Discord caps both dropdown options and reactions on a message at 25/20. */
+  pairs: z.array(reactionRolePairSchema).max(25).default([]),
+});
+
+export type ReactionRolePanel = z.infer<typeof reactionRolePanelSchema>;
+
+export const reactionRolesConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  panels: z.array(reactionRolePanelSchema).max(50).default([]),
+});
+
+export type ReactionRolesConfig = z.infer<typeof reactionRolesConfigSchema>;
+
+// ---------------- Logging ----------------
+
+/**
+ * Audit logging. Streams are split so a busy message log can live somewhere
+ * staff can mute, while joins/bans stay visible. Any unset stream channel falls
+ * back to defaultChannelId, so a server can start with one channel and split
+ * later without touching the event toggles.
+ */
+export const loggingConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+
+  // ---- Destinations ----
+  /** Fallback for every stream that has no channel of its own. */
+  defaultChannelId: snowflake,
+  messageChannelId: snowflake,
+  memberChannelId: snowflake,
+  serverChannelId: snowflake,
+  voiceChannelId: snowflake,
+  joinChannelId: snowflake,
+
+  // ---- Message events ----
+  messageDelete: z.boolean().default(true),
+  messageEdit: z.boolean().default(true),
+  messageBulkDelete: z.boolean().default(true),
+
+  // ---- Member events ----
+  memberJoin: z.boolean().default(true),
+  memberLeave: z.boolean().default(true),
+  memberBan: z.boolean().default(true),
+  memberUnban: z.boolean().default(true),
+  memberKick: z.boolean().default(true),
+  memberRoleChange: z.boolean().default(true),
+  memberNickChange: z.boolean().default(true),
+  memberAvatarChange: z.boolean().default(false),
+
+  // ---- Server events ----
+  channelCreate: z.boolean().default(true),
+  channelDelete: z.boolean().default(true),
+  channelUpdate: z.boolean().default(false),
+  roleCreate: z.boolean().default(true),
+  roleDelete: z.boolean().default(true),
+  roleUpdate: z.boolean().default(false),
+  emojiUpdate: z.boolean().default(false),
+  serverUpdate: z.boolean().default(false),
+  inviteCreate: z.boolean().default(false),
+  inviteDelete: z.boolean().default(false),
+
+  // ---- Voice events ----
+  voiceJoin: z.boolean().default(false),
+  voiceLeave: z.boolean().default(false),
+  voiceMove: z.boolean().default(false),
+
+  // ---- Scope ----
+  ignoreChannelIds: z.array(z.string().regex(/^\d{17,20}$/)).max(200).default([]),
+  ignoreUserIds: z.array(z.string().regex(/^\d{17,20}$/)).max(200).default([]),
+  ignoreBots: z.boolean().default(true),
+  /**
+   * Skip messages starting with these. Other bots' command invocations are the
+   * single biggest source of log noise, and nobody needs an edit log entry for
+   * someone mistyping "!rank".
+   */
+  ignorePrefixes: z.array(z.string().min(1).max(5)).max(20).default([]),
+});
+
+export type LoggingConfig = z.infer<typeof loggingConfigSchema>;
+
+// ---------------- Starboard ----------------
+
+/**
+ * Starboard: messages the server reacts to enough get mirrored to a highlights
+ * channel. Threshold and emoji are per-guild because what counts as "notable"
+ * scales with how big and how chatty the server is.
+ */
+export const starboardConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** Where starred messages get mirrored. */
+  channelId: snowflake,
+  /** Unicode emoji or a custom emoji like <:star:123>. */
+  emoji: z.string().min(1).max(64).default("⭐"),
+  /** Reactions needed before a message is posted to the board. */
+  threshold: z.number().int().min(1).max(100).default(3),
+  /** Let people star their own message. Off by default: it's trivially gamed. */
+  allowSelfStar: z.boolean().default(false),
+  /** Mirror messages from NSFW channels (the board is usually not NSFW). */
+  allowNsfw: z.boolean().default(false),
+  ignoreChannelIds: z.array(z.string().regex(/^\d{17,20}$/)).max(200).default([]),
+  /** Messages from members with these roles are never starred. */
+  ignoreRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).max(100).default([]),
+  embedColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default("#f1c40f"),
+  /** Include a link back to the original message. */
+  showJumpLink: z.boolean().default(true),
+});
+
+export type StarboardConfig = z.infer<typeof starboardConfigSchema>;
+
+// ---------------- Auto roles ----------------
+
+/** A role granted some time after joining, e.g. a "Regular" role after a day. */
+export const timedRoleSchema = z.object({
+  roleId: z.string().regex(/^\d{17,20}$/),
+  /** Seconds after join before the role is granted. */
+  delaySec: z.number().int().min(1).max(31_536_000).default(3600),
+});
+
+export type TimedRole = z.infer<typeof timedRoleSchema>;
+
+export const autoRolesConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** Roles granted to human members on join. */
+  joinRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).max(25).default([]),
+  /** Bots get these INSTEAD of joinRoleIds, so they skip member-only roles. */
+  botRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).max(25).default([]),
+  /**
+   * Give a returning member the roles they had when they left ("sticky roles").
+   * Roles are snapshotted on leave into MemberRoleBackup.
+   */
+  restoreRoles: z.boolean().default(false),
+  /**
+   * Roles that are NEVER restored. This exists because restoring blindly turns
+   * leaving and rejoining into a free mute-evade: the member drops the muted
+   * role on the way out and we would hand it straight back... or rather, we
+   * would NOT, which is the bug. Put the muted role and any staff role here so
+   * a rejoin can neither clear a punishment nor silently regrant power.
+   */
+  restoreBlockedRoleIds: z
+    .array(z.string().regex(/^\d{17,20}$/))
+    .max(50)
+    .default([]),
+  /** Roles handed out on a delay after join. */
+  timedRoles: z.array(timedRoleSchema).max(25).default([]),
+});
+
+export type AutoRolesConfig = z.infer<typeof autoRolesConfigSchema>;
+
+// ---------------- Leveling ----------------
+
+/** A role granted when a member reaches a level. */
+export const roleRewardSchema = z.object({
+  level: z.number().int().min(1).max(1000),
+  roleId: z.string().regex(/^\d{17,20}$/),
+});
+
+export type RoleReward = z.infer<typeof roleRewardSchema>;
+
+/** Boosters/patrons can be given faster XP without touching the base rate. */
+export const xpMultiplierRoleSchema = z.object({
+  roleId: z.string().regex(/^\d{17,20}$/),
+  /** Multiplies earned XP. 2 = double XP. */
+  multiplier: z.number().min(0).max(10).default(1),
+});
+
+export type XpMultiplierRole = z.infer<typeof xpMultiplierRoleSchema>;
+
+export const levelingConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** XP per qualifying message is rolled in this range, so it can't be farmed
+   *  to an exact predictable number. */
+  xpPerMessageMin: z.number().int().min(0).max(1000).default(15),
+  xpPerMessageMax: z.number().int().min(0).max(1000).default(25),
+  /** Only one message per member per this many seconds earns XP (anti-spam). */
+  cooldownSec: z.number().int().min(0).max(3600).default(60),
+  announceLevelUp: z.boolean().default(true),
+  /** Null = reply in the channel where they levelled up. */
+  announceChannelId: snowflake,
+  /** Supports {user}, {username}, {level}, {server}. */
+  announceMessage: z
+    .string()
+    .max(2000)
+    .default("GG {user}, you reached level {level}!"),
+  roleRewards: z.array(roleRewardSchema).max(100).default([]),
+  /**
+   * Keep every reward role earned so far. Off = the new reward replaces the
+   * previous one, which is what you want when the rewards are a single ladder
+   * of colored rank roles.
+   */
+  stackRoleRewards: z.boolean().default(false),
+  ignoreChannelIds: z.array(z.string().regex(/^\d{17,20}$/)).max(200).default([]),
+  /** Members with these roles earn no XP (bots-with-roles, staff alt accounts). */
+  ignoreRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).max(100).default([]),
+  xpMultiplierRoles: z.array(xpMultiplierRoleSchema).max(50).default([]),
+});
+
+export type LevelingConfig = z.infer<typeof levelingConfigSchema>;
+
+// ---------------- Suggestions ----------------
+
+export const suggestionsConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** Where members post suggestions and where they're voted on. */
+  channelId: snowflake,
+  /**
+   * Optional separate channel for approved/denied decisions. Keeps the voting
+   * channel from filling up with resolved items. Unset = decide in place.
+   */
+  decisionChannelId: snowflake,
+  /** Hide the author, so people will actually suggest unpopular things. */
+  anonymous: z.boolean().default(false),
+  upvoteEmoji: z.string().min(1).max(64).default("⬆️"),
+  downvoteEmoji: z.string().min(1).max(64).default("⬇️"),
+  allowVoting: z.boolean().default(true),
+  /** Open a thread on each suggestion so discussion stays off the main feed. */
+  threadPerSuggestion: z.boolean().default(false),
+});
+
+export type SuggestionsConfig = z.infer<typeof suggestionsConfigSchema>;
+
+// ---------------- Giveaways ----------------
+
+export const giveawaysConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** Reaction members use to enter. */
+  emoji: z.string().min(1).max(64).default("🎉"),
+  /** Who may start a giveaway. Empty = Manage Server only. */
+  hostRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).max(25).default([]),
+  embedColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default("#5865f2"),
+  /** DM winners, so a win isn't missed in a fast channel. */
+  dmWinners: z.boolean().default(true),
+});
+
+export type GiveawaysConfig = z.infer<typeof giveawaysConfigSchema>;
+
+// ---------------- Reminders ----------------
+
+export const remindersConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** Cap per member, so nobody can queue thousands of timers. */
+  maxPerUser: z.number().int().min(1).max(100).default(10),
+});
+
+export type RemindersConfig = z.infer<typeof remindersConfigSchema>;
+
+// ---------------- Highlights ----------------
+
+/**
+ * Highlights DM a member when a word they care about is said. The words
+ * themselves are per-user data and live in the Highlight table, not here: only
+ * the guild-wide limits are config.
+ */
+export const highlightsConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  maxPerUser: z.number().int().min(1).max(100).default(10),
+  /** Don't DM the same member again for this many seconds. */
+  cooldownSec: z.number().int().min(0).max(3600).default(300),
+});
+
+export type HighlightsConfig = z.infer<typeof highlightsConfigSchema>;
+
+// ---------------- AFK ----------------
+
+export const afkConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+});
+
+export type AfkConfig = z.infer<typeof afkConfigSchema>;
+
+// ---------------- Utility ----------------
+
+/**
+ * Small standalone tools. They're grouped rather than given a feature key each
+ * so the dashboard doesn't grow a page per one-liner.
+ */
+export const utilityConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** /poll */
+  polls: z.boolean().default(true),
+  /** The staff embed builder (/embed). */
+  embedBuilder: z.boolean().default(true),
+});
+
+export type UtilityConfig = z.infer<typeof utilityConfigSchema>;
+
 // ---------------- Registry ----------------
 
 /** Map a feature key to its schema so callers can validate generically. */
@@ -492,6 +877,17 @@ export const FEATURE_SCHEMAS = {
   welcome: welcomeConfigSchema,
   customcommands: customCommandsConfigSchema,
   access: accessConfigSchema,
+  reactionroles: reactionRolesConfigSchema,
+  logging: loggingConfigSchema,
+  starboard: starboardConfigSchema,
+  autoroles: autoRolesConfigSchema,
+  leveling: levelingConfigSchema,
+  suggestions: suggestionsConfigSchema,
+  giveaways: giveawaysConfigSchema,
+  reminders: remindersConfigSchema,
+  highlights: highlightsConfigSchema,
+  afk: afkConfigSchema,
+  utility: utilityConfigSchema,
 } as const;
 
 export { z };

@@ -12,8 +12,22 @@ async function main() {
       GatewayIntentBits.GuildMessages,
       GatewayIntentBits.MessageContent,
       GatewayIntentBits.GuildMessageReactions,
+      // Without these four the logging handlers below load fine and then never
+      // fire: Discord simply doesn't send the events to a gateway that hasn't
+      // asked for them.
+      GatewayIntentBits.GuildVoiceStates,
+      GatewayIntentBits.GuildModeration,
+      GatewayIntentBits.GuildInvites,
+      GatewayIntentBits.GuildExpressions,
     ],
-    partials: [Partials.Channel, Partials.Message, Partials.Reaction],
+    // GuildMember: a leave/ban for a member we never cached still has to resolve
+    // to a user, or the join/leave log silently drops it.
+    partials: [
+      Partials.Channel,
+      Partials.Message,
+      Partials.Reaction,
+      Partials.GuildMember,
+    ],
   }) as BotClient;
 
   client.commands = new Collection();

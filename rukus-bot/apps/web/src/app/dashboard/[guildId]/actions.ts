@@ -12,6 +12,9 @@ import {
   setWelcomeConfig,
   setCustomCommandsConfig,
   setAccessConfig,
+  setStarboardConfig,
+  setSuggestionsConfig,
+  setGiveawaysConfig,
 } from "@rukus/supabase";
 import {
   ticketConfigSchema,
@@ -22,6 +25,9 @@ import {
   welcomeConfigSchema,
   customCommandsConfigSchema,
   accessConfigSchema,
+  starboardConfigSchema,
+  suggestionsConfigSchema,
+  giveawaysConfigSchema,
   buildTicketPanelPayload,
   buildFormsPanelPayload,
   shouldTranslate,
@@ -210,6 +216,51 @@ export async function saveCustomCommandsConfig(
   }
   await setCustomCommandsConfig(guildId, parsed.data);
   revalidatePath(`/dashboard/${guildId}/commands`);
+  revalidatePath(`/dashboard/${guildId}`);
+  return { ok: true };
+}
+
+export async function saveStarboardConfig(
+  guildId: string,
+  payload: unknown,
+): Promise<ActionResult> {
+  await requireGuildAccess(guildId);
+  const parsed = starboardConfigSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  await setStarboardConfig(guildId, parsed.data);
+  revalidatePath(`/dashboard/${guildId}/starboard`);
+  revalidatePath(`/dashboard/${guildId}`);
+  return { ok: true };
+}
+
+export async function saveSuggestionsConfig(
+  guildId: string,
+  payload: unknown,
+): Promise<ActionResult> {
+  await requireGuildAccess(guildId);
+  const parsed = suggestionsConfigSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  await setSuggestionsConfig(guildId, parsed.data);
+  revalidatePath(`/dashboard/${guildId}/suggestions`);
+  revalidatePath(`/dashboard/${guildId}`);
+  return { ok: true };
+}
+
+export async function saveGiveawaysConfig(
+  guildId: string,
+  payload: unknown,
+): Promise<ActionResult> {
+  await requireGuildAccess(guildId);
+  const parsed = giveawaysConfigSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  await setGiveawaysConfig(guildId, parsed.data);
+  revalidatePath(`/dashboard/${guildId}/giveaways`);
   revalidatePath(`/dashboard/${guildId}`);
   return { ok: true };
 }

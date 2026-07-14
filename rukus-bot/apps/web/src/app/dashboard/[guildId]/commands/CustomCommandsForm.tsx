@@ -29,6 +29,7 @@ function emptyCommand(): CustomCommand {
     allowedRoleIds: [],
     cooldownSec: 3,
     uses: 0,
+    tagscript: false,
   };
 }
 

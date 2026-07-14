@@ -64,6 +64,11 @@ export async function runAutoResponder(
     channelId: message.channelId,
   });
 
+  // The response text is dashboard-authored, and an "@everyone" in it would be
+  // sent as a real mass-ping. Allow user mentions (the response often addresses
+  // the asker) but never parse everyone/here or role pings.
+  const allowedMentions = { parse: ["users"] as const, repliedUser: false };
+
   const payload: Parameters<Message["reply"]>[0] = rule.useEmbed
     ? {
         embeds: [
@@ -72,12 +77,13 @@ export async function runAutoResponder(
             .setTitle(rule.embedTitle || null)
             .setDescription(text || null),
         ],
+        allowedMentions,
       }
-    : { content: text };
+    : { content: text, allowedMentions };
 
   try {
     const sent = rule.replyToUser
-      ? await message.reply({ ...payload, allowedMentions: { repliedUser: false } })
+      ? await message.reply(payload)
       : await message.channel.send(payload);
 
     if (rule.deleteAfterSec > 0) {
