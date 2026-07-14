@@ -8,7 +8,7 @@ import {
   type GuildMember,
 } from "discord.js";
 import { getFormsConfig } from "@rukus/db";
-import { panelForms } from "@rukus/shared";
+import { panelForms, buildFormPanelPayload } from "@rukus/shared";
 import { canManageGuild } from "../lib/perms.js";
 import { formPanelMessage } from "../features/forms/ui.js";
 import type { Command } from "../lib/types.js";
@@ -24,12 +24,19 @@ const command: Command = {
     .addSubcommand((s) =>
       s
         .setName("panel")
-        .setDescription("Post the forms panel with a button for each form")
+        .setDescription("Post a forms panel")
         .addChannelOption((o) =>
           o
             .setName("channel")
             .setDescription("Where to post (defaults to here)")
             .addChannelTypes(ChannelType.GuildText),
+        )
+        .addStringOption((o) =>
+          o
+            .setName("form")
+            .setDescription(
+              "Name of one form, to post its own panel. Empty = the shared panel.",
+            ),
         ),
     )
     .addSubcommand((s) =>
@@ -70,18 +77,54 @@ const command: Command = {
     }
 
     if (sub === "panel") {
-      if (!config.enabled || panelForms(config).length === 0) {
+      if (!config.enabled) {
         await interaction.reply({
           content:
-            "Forms aren't enabled or none are configured. Set them up in the " +
-            "dashboard first.",
+            "Forms aren't enabled. Turn them on in the dashboard first.",
           ...ephemeral,
         });
         return;
       }
+
       const target =
         (interaction.options.getChannel("channel") as TextChannel | null) ??
         (interaction.channel as TextChannel);
+
+      // A specific form: post that form's own panel, one button, its own embed.
+      const wanted = interaction.options.getString("form")?.trim().toLowerCase();
+      if (wanted) {
+        // Match on name OR id: staff read names, the dashboard shows ids.
+        const form = config.forms.find(
+          (f) => f.name.toLowerCase() === wanted || f.id.toLowerCase() === wanted,
+        );
+        if (!form) {
+          const names = config.forms.map((f) => `**${f.name}**`).join(", ");
+          await interaction.reply({
+            content:
+              `I couldn't find a form called "${wanted}".` +
+              (names ? ` Try one of: ${names}` : " No forms exist yet."),
+            ...ephemeral,
+          });
+          return;
+        }
+        await target.send(buildFormPanelPayload(form) as never);
+        await interaction.reply({
+          content: `Posted the **${form.name}** panel in <#${target.id}>.`,
+          ...ephemeral,
+        });
+        return;
+      }
+
+      // Otherwise the shared panel, listing every form that isn't on its own.
+      if (panelForms(config).length === 0) {
+        await interaction.reply({
+          content:
+            "No forms are on the shared panel. Either add one, or post a " +
+            "specific form's panel with `/form panel form:<name>`.",
+          ...ephemeral,
+        });
+        return;
+      }
       await target.send(formPanelMessage(config));
       await interaction.reply({
         content: `Forms panel posted in <#${target.id}>.`,

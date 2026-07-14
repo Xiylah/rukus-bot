@@ -131,10 +131,32 @@ export const formSchema = z.object({
   description: z.string().max(4000).default(""),
   buttonLabel: z.string().max(80).default("Apply"),
   /**
-   * Whether this form gets a button on the /form panel. Turn OFF for forms
-   * that only exist as pre-ticket questionnaires attached to ticket types.
+   * Whether this form appears on the SHARED panel, the single "Applications"
+   * hub that lists every form as a button. Turn OFF for forms that only exist
+   * as pre-ticket questionnaires attached to ticket types, or for forms you
+   * publish on their own panel instead (see ownPanel).
    */
   showOnPanel: z.boolean().default(true),
+
+  /**
+   * Give this form its OWN panel message, separate from the shared one.
+   *
+   * The shared panel puts every form on one embed, which is wrong as soon as
+   * two forms want different wording, different colors, or to live in different
+   * channels ("Content Creator Application" and "Staff Application" are not the
+   * same announcement). With this on, the form gets a panel of its own with a
+   * single button, published to its own channel.
+   */
+  ownPanel: z.boolean().default(false),
+  panelTitle: z.string().max(256).default(""),
+  panelDescription: z.string().max(4000).default(""),
+  panelColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default("#5865f2"),
+  /** Where this form's own panel lives, so it can be edited in place. */
+  panelChannelId: snowflake,
+  panelMessageId: snowflake,
   /** Channel where completed submissions are posted for review. */
   reviewChannelId: snowflake,
   /** Role granted automatically on approval (e.g. an "Applicant" role). */

@@ -1,5 +1,5 @@
 import { CID, COLORS } from "./constants.js";
-import type { TicketConfig, TicketType, FormsConfig } from "./schemas.js";
+import type { TicketConfig, TicketType, FormsConfig, Form } from "./schemas.js";
 
 /**
  * Panel payload builders, shared by the bot and the dashboard.
@@ -113,7 +113,42 @@ export function buildTicketPanelPayload(config: TicketConfig): PanelPayload {
  * off (pre-ticket questionnaires attached to ticket types) are excluded.
  */
 export function panelForms(config: FormsConfig) {
-  return config.forms.filter((f) => f.showOnPanel);
+  // Forms with their own panel are deliberately excluded from the shared one:
+  // otherwise a form would get two buttons in two places for the same thing.
+  return config.forms.filter((f) => f.showOnPanel && !f.ownPanel);
+}
+
+/**
+ * Build the panel for ONE form: its own embed, its own single button.
+ *
+ * The shared panel crams every form onto one embed, which stops working the
+ * moment two forms need different wording or different channels. A form with
+ * ownPanel gets this instead.
+ */
+export function buildFormPanelPayload(form: Form): PanelPayload {
+  const embed = {
+    title: form.panelTitle.trim() || form.name,
+    description: form.panelDescription.trim() || form.description || "",
+    color: hexToInt(form.panelColor),
+  };
+
+  return {
+    embeds: [embed],
+    components: [
+      {
+        type: 1,
+        components: [
+          {
+            type: 2,
+            style: 1,
+            label: (form.buttonLabel || "Apply").slice(0, 80),
+            custom_id: `${CID.formOpen}:${form.id}`,
+            emoji: { name: "📝" },
+          },
+        ],
+      },
+    ],
+  };
 }
 
 export function buildFormsPanelPayload(config: FormsConfig): PanelPayload {

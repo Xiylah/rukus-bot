@@ -5,6 +5,7 @@ import type { FormsConfig, Form, FormField } from "@rukus/shared";
 import { Select, type Option } from "@/components/Pickers";
 import { Toggle } from "@/components/Toggle";
 import { DiscordPreview } from "@/components/DiscordPreview";
+import { PublishFormPanel } from "./PublishFormPanel";
 import { saveFormsConfig } from "../actions";
 
 /** Generate a short client-side id for new forms/fields (no crypto needed). */
@@ -29,6 +30,10 @@ function emptyForm(): Form {
     description: "",
     buttonLabel: "Apply",
     showOnPanel: true,
+    ownPanel: false,
+    panelTitle: "",
+    panelDescription: "",
+    panelColor: "#5865f2",
     fields: [emptyField()],
   };
 }
@@ -56,6 +61,12 @@ export function FormsSettings({
   );
   const fi = forms.findIndex((f) => f.id === selectedFormId);
   const form = fi >= 0 ? forms[fi] : undefined;
+
+  // Must match panelForms() in @rukus/shared: a form with its own panel is
+  // deliberately kept OFF the shared one, or it would get two buttons in two
+  // places for the same thing.
+  const sharedForms = forms.filter((f) => f.showOnPanel && !f.ownPanel);
+  const ownPanelForms = forms.filter((f) => f.ownPanel);
 
   function addForm() {
     const f = emptyForm();
@@ -217,12 +228,90 @@ export function FormsSettings({
             </div>
           </div>
 
-          <Toggle
-            label="Show on the forms panel"
-            hint="Turn OFF for forms that only exist as pre-ticket questions attached to a ticket type; they keep working in tickets but get no panel button."
-            checked={form.showOnPanel}
-            onChange={(v) => updateForm(fi, { showOnPanel: v })}
-          />
+          {/* Where this form's button lives. */}
+          <div className="card space-y-4 border-edge/60 bg-black/20">
+            <div className="text-sm font-medium text-zinc-300">
+              Where does this form&apos;s button go?
+            </div>
+
+            <Toggle
+              label="Give this form its own panel"
+              hint="Its own message, with its own title, description, color and channel. Use this when a form is its own announcement, like a Content Creator Application. Otherwise it shares one combined panel with your other forms."
+              checked={form.ownPanel}
+              onChange={(v) => updateForm(fi, { ownPanel: v })}
+            />
+
+            {form.ownPanel ? (
+              <>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="label">Panel title</label>
+                    <input
+                      className="input"
+                      maxLength={256}
+                      placeholder={form.name}
+                      value={form.panelTitle}
+                      onChange={(e) => updateForm(fi, { panelTitle: e.target.value })}
+                    />
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Blank uses the form name.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="label">Panel color</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        className="h-9 w-12 cursor-pointer rounded border border-edge bg-panel"
+                        value={form.panelColor}
+                        onChange={(e) => updateForm(fi, { panelColor: e.target.value })}
+                      />
+                      <span className="text-sm text-zinc-400">{form.panelColor}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="label">Panel description</label>
+                  <textarea
+                    className="input min-h-20"
+                    maxLength={4000}
+                    placeholder={form.description || "Tell people what this is for."}
+                    value={form.panelDescription}
+                    onChange={(e) =>
+                      updateForm(fi, { panelDescription: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="label">Preview</label>
+                  <DiscordPreview
+                    color={form.panelColor}
+                    title={form.panelTitle || form.name}
+                    description={
+                      form.panelDescription || form.description || "(no description)"
+                    }
+                    buttons={[{ emoji: "📝", label: form.buttonLabel || "Apply" }]}
+                  />
+                </div>
+
+                <PublishFormPanel
+                  guildId={guildId}
+                  formId={form.id}
+                  channels={channels}
+                  currentChannelId={form.panelChannelId}
+                />
+              </>
+            ) : (
+              <Toggle
+                label="Show on the shared forms panel"
+                hint="Turn OFF for forms that only exist as pre-ticket questions attached to a ticket type; they keep working in tickets but get no panel button."
+                checked={form.showOnPanel}
+                onChange={(v) => updateForm(fi, { showOnPanel: v })}
+              />
+            )}
+          </div>
 
           <div className="space-y-3">
             <div className="text-sm font-medium text-zinc-300">
@@ -363,7 +452,18 @@ export function FormsSettings({
       )}
 
       <div className="card space-y-4">
-        <div className="font-medium text-white">Panel appearance</div>
+        <div className="font-medium text-white">Shared panel</div>
+        <p className="text-sm text-zinc-400">
+          One message listing every form that is not on its own panel, as a row
+          of buttons.{" "}
+          {ownPanelForms.length > 0 && (
+            <>
+              {ownPanelForms.length} form
+              {ownPanelForms.length === 1 ? " has" : "s have"} their own panel and
+              are published separately above.
+            </>
+          )}
+        </p>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="space-y-4">
             <div>
@@ -409,17 +509,17 @@ export function FormsSettings({
               title={panel.title}
               description={
                 panel.description.trim() ||
-                forms
-                  .filter((f) => f.showOnPanel)
+                sharedForms
                   .map(
                     (f) => `• ${f.name}${f.description ? `: ${f.description}` : ""}`,
                   )
                   .join("\n") ||
-                "No forms configured yet."
+                "No forms on this panel yet."
               }
-              buttons={forms
-                .filter((f) => f.showOnPanel)
-                .map((f) => ({ emoji: "📝", label: f.buttonLabel }))}
+              buttons={sharedForms.map((f) => ({
+                emoji: "📝",
+                label: f.buttonLabel,
+              }))}
             />
             <p className="mt-1 text-xs text-zinc-500">
               This is what /form panel will post. It updates as you type.

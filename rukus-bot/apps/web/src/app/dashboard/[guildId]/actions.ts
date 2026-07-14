@@ -30,6 +30,7 @@ import {
   giveawaysConfigSchema,
   buildTicketPanelPayload,
   buildFormsPanelPayload,
+  buildFormPanelPayload,
   shouldTranslate,
   coreText,
   scoreDetection,
@@ -345,6 +346,57 @@ export async function publishTicketPanel(guildId: string, channelId: string) {
 
 export async function publishFormsPanel(guildId: string, channelId: string) {
   return publishPanel(guildId, channelId, "forms");
+}
+
+/**
+ * Publish ONE form's own panel, separate from the shared "Applications" hub.
+ *
+ * Each form remembers its own channel and message id, so republishing edits that
+ * form's message in place and never touches another form's panel. That is the
+ * whole point: two applications are two announcements, and they must be able to
+ * live in different channels with different wording.
+ */
+export async function publishSingleFormPanel(
+  guildId: string,
+  formId: string,
+  channelId: string,
+): Promise<ActionResult & { updated?: boolean }> {
+  await requireGuildAccess(guildId);
+  if (!/^\d{17,20}$/.test(channelId)) {
+    return { ok: false, error: "Pick a channel first." };
+  }
+
+  const config = await getFormsConfig(guildId);
+  const form = config.forms.find((f) => f.id === formId);
+  if (!form) return { ok: false, error: "That form no longer exists. Save first." };
+
+  const payload = buildFormPanelPayload(form);
+
+  // Same channel as last time: edit in place so the channel does not accumulate
+  // duplicate panels every time someone tweaks the wording.
+  if (form.panelMessageId && form.panelChannelId === channelId) {
+    const edited = await editChannelMessage(channelId, form.panelMessageId, payload);
+    if (edited) {
+      revalidatePath(`/dashboard/${guildId}/forms`);
+      return { ok: true, updated: true };
+    }
+    // The message was deleted in Discord; fall through and post a fresh one.
+  }
+
+  const posted = await postChannelMessage(channelId, payload);
+  if (!posted.ok) return { ok: false, error: posted.error };
+
+  await setFormsConfig(guildId, {
+    ...config,
+    forms: config.forms.map((f) =>
+      f.id === formId
+        ? { ...f, panelChannelId: channelId, panelMessageId: posted.messageId }
+        : f,
+    ),
+  });
+
+  revalidatePath(`/dashboard/${guildId}/forms`);
+  return { ok: true, updated: false };
 }
 
 /**
