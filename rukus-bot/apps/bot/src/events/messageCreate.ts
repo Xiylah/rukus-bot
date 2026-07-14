@@ -1,4 +1,5 @@
 import { Events, Message } from "discord.js";
+import type { TranslationConfig } from "@rukus/shared";
 import type { EventHandler } from "../lib/types.js";
 import { log } from "../lib/logger.js";
 import {
@@ -15,6 +16,40 @@ import { translationEmbed } from "../features/translation/ui.js";
 import { runAutoResponder } from "../features/autoresponder/respond.js";
 import { getTicketMeta } from "../features/tickets/isTicket.js";
 import { findCommand, runCustomCommand } from "../features/custom/commands.js";
+
+/** Post a translation, honouring the guild's output settings. */
+async function postTranslation(
+  message: Message,
+  trans: TranslationConfig,
+  result: { text: string; src: string },
+  target: string,
+) {
+  const sent = await message.reply(
+    trans.useEmbed
+      ? {
+          embeds: [
+            translationEmbed({
+              translated: result.text,
+              src: result.src,
+              target,
+              color: trans.embedColor,
+            }),
+          ],
+          allowedMentions: { repliedUser: false },
+        }
+      : {
+          content: result.text.slice(0, 2000),
+          allowedMentions: { repliedUser: false },
+        },
+  );
+
+  if (trans.deleteAfterSec > 0) {
+    setTimeout(
+      () => sent.delete().catch(() => {}),
+      trans.deleteAfterSec * 1000,
+    );
+  }
+}
 
 /**
  * Main message pipeline - the TS equivalent of the Python on_message, but every
@@ -78,48 +113,47 @@ const handler: EventHandler<Events.MessageCreate> = {
       }
     }
 
-    if (!content || content.length < 8) return;
+    if (!content) return;
 
     // --- Translation ---
     const trans = await translationConfig(guildId);
     const ticketMeta = await getTicketMeta(message.channelId);
 
+    // Everything the gate needs to apply this guild's ignore lists.
+    const gateCtx = {
+      channelId: message.channelId,
+      roleIds: [...(message.member?.roles.cache.keys() ?? [])],
+      userId: message.author.id,
+      isBot: message.author.bot,
+    };
+
     if (ticketMeta?.translateLang) {
       // Two-way ticket conversation mode: the opener's messages get translated
       // to the guild's language for staff; everyone else's messages get
-      // translated to the opener's language. translateText() returns null when
-      // the text is already in the target language, so nothing double-posts.
+      // translated to the opener's language. Staff explicitly turned this on
+      // for this ticket, so bypass the gate's slang/length rules - but keep the
+      // "already in the target language" check inside translateText, which is
+      // what stops it double-posting.
       const target =
         message.author.id === ticketMeta.openerId
           ? trans.targetLang || "en"
           : ticketMeta.translateLang;
       try {
-        const result = await translateText(content, target);
-        if (result) {
-          await message.reply({
-            embeds: [
-              translationEmbed({ translated: result.text, src: result.src, target }),
-            ],
-            allowedMentions: { repliedUser: false },
-          });
-        }
+        const result = await translateText(content, trans, {
+          ...gateCtx,
+          target,
+          force: true,
+        });
+        if (result) await postTranslation(message, trans, result, target);
       } catch (e) {
         log.warn(`Ticket conversation translate failed: ${String(e)}`);
       }
     } else if (trans.autoTranslate) {
+      // The gate decides here. This is the path that used to misfire on slang.
       try {
-        const result = await translateText(content, trans.targetLang);
+        const result = await translateText(content, trans, gateCtx);
         if (result) {
-          await message.reply({
-            embeds: [
-              translationEmbed({
-                translated: result.text,
-                src: result.src,
-                target: trans.targetLang,
-              }),
-            ],
-            allowedMentions: { repliedUser: false },
-          });
+          await postTranslation(message, trans, result, trans.targetLang);
         }
       } catch (e) {
         log.warn(`Auto-translate failed: ${String(e)}`);
@@ -127,6 +161,9 @@ const handler: EventHandler<Events.MessageCreate> = {
     }
 
     // --- Auto-responder (custom rules) ---
+    // Its own floor: translation's minimum is configurable and unrelated, and
+    // matching rules against "hi" is never useful.
+    if (content.length < 8) return;
     const ar = await autoResponderConfig(guildId);
     if (ar.enabled) {
       // Never auto-respond inside a ticket: staff are already helping there,

@@ -4,6 +4,7 @@ import {
 } from "discord.js";
 import { translateText } from "./translate.js";
 import { translationEmbed } from "./ui.js";
+import { translationConfig } from "../../lib/configCache.js";
 
 /** Shared handler: translate the right-clicked message into `target`. */
 export async function contextTranslate(
@@ -19,7 +20,13 @@ export async function contextTranslate(
     return;
   }
   await interaction.deferReply();
-  const result = await translateText(message.content, target);
+  // force: the user right-clicked and asked for this, so the slang/length
+  // rules that guard AUTO-translation must not refuse them.
+  const config = await translationConfig(interaction.guildId ?? "0");
+  const result = await translateText(message.content, config, {
+    target,
+    force: true,
+  });
   if (!result) {
     await interaction.editReply({
       content:

@@ -39,7 +39,9 @@ const command: Command = {
             "`/translate` translate text\n" +
             "Right-click a message > Apps > Translate / Detect Language\n" +
             "React with a flag emoji to translate a message\n" +
-            "`/translation` configure auto-translate (admin)",
+            "`/translation` configure auto-translate (admin)\n" +
+            "Translating things it shouldn't? The dashboard has a tester that " +
+            "shows exactly why, plus never-translate word lists",
         },
         {
           name: "💬 Auto-responder",

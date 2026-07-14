@@ -73,7 +73,12 @@ const handler: EventHandler<Events.MessageReactionAdd> = {
       return;
     }
 
-    const result = await translateText(text, targetLang);
+    // force: reacting with a flag IS the request to translate, so the auto
+    // gate's slang/length rules must not veto it.
+    const result = await translateText(text, trans, {
+      target: targetLang,
+      force: true,
+    });
     if (!result) {
       // Too short / already that language / backend hiccup: nothing to post,
       // but still tidy up the reaction.

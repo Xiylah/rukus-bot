@@ -1,68 +1,32 @@
-import { franc } from "franc-min";
+import { francAll } from "franc-min";
 import * as deepl from "deepl-node";
 import { translate as googleTranslate } from "@vitalets/google-translate-api";
+import {
+  coreText,
+  shouldTranslate,
+  scoreDetection,
+  type TranslationConfig,
+  type TranslationGateResult,
+} from "@rukus/shared";
 import { env } from "../../env.js";
 import { log } from "../../lib/logger.js";
-import {
-  GOOGLE_TO_DEEPL_TARGET,
-  ISO3_TO_ISO2,
-  LANG_CODE_TO_NAME,
-} from "./lang.js";
+import { GOOGLE_TO_DEEPL_TARGET, LANG_CODE_TO_NAME } from "./lang.js";
 
 /**
- * Translation core - a faithful port of the Python bot's translate_text():
+ * Translation core.
  *
- *   1. strip URLs/mentions/emoji, apply a length gate
- *   2. slang-only skip
- *   3. local detection: skip if already confidently the target language
- *   4. LRU cache lookup
- *   5. DeepL (preferred) → Google (fallback) on a genuine miss
+ * The "should we translate this?" decision lives in @rukus/shared so the
+ * dashboard tester runs the identical code path. This module owns only the
+ * parts that need the network or a detector:
  *
- * Returns `{ text, src }` on success or `null` when nothing should be posted
- * (too short, slang, already target language, or a backend error).
+ *   1. detect the source language locally, WITH a confidence score
+ *   2. hand the message + config + detection to the shared gate
+ *   3. on a pass: LRU cache → DeepL (preferred) → Google (fallback)
+ *
+ * Returns `{ text, src }` on success or `null` when nothing should be posted.
  */
 
-const TRANSLATE_MIN_LEN = 12;
 const CACHE_MAX = 500;
-
-const URL_RE = /https?:\/\/\S+/g;
-const MENTION_RE = /<a?[@#!&:][^>]+>/g;
-const EMOJI_RE =
-  /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}]+/gu;
-
-// Common chat slang that shouldn't trigger translation on its own.
-const SLANG = new Set([
-  "ty", "tysm", "thx", "thanks", "np", "yw", "wyd", "wym", "hru", "wbu", "wb",
-  "gg", "glhf", "brb", "afk", "gtg", "g2g", "ttyl", "lol", "lmao", "lmfao",
-  "rofl", "omg", "omfg", "wtf", "idk", "idc", "ikr", "imo", "imho", "tbh",
-  "ngl", "fr", "frfr", "smh", "istg", "irl", "dm", "pm", "afaik", "asap",
-  "aka", "btw", "nvm", "rn", "atm", "ez", "op", "pog", "poggers", "w", "l",
-  "ratio", "based", "cap", "nocap", "bet", "fam", "bruh", "bro", "yo", "sup",
-  "wsg", "wassup", "ong", "icl", "lowkey", "highkey", "sus", "goat", "mid",
-  "gyat", "rizz", "fyp", "sheesh", "yeet", "oof", "yikes", "welp", "meh", "eh",
-  "hmm", "ok", "okay", "kk", "k", "yeah", "yea", "yep", "nah", "nope", "ye",
-  "ya", "u", "ur", "pls", "plz", "plss", "ffs", "wdym",
-]);
-
-/** Remove URLs/mentions/emoji to see if any real language remains. */
-function strippable(text: string): string {
-  return text
-    .replace(URL_RE, " ")
-    .replace(MENTION_RE, " ")
-    .replace(EMOJI_RE, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** Remove standalone slang tokens; return whatever real text is left. */
-function stripSlang(text: string): string {
-  const cleaned = text.toLowerCase().replace(/[^\w\s]/g, " ");
-  return cleaned
-    .split(/\s+/)
-    .filter((w) => w && !SLANG.has(w))
-    .join(" ")
-    .trim();
-}
 
 /** Lowercase, drop punctuation, collapse whitespace for "unchanged?" compares. */
 function normForCompare(s: string): string {
@@ -74,12 +38,15 @@ function normForCompare(s: string): string {
     .join(" ");
 }
 
-/** Best-effort local language detection → 2-letter code, or null. */
-function localDetect(text: string): string | null {
-  // franc needs a bit of text to be reliable; short strings return "und".
-  const iso3 = franc(text, { minLength: 10 });
-  if (iso3 === "und") return null;
-  return ISO3_TO_ISO2[iso3] ?? null;
+/**
+ * Local detection with a confidence score. The scoring itself lives in
+ * @rukus/shared so the dashboard tester reports identical numbers.
+ */
+export function detectWithConfidence(
+  text: string,
+  target = "en",
+): { lang: string | null; confidence: number } {
+  return scoreDetection(francAll(text, { minLength: 10 }), target, text);
 }
 
 // ---- LRU cache: `${coreLower}|${target}` → { text, src } ----
@@ -142,35 +109,65 @@ export interface TranslationResult {
   src: string;
 }
 
+/** Run the shared gate against a message, using local detection for confidence. */
+export function gateMessage(
+  text: string,
+  config: TranslationConfig,
+  ctx: {
+    channelId?: string;
+    roleIds?: string[];
+    userId?: string;
+    isBot?: boolean;
+    /** Override the target (ticket two-way mode translates per-recipient). */
+    target?: string;
+  } = {},
+): TranslationGateResult {
+  const target = ctx.target ?? config.targetLang;
+  const core = coreText(text);
+  const detected = core
+    ? detectWithConfidence(core, target)
+    : { lang: null, confidence: 0 };
+  return shouldTranslate(text, { ...config, targetLang: target }, { ...ctx, detected });
+}
+
 /**
- * Translate `text` into `target`. Returns null when nothing should be posted.
+ * Translate `text` into `target`, honouring the guild's translation config.
+ * Returns null when the gate says no or a backend fails.
  */
 export async function translateText(
   text: string,
-  target = "en",
+  config: TranslationConfig,
+  ctx: {
+    channelId?: string;
+    roleIds?: string[];
+    userId?: string;
+    isBot?: boolean;
+    target?: string;
+    /**
+     * Skip the gate entirely. Set for translations a human explicitly asked
+     * for (/translate, a flag reaction, right-click > Translate): they said
+     * "translate this", so a slang or length rule refusing them is just a bug.
+     */
+    force?: boolean;
+  } = {},
 ): Promise<TranslationResult | null> {
-  const core = strippable(text);
-  if (core.length < TRANSLATE_MIN_LEN) return null;
-  if (stripSlang(core).length < TRANSLATE_MIN_LEN) return null;
+  const target = ctx.target ?? config.targetLang;
 
-  // Gamertag/leetspeak gate: drop tokens with fused digits for the decision.
-  const noDigitTokens = core
-    .split(/\s+/)
-    .filter((w) => !/\d/.test(w))
-    .join(" ");
-  if (noDigitTokens.length < TRANSLATE_MIN_LEN) return null;
-
-  // Skip if we're confident it's already the target language.
-  const detected = localDetect(core);
-  if (detected) {
-    const baseTarget = target.split("-")[0]?.toLowerCase();
-    const baseDetected = detected.split("-")[0]?.toLowerCase();
-    if (baseDetected === baseTarget) return null;
+  let core: string;
+  if (ctx.force) {
+    core = coreText(text);
+    if (!core) return null;
+  } else {
+    const gate = gateMessage(text, config, ctx);
+    if (!gate.translate) return null;
+    core = gate.core;
   }
 
   const key = `${core.toLowerCase()}|${target}`;
   const cached = cacheGet(key);
   if (cached) return cached;
+
+  const detected = detectWithConfidence(core, target);
 
   // Prefer DeepL, fall back to Google.
   const viaDeepl = await deeplTranslate(core, target);
@@ -185,8 +182,7 @@ export async function translateText(
     const translated = res.text;
     if (!translated) return null;
     if (normForCompare(translated) === normForCompare(core)) return null;
-    // @vitalets returns the detected source on res.raw; fall back to local.
-    const src = detected ?? "auto";
+    const src = detected.lang ?? "auto";
     const out = { text: translated, src };
     cachePut(key, out);
     return out;
@@ -200,8 +196,8 @@ export async function translateText(
 export async function detectLanguage(
   text: string,
 ): Promise<{ code: string; name: string } | null> {
-  const core = strippable(text);
-  if (core.length < TRANSLATE_MIN_LEN) return null;
+  const core = coreText(text);
+  if (core.length < 12) return null;
 
   // Prefer DeepL's genuine detection if available.
   if (deeplClient) {
@@ -214,8 +210,8 @@ export async function detectLanguage(
     }
   }
 
-  const local = localDetect(core);
-  if (local) return { code: local, name: nameFor(local) };
+  const local = detectWithConfidence(core);
+  if (local.lang) return { code: local.lang, name: nameFor(local.lang) };
   return null;
 }
 

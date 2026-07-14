@@ -24,6 +24,9 @@ import {
   accessConfigSchema,
   buildTicketPanelPayload,
   buildFormsPanelPayload,
+  shouldTranslate,
+  coreText,
+  scoreDetection,
 } from "@rukus/shared";
 import { requireGuildAccess } from "@/lib/guard";
 import { postChannelMessage, editChannelMessage } from "@/lib/discord";
@@ -92,6 +95,59 @@ export async function saveTranslationConfig(
   revalidatePath(`/dashboard/${guildId}/translation`);
   revalidatePath(`/dashboard/${guildId}`);
   return { ok: true };
+}
+
+/**
+ * Dry-run the translation gate against a sample message.
+ *
+ * This runs the SAME shouldTranslate() the bot runs, with the same franc
+ * detector, so what staff see here is exactly what the bot will do. It never
+ * calls a translation API - it only reports the decision and the reason.
+ */
+export async function testTranslation(
+  guildId: string,
+  payload: unknown,
+  sample: string,
+): Promise<
+  | { ok: true; translate: boolean; reason: string; detail: string; core: string;
+      detected: { lang: string | null; confidence: number } }
+  | { ok: false; error: string }
+> {
+  await requireGuildAccess(guildId);
+  const parsed = translationConfigSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid settings" };
+  }
+
+  const { francAll } = await import("franc-min");
+  const core = coreText(sample);
+
+  // scoreDetection is the SAME function the bot uses, so the numbers shown here
+  // are the numbers the bot acts on.
+  const detected = core
+    ? scoreDetection(
+        francAll(core, { minLength: 10 }),
+        parsed.data.targetLang,
+        core,
+      )
+    : { lang: null, confidence: 0 };
+
+  // Force autoTranslate on for the test: staff want to know whether the RULES
+  // would pass this message, not be told "the feature is off".
+  const result = shouldTranslate(
+    sample,
+    { ...parsed.data, autoTranslate: true },
+    { detected },
+  );
+
+  return {
+    ok: true,
+    translate: result.translate,
+    reason: result.reason,
+    detail: result.detail,
+    core: result.core,
+    detected,
+  };
 }
 
 export async function saveAutoResponderConfig(

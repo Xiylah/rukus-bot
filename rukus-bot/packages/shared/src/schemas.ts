@@ -176,6 +176,56 @@ export const translationConfigSchema = z.object({
   flagReactions: z.boolean().default(true),
   /** Target language for auto-translation (deep-translator/DeepL code). */
   targetLang: z.string().min(2).max(5).default("en"),
+
+  // ---- Accuracy controls ----
+  // The old gate translated anything franc failed to recognise as English,
+  // which is why slang and gamer-speak misfired. These let a server tighten
+  // that up without a code change.
+
+  /**
+   * How sure the detector must be (0-100) before we act on its guess.
+   * Slangy English is exactly what detectors are worst at, so raising this is
+   * the main lever against "it translated my English".
+   */
+  detectConfidence: z.number().int().min(0).max(100).default(70),
+  /** When the detector isn't confident, skip instead of guessing. */
+  requireConfidentDetect: z.boolean().default(true),
+  /** Only translate FROM these languages. Empty = any language. */
+  sourceLangs: z.array(z.string().min(2).max(5)).max(40).default([]),
+
+  /** Messages shorter than this (after stripping links/emoji) are ignored. */
+  minLength: z.number().int().min(1).max(500).default(12),
+
+  /** Skip messages that are only chat slang. */
+  skipSlang: z.boolean().default(true),
+  /** The slang list itself, fully editable. */
+  slangWords: z.array(z.string().min(1).max(40)).max(1000).default([]),
+
+  /** Never translate a message containing one of these phrases. */
+  neverTranslate: z.array(z.string().min(1).max(200)).max(500).default([]),
+  /** Always translate a message containing one of these, skipping every check. */
+  alwaysTranslate: z.array(z.string().min(1).max(200)).max(500).default([]),
+
+  // ---- Scope ----
+  ignoreChannelIds: z.array(z.string()).max(200).default([]),
+  ignoreRoleIds: z.array(z.string()).max(100).default([]),
+  ignoreUserIds: z.array(z.string()).max(200).default([]),
+  ignoreBots: z.boolean().default(true),
+  /** Don't translate messages that start with these (command prefixes). */
+  ignoreCommandPrefixes: z
+    .array(z.string().min(1).max(5))
+    .max(20)
+    .default(["!", "/", "?", ".", "-"]),
+  /** Don't translate messages containing code blocks or inline code. */
+  ignoreCodeBlocks: z.boolean().default(true),
+
+  // ---- Output ----
+  /** Show the translation as an embed (vs a plain reply). */
+  useEmbed: z.boolean().default(true),
+  /** Embed accent color. */
+  embedColor: z.string().regex(/^#?[0-9a-fA-F]{6}$/).default("#5865f2"),
+  /** Delete the translation after N seconds. 0 = keep it. */
+  deleteAfterSec: z.number().int().min(0).max(3600).default(0),
 });
 
 export type TranslationConfig = z.infer<typeof translationConfigSchema>;

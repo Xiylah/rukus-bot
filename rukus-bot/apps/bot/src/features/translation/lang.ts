@@ -62,17 +62,6 @@ export const LANGUAGE_CHOICES: Record<string, string> = {
   Greek: "el", Swedish: "sv",
 };
 
-/**
- * franc returns ISO 639-3 codes; map the common ones back to the 2-letter
- * codes our translators use. Anything not here is treated as "unknown", which
- * just means we don't skip the API call - safe.
- */
-export const ISO3_TO_ISO2: Record<string, string> = {
-  eng: "en", spa: "es", fra: "fr", por: "pt", deu: "de",
-  ita: "it", nld: "nl", rus: "ru", jpn: "ja", kor: "ko",
-  cmn: "zh-CN", ara: "ar", hin: "hi", tur: "tr", pol: "pl",
-  vie: "vi", tha: "th", ind: "id", ukr: "uk", ell: "el",
-  swe: "sv", dan: "da", nor: "no", fin: "fi", ron: "ro",
-  hun: "hu", ces: "cs", slk: "sk", heb: "he", fas: "fa",
-  urd: "ur", ben: "bn", msa: "ms", bul: "bg", hrv: "hr",
-};
+// ISO3_TO_ISO2 lives in @rukus/shared so the bot and the dashboard tester score
+// language detection identically. Re-exported here for existing importers.
+export { ISO3_TO_ISO2 } from "@rukus/shared";

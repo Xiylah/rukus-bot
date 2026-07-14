@@ -5,6 +5,7 @@ import {
 } from "discord.js";
 import type { Command } from "../lib/types.js";
 import { translateText } from "../features/translation/translate.js";
+import { translationConfig } from "../lib/configCache.js";
 import { translationEmbed } from "../features/translation/ui.js";
 import { LANGUAGE_CHOICES } from "../features/translation/lang.js";
 
@@ -30,7 +31,9 @@ const command: Command = {
     const text = interaction.options.getString("text", true);
     const target = interaction.options.getString("to") ?? "en";
     await interaction.deferReply();
-    const result = await translateText(text, target);
+    // force: an explicit /translate must always translate.
+    const config = await translationConfig(interaction.guildId ?? "0");
+    const result = await translateText(text, config, { target, force: true });
     if (!result) {
       await interaction.editReply({
         content:

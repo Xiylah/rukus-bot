@@ -60,6 +60,9 @@ importers:
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1
+      franc-min:
+        specifier: ^6.2.0
+        version: 6.2.0
       next:
         specifier: ^15.1.6
         version: 15.5.20(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
