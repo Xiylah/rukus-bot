@@ -71,7 +71,7 @@ const command: Command = {
       `${interaction.user.tag}: ${reason ?? "no reason"}`,
     );
 
-    const { number, proofUrl, proofError } = await createCase({
+    const { number, recorded, proofUrl, proofError } = await createCase({
       guild: interaction.guild,
       action: removing ? "UNTIMEOUT" : "TIMEOUT",
       target,
@@ -83,8 +83,8 @@ const command: Command = {
 
     await interaction.reply({
       content: removing
-        ? `🔊 Timeout removed for ${target}. Case #${String(number).padStart(4, "0")}.`
-        : `🔇 ${target} timed out for ${formatMinutes(minutes)}. Case #${String(number).padStart(4, "0")}.${reason ? ` Reason: ${reason}` : ""}` +
+        ? `🔊 Timeout removed for ${target}.${recorded ? ` Case #${String(number).padStart(4, "0")}.` : ""}`
+        : `🔇 ${target} timed out for ${formatMinutes(minutes)}.${recorded ? ` Case #${String(number).padStart(4, "0")}.` : ""}${reason ? ` Reason: ${reason}` : ""}` +
           (proofUrl ? `
 Proof: ${proofUrl}` : "") +
           (proofError ? `

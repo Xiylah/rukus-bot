@@ -31,8 +31,14 @@ const command: Command = {
     const text = interaction.options.getString("text", true);
     const target = interaction.options.getString("to") ?? "en";
     await interaction.deferReply();
-    // force: an explicit /translate must always translate.
     const config = await translationConfig(interaction.guildId ?? "0");
+    if (!config.enabled) {
+      await interaction.editReply({
+        content: "Translation is turned off for this server.",
+      });
+      return;
+    }
+    // force: an explicit /translate must always translate.
     const result = await translateText(text, config, { target, force: true });
     if (!result) {
       await interaction.editReply({

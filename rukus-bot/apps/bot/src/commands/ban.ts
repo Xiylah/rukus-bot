@@ -70,7 +70,7 @@ const command: Command = {
       }
 
       // Record + DM BEFORE the ban, or the DM can no longer be delivered.
-      const { number, proofUrl, proofError } = await createCase({
+      const { number, recorded, proofUrl, proofError } = await createCase({
         guild: interaction.guild,
         action: "BAN",
         target,
@@ -85,7 +85,7 @@ const command: Command = {
 
       await interaction.reply({
         content:
-          `🔨 ${target.tag} was banned. Case #${String(number).padStart(4, "0")}.${reason ? ` Reason: ${reason}` : ""}` +
+          `🔨 ${target.tag} was banned.${recorded ? ` Case #${String(number).padStart(4, "0")}.` : ""}${reason ? ` Reason: ${reason}` : ""}` +
           (proofUrl ? `
 Proof: ${proofUrl}` : "") +
           (proofError ? `
@@ -116,7 +116,7 @@ Proof: ${proofUrl}` : "") +
       return;
     }
     const target = await interaction.client.users.fetch(userId).catch(() => null);
-    const { number } = await createCase({
+    const { number, recorded } = await createCase({
       guild: interaction.guild,
       action: "UNBAN",
       target: target ?? ({ id: userId, tag: userId, send: async () => {} } as never),
@@ -124,7 +124,7 @@ Proof: ${proofUrl}` : "") +
       reason,
     });
     await interaction.reply({
-      content: `🕊️ <@${userId}> was unbanned. Case #${String(number).padStart(4, "0")}.`,
+      content: `🕊️ <@${userId}> was unbanned.${recorded ? ` Case #${String(number).padStart(4, "0")}.` : ""}`,
     });
   },
 };

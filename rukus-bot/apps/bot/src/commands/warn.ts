@@ -36,7 +36,7 @@ const command: Command = {
       return;
     }
 
-    const { number, proofUrl, proofError } = await createCase({
+    const { number, recorded, proofUrl, proofError } = await createCase({
       guild: interaction.guild,
       action: "WARN",
       target,
@@ -47,7 +47,7 @@ const command: Command = {
 
     await interaction.reply({
       content:
-        `⚠️ ${target} has been warned. Case #${String(number).padStart(4, "0")}. Reason: ${reason}` +
+        `⚠️ ${target} has been warned.${recorded ? ` Case #${String(number).padStart(4, "0")}.` : ""} Reason: ${reason}` +
         (proofUrl ? `
 Proof: ${proofUrl}` : "") +
         (proofError ? `

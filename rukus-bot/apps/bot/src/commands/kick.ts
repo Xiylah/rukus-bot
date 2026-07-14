@@ -44,7 +44,7 @@ const command: Command = {
     }
 
     // Record + DM BEFORE the kick, or the DM can no longer be delivered.
-    const { number, proofUrl, proofError } = await createCase({
+    const { number, recorded, proofUrl, proofError } = await createCase({
       guild: interaction.guild,
       action: "KICK",
       target,
@@ -56,7 +56,7 @@ const command: Command = {
 
     await interaction.reply({
       content:
-        `👢 ${target.tag} was kicked. Case #${String(number).padStart(4, "0")}.${reason ? ` Reason: ${reason}` : ""}` +
+        `👢 ${target.tag} was kicked.${recorded ? ` Case #${String(number).padStart(4, "0")}.` : ""}${reason ? ` Reason: ${reason}` : ""}` +
         (proofUrl ? `
 Proof: ${proofUrl}` : "") +
         (proofError ? `

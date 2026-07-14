@@ -192,6 +192,19 @@ export type FormsConfig = z.infer<typeof formsConfigSchema>;
 // ---------------- Translation ----------------
 
 export const translationConfigSchema = z.object({
+  /**
+   * Master switch for the whole module.
+   *
+   * Off means translation is gone: no auto-translate, no flag reactions, and
+   * /translate and the right-click actions politely refuse. Unlike moderation,
+   * turning this off DOES disable the manual commands, because a server that
+   * does not want a translator does not want one at all.
+   *
+   * Defaults to true so existing servers keep what they have; the individual
+   * behaviours below still default to off, so a new server gets a quiet bot.
+   */
+  enabled: z.boolean().default(true),
+
   /** Auto-translate non-English messages posted in the server. */
   autoTranslate: z.boolean().default(false),
   /** Allow flag-emoji reactions to trigger a translation. */
@@ -347,6 +360,32 @@ export type AutoResponderConfig = z.infer<typeof autoResponderConfigSchema>;
 // ---------------- Basic moderation (ported from Python) ----------------
 
 export const moderationConfigSchema = z.object({
+  /**
+   * Master switch for the whole module.
+   *
+   * Off means the automatic side stops entirely: no automod filters, no
+   * anti-spam, no image-only enforcement. Nothing is deleted and nobody is
+   * punished automatically.
+   *
+   * The manual commands (/warn, /ban, ...) deliberately keep working: a staff
+   * member typing /ban has explicitly asked for it, and silently ignoring them
+   * would be worse than useless. Turning the module off is about what the bot
+   * does ON ITS OWN.
+   *
+   * Defaults to true so existing servers keep the behaviour they already have.
+   * A brand new server still gets nothing, because every individual filter
+   * below defaults to off.
+   */
+  enabled: z.boolean().default(true),
+
+  /**
+   * Record a numbered case (with proof, DM, and mod-log entry) for every
+   * moderation action. Off = /warn, /ban and friends still work, they just
+   * leave no record. Separate from `enabled` because plenty of servers want the
+   * filters without the paperwork, or the paperwork without the filters.
+   */
+  casesEnabled: z.boolean().default(true),
+
   /** Delete + warn on messages containing drug/substance terms. */
   drugFilter: z.boolean().default(false),
   /** Channel where only image posts are allowed (text-only gets deleted). */

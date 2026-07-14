@@ -139,11 +139,11 @@ export async function testTranslation(
       )
     : { lang: null, confidence: 0 };
 
-  // Force autoTranslate on for the test: staff want to know whether the RULES
-  // would pass this message, not be told "the feature is off".
+  // Force the module and auto-translate on for the test: staff want to know
+  // whether the RULES would pass this message, not be told "the feature is off".
   const result = shouldTranslate(
     sample,
-    { ...parsed.data, autoTranslate: true },
+    { ...parsed.data, enabled: true, autoTranslate: true },
     { detected },
   );
 

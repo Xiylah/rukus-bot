@@ -47,6 +47,7 @@ export interface TranslationGateResult {
 
 /** The subset of TranslationConfig the gate needs. Kept structural to avoid a cycle. */
 export interface GateConfig {
+  enabled: boolean;
   autoTranslate: boolean;
   targetLang: string;
   minLength: number;
@@ -148,6 +149,9 @@ export function shouldTranslate(
     core,
   });
 
+  if (!config.enabled) {
+    return no("disabled", "The translation module is turned off for this server.");
+  }
   if (!config.autoTranslate) {
     return no("disabled", "Auto-translate is turned off.");
   }

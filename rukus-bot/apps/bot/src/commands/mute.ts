@@ -82,7 +82,7 @@ const command: Command = {
       return;
     }
 
-    const { number, proofUrl, proofError } = await createCase({
+    const { number, recorded, proofUrl, proofError } = await createCase({
       guild: interaction.guild,
       action: "MUTE",
       target,
@@ -93,7 +93,7 @@ const command: Command = {
 
     await interaction.reply({
       content:
-        `🤐 ${target} has been muted. Case #${String(number).padStart(4, "0")}.` +
+        `🤐 ${target} has been muted.${recorded ? ` Case #${String(number).padStart(4, "0")}.` : ""}` +
         (reason ? ` Reason: ${reason}` : "") +
         (proofUrl ? `\nProof: ${proofUrl}` : "") +
         (proofError ? `\n(Proof skipped: ${proofError})` : ""),

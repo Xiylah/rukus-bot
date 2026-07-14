@@ -67,42 +67,48 @@ const handler: EventHandler<Events.MessageCreate> = {
     const guildId = message.guildId;
     const content = message.content.trim();
 
-    // --- Image-only channel: delete text-only messages ---
+    // --- Moderation: image-only, anti-spam, automod filters ---
+    // The master switch turns off everything the bot does ON ITS OWN. The manual
+    // commands (/warn, /ban) still work, because a staff member typing one has
+    // explicitly asked for it. Everything BELOW this block (custom commands,
+    // XP, translation, auto-responder) is a separate module and keeps running.
     const mod = await moderationConfig(guildId);
-    if (mod.imageOnlyChannelId && message.channelId === mod.imageOnlyChannelId) {
-      const hasAttachment = message.attachments.size > 0;
-      const hasEmbedImage = message.embeds.some((e) => e.image || e.thumbnail);
-      if (!hasAttachment && !hasEmbedImage) {
-        await message.delete().catch(() => {});
+    if (mod.enabled) {
+      if (mod.imageOnlyChannelId && message.channelId === mod.imageOnlyChannelId) {
+        const hasAttachment = message.attachments.size > 0;
+        const hasEmbedImage = message.embeds.some((e) => e.image || e.thumbnail);
+        if (!hasAttachment && !hasEmbedImage) {
+          await message.delete().catch(() => {});
+        }
+        return; // nothing else runs in the image-only channel
       }
-      return; // nothing else runs in the image-only channel
-    }
 
-    // --- Anti-spam / anti-scam (runs first: this is the damaging stuff) ---
-    // Staff and exempt roles bypass it, same as the other filters.
-    const exempt =
-      message.member?.permissions.has("ManageMessages") ||
-      mod.exemptRoleIds.some((r) => message.member?.roles.cache.has(r));
-    if (!exempt) {
-      const spam = checkSpam(message, mod);
-      if (spam) {
-        await enforceSpam(message, mod, spam);
+      // --- Anti-spam / anti-scam (runs first: this is the damaging stuff) ---
+      // Staff and exempt roles bypass it, same as the other filters.
+      const exempt =
+        message.member?.permissions.has("ManageMessages") ||
+        mod.exemptRoleIds.some((r) => message.member?.roles.cache.has(r));
+      if (!exempt) {
+        const spam = checkSpam(message, mod);
+        if (spam) {
+          await enforceSpam(message, mod, spam);
+          return;
+        }
+      }
+
+      // --- Auto-moderation: drug filter, banned words, invites, mentions ---
+      const hit = checkFilters(message, mod);
+      if (hit) {
+        await logFiltered(message, mod, hit); // log BEFORE deleting (content!)
+        await message.delete().catch(() => {});
+        if (message.channel.isSendable()) {
+          await message.channel
+            .send({ content: `${message.author} ${hit.warning}` })
+            .then((m) => setTimeout(() => m.delete().catch(() => {}), 10_000))
+            .catch(() => {});
+        }
         return;
       }
-    }
-
-    // --- Auto-moderation: drug filter, banned words, invites, mentions ---
-    const hit = checkFilters(message, mod);
-    if (hit) {
-      await logFiltered(message, mod, hit); // log BEFORE deleting (content!)
-      await message.delete().catch(() => {});
-      if (message.channel.isSendable()) {
-        await message.channel
-          .send({ content: `${message.author} ${hit.warning}` })
-          .then((m) => setTimeout(() => m.delete().catch(() => {}), 10_000))
-          .catch(() => {});
-      }
-      return;
     }
 
     // --- Leveling XP ---

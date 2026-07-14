@@ -20,9 +20,15 @@ export async function contextTranslate(
     return;
   }
   await interaction.deferReply();
+  const config = await translationConfig(interaction.guildId ?? "0");
+  if (!config.enabled) {
+    await interaction.editReply({
+      content: "Translation is turned off for this server.",
+    });
+    return;
+  }
   // force: the user right-clicked and asked for this, so the slang/length
   // rules that guard AUTO-translation must not refuse them.
-  const config = await translationConfig(interaction.guildId ?? "0");
   const result = await translateText(message.content, config, {
     target,
     force: true,

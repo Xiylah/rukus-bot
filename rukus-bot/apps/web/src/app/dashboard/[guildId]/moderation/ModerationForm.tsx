@@ -57,6 +57,28 @@ export function ModerationForm({
 
   return (
     <div className="space-y-5">
+      {/* ---------- Master switches ---------- */}
+      <div className="card space-y-4">
+        <Toggle
+          label="Enable moderation"
+          hint="Off means the bot stops moderating on its own: no filters, no anti-spam, no image-only enforcement. Your mods can still use /warn, /ban and the rest, because typing one of those is asking for it on purpose."
+          checked={config.enabled}
+          onChange={(v) => setConfig((c) => ({ ...c, enabled: v }))}
+        />
+        <Toggle
+          label="Record cases"
+          hint="Every warn, mute, kick and ban gets a numbered case with proof, a DM to the member, and a mod-log entry. Off = the commands still work, they just leave no record."
+          checked={config.casesEnabled}
+          onChange={(v) => setConfig((c) => ({ ...c, casesEnabled: v }))}
+        />
+        {!config.enabled && (
+          <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            Moderation is off, so nothing below is running. The manual commands
+            still work.
+          </p>
+        )}
+      </div>
+
       {/* ---------- Anti-spam / anti-scam ---------- */}
       <div className="card space-y-4 border-red-500/30">
         <div>

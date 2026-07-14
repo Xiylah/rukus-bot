@@ -152,6 +152,11 @@ export async function translateText(
     force?: boolean;
   } = {},
 ): Promise<TranslationResult | null> {
+  // The master switch beats force. `force` exists to skip the slang and length
+  // RULES for someone who explicitly asked, not to resurrect a module the
+  // server turned off: a disabled translator must not translate anything.
+  if (!config.enabled) return null;
+
   const target = ctx.target ?? config.targetLang;
 
   let core: string;

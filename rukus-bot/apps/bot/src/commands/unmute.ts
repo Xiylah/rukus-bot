@@ -67,7 +67,7 @@ const command: Command = {
       return;
     }
 
-    const { number } = await createCase({
+    const { number, recorded } = await createCase({
       guild: interaction.guild,
       action: "UNMUTE",
       target,
@@ -76,7 +76,7 @@ const command: Command = {
     });
 
     await interaction.reply({
-      content: `🗣️ ${target} has been unmuted. Case #${String(number).padStart(4, "0")}.`,
+      content: `🗣️ ${target} has been unmuted.${recorded ? ` Case #${String(number).padStart(4, "0")}.` : ""}`,
     });
   },
 };

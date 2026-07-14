@@ -124,6 +124,17 @@ export function TranslationSettingsForm({
       <div className="card space-y-4">
         <div className="font-medium text-white">Basics</div>
         <Toggle
+          label="Enable translation"
+          hint="The master switch. Off means no auto-translate, no flag reactions, and /translate politely refuses."
+          checked={config.enabled}
+          onChange={(v) => set("enabled", v)}
+        />
+        {!config.enabled && (
+          <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+            Translation is off, so nothing below is running.
+          </p>
+        )}
+        <Toggle
           label="Auto-translate messages"
           hint="Reply with a translation when someone posts in another language."
           checked={config.autoTranslate}

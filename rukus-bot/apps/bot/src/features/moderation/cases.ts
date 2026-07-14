@@ -84,10 +84,22 @@ export interface NewCase {
 
 export interface CaseResult {
   number: number;
+  /**
+   * False when the server turned case logging off. The action still happened;
+   * it just left no record, so callers must not print a case number.
+   */
+  recorded: boolean;
   /** Hosted proof URL, when a proof image was stored and DASHBOARD_URL set. */
   proofUrl?: string;
   /** Why the proof was skipped, when it was. */
   proofError?: string;
+}
+
+/** Format a case number for a user-facing reply, e.g. " Case #0007." */
+export function caseTag(result: CaseResult): string {
+  return result.recorded
+    ? ` Case #${String(result.number).padStart(4, "0")}.`
+    : "";
 }
 
 /**
@@ -96,6 +108,16 @@ export interface CaseResult {
  */
 export async function createCase(params: NewCase): Promise<CaseResult> {
   const { guild, action, target, moderatorId, reason, durationMin, proof } = params;
+
+  // Case logging is off: the ban/kick/warn itself still happens (the caller has
+  // already decided to act, and refusing here would silently break the command),
+  // it just leaves no record, no DM and no mod-log entry. Gating here rather
+  // than at each of the seven call sites means a new mod command cannot forget.
+  const cfg = await moderationConfig(guild.id);
+  if (!cfg.casesEnabled) {
+    return { number: 0, recorded: false };
+  }
+
   const number = await nextCaseNumber(guild.id);
 
   let stored: { token: string; data: string; contentType: string; url?: string } | null =
@@ -175,7 +197,7 @@ export async function createCase(params: NewCase): Promise<CaseResult> {
     log.warn(`Case log post failed: ${String(err)}`);
   }
 
-  return { number, proofUrl, proofError };
+  return { number, recorded: true, proofUrl, proofError };
 }
 
 export function formatMinutes(min: number): string {

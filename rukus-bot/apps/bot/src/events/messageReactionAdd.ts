@@ -59,7 +59,7 @@ const handler: EventHandler<Events.MessageReactionAdd> = {
 
     // Respect the guild's flag-reaction toggle.
     const trans = await translationConfig(message.guildId);
-    if (!trans.flagReactions) return;
+    if (!trans.enabled || !trans.flagReactions) return;
 
     // Once we know this is a supported translation flag, clean it up after
     // handling so messages don't accumulate flag reactions. Needs Manage

@@ -37,9 +37,11 @@ export interface ModuleDef {
   /**
    * False when the feature's schema has no top-level `enabled` flag, so there
    * is nothing a one-click toggle could flip. Those cards show status and a
-   * Configure link instead of a switch. Translation is gated by autoTranslate /
-   * flagReactions and moderation by its individual filters, so both are
-   * "always on, configure what it does" rather than on/off modules.
+   * Configure link instead of a switch.
+   *
+   * Cases is the only one left: it has no config of its own, it is a view over
+   * the records moderation writes. Its switch (casesEnabled) therefore lives on
+   * the Moderation page, next to the thing that produces the records.
    */
   toggleable: boolean;
 }
@@ -118,9 +120,9 @@ export const MODULES: ModuleDef[] = [
     feature: "moderation",
     icon: "🛡️",
     name: "Moderation",
-    description: "Filters, warnings and the tools your mods reach for.",
+    description: "Filters, anti-spam and the tools your mods reach for.",
     category: "Moderation",
-    toggleable: false,
+    toggleable: true,
   },
   {
     slug: "logging",
@@ -205,7 +207,7 @@ export const MODULES: ModuleDef[] = [
     name: "Translation",
     description: "Translate what your international members are saying.",
     category: "Utility",
-    toggleable: false,
+    toggleable: true,
   },
   {
     slug: "commands",

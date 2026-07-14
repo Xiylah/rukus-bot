@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { FEATURE_SCHEMAS } from "@rukus/shared";
 import {
+  getModerationConfig,
+  setModerationConfig,
+  getTranslationConfig,
+  setTranslationConfig,
   getTicketConfig,
   setTicketConfig,
   getFormsConfig,
@@ -49,9 +53,13 @@ import { requireGuildAccess } from "@/lib/guard";
  * open the module's page just to hit one switch.
  *
  * Only features whose schema carries a top-level `enabled` flag are listed here.
- * Translation and moderation are deliberately absent: they have no single on/off
- * key (they are gated by their individual filters), so there is nothing honest
- * for a one-click toggle to flip.
+ *
+ * Moderation and translation now carry one too. Their switches turn off what the
+ * bot does ON ITS OWN (filters, anti-spam, auto-translate), which is the thing a
+ * server actually wants to stop. Moderation deliberately keeps /warn and /ban
+ * working while off, because a staff member typing one has explicitly asked for
+ * it; translation does not, because a server that does not want a translator
+ * does not want one at all.
  */
 
 type ToggleableFeature = keyof typeof ACCESSORS;
@@ -99,6 +107,16 @@ const ACCESSORS = {
     slug: "highlights",
   },
   utility: { read: getUtilityConfig, write: setUtilityConfig, slug: "utility" },
+  moderation: {
+    read: getModerationConfig,
+    write: setModerationConfig,
+    slug: "moderation",
+  },
+  translation: {
+    read: getTranslationConfig,
+    write: setTranslationConfig,
+    slug: "translation",
+  },
   socialalerts: {
     read: getSocialAlertsConfig,
     write: setSocialAlertsConfig,
