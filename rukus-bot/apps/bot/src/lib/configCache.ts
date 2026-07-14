@@ -76,11 +76,34 @@ const TTL_MS = 15_000;
 /** After a failure, wait this long before hammering the DB again. */
 const ERROR_BACKOFF_MS = 30_000;
 
+/**
+ * Cap both maps. Keys are `feature:guildId`, so their size grows with the
+ * number of guilds served (roughly 18 features x N guilds). Unbounded, that is
+ * a slow memory leak on a public bot; a plain Map also never evicts, so the
+ * `lastGood` fallback would pin one entry per feature per guild forever.
+ *
+ * Both maps are insertion-ordered, so deleting the oldest key is a cheap LRU
+ * approximation: a guild that has gone quiet ages out, and an active one is
+ * simply re-read from the database on its next miss.
+ */
+const MAX_ENTRIES = 5_000;
+
 type Entry<T> = { value: T; expires: number };
 const cache = new Map<string, Entry<unknown>>();
-/** Last successful value per key, kept indefinitely as a fallback. */
+/** Last successful value per key: the fallback when a config read fails. */
 const lastGood = new Map<string, unknown>();
 let lastErrorLoggedAt = 0;
+
+function put<T>(map: Map<string, T>, key: string, value: T): void {
+  // Re-insert so the key moves to the end (most recently used).
+  map.delete(key);
+  map.set(key, value);
+  while (map.size > MAX_ENTRIES) {
+    const oldest = map.keys().next().value;
+    if (oldest === undefined) break;
+    map.delete(oldest);
+  }
+}
 
 async function cached<T>(
   key: string,
@@ -93,8 +116,8 @@ async function cached<T>(
 
   try {
     const value = await loader();
-    cache.set(key, { value, expires: now + TTL_MS });
-    lastGood.set(key, value);
+    put(cache, key, { value, expires: now + TTL_MS });
+    put(lastGood, key, value);
     return value;
   } catch (err) {
     // Rate-limit the log so a sustained outage doesn't flood it.
@@ -110,7 +133,7 @@ async function cached<T>(
     const stale = lastGood.get(key) as T | undefined;
     const value = stale ?? fallback();
     // Back off before retrying so we don't hit a downed DB on every message.
-    cache.set(key, { value, expires: now + ERROR_BACKOFF_MS });
+    put(cache, key, { value, expires: now + ERROR_BACKOFF_MS });
     return value;
   }
 }

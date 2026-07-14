@@ -20,7 +20,10 @@ loadEnv({ path: resolve(here, "../.env"), override: false });
 const schema = z.object({
   DISCORD_BOT_TOKEN: z.string().min(1, "DISCORD_BOT_TOKEN is required"),
   DISCORD_CLIENT_ID: z.string().min(1, "DISCORD_CLIENT_ID is required"),
-  DISCORD_GUILD_ID: z.string().min(1, "DISCORD_GUILD_ID is required"),
+  // Optional: the bot is public and serves any guild that adds it. This is only
+  // a DEV convenience - when set, commands are also registered to this one guild
+  // so changes appear instantly instead of waiting on global propagation.
+  DISCORD_GUILD_ID: z.string().optional(),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   // Hosts (Railway included) can inject NODE_ENV as an EMPTY STRING. Zod's
   // .default() only fires on `undefined`, so a bare enum would reject "" and

@@ -81,8 +81,13 @@ async function main() {
   if (!clientSecret) bad("DISCORD_CLIENT_SECRET missing", "Dev Portal → OAuth2 → Client Secret (needed for dashboard login)");
   else ok("DISCORD_CLIENT_SECRET set");
 
-  if (!guildId) bad("DISCORD_GUILD_ID missing", "Right-click your server → Copy Server ID");
-  else ok("DISCORD_GUILD_ID set", `→ ${guildId}`);
+  // Optional now that the bot is public: commands are registered globally, and
+  // this only pins a home guild for instant command updates while developing.
+  if (!guildId) {
+    ok("DISCORD_GUILD_ID not set", "→ fine: commands register globally");
+  } else {
+    ok("DISCORD_GUILD_ID set", `→ ${guildId} (gets instant command updates)`);
+  }
 
   // Does the bot actually have access to the guild?
   if (token && guildId) {

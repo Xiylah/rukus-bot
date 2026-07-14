@@ -10,10 +10,16 @@ import { startRoleSweeper } from "../features/roles/sweeper.js";
 /**
  * On startup: log in, then register slash + context-menu commands with Discord.
  *
- * Registration is idempotent (a PUT that replaces the guild's command set), so
- * running it on every boot is safe and means a Railway deploy is all you need -
- * no separate `deploy-commands` step to remember. Set SKIP_COMMAND_SYNC=1 to
- * opt out (e.g. to avoid the extra API call on frequent restarts).
+ * Registration is idempotent (a PUT that REPLACES the command set), so running
+ * it on every boot is safe and a Railway deploy is all you need.
+ *
+ * The bot is public, so commands are registered GLOBALLY: that is the only
+ * scope that reaches servers we have never seen. Global commands can take up to
+ * an hour to propagate, which makes iterating painful, so when DISCORD_GUILD_ID
+ * is set we ALSO register to that one guild, where updates appear instantly.
+ * The duplicate is invisible to users: Discord prefers the guild copy.
+ *
+ * Set SKIP_COMMAND_SYNC=1 to opt out of both.
  */
 const handler: EventHandler<Events.ClientReady> = {
   name: Events.ClientReady,
@@ -38,14 +44,26 @@ const handler: EventHandler<Events.ClientReady> = {
         ...[...bot.commands.values()].map((c) => c.data.toJSON()),
         ...[...bot.contextCommands.values()].map((c) => c.data.toJSON()),
       ];
+
       await client.rest.put(
-        Routes.applicationGuildCommands(
-          env.DISCORD_CLIENT_ID,
-          env.DISCORD_GUILD_ID,
-        ),
+        Routes.applicationCommands(env.DISCORD_CLIENT_ID),
         { body },
       );
-      log.info(`Registered ${body.length} command(s) to guild ${env.DISCORD_GUILD_ID}.`);
+      log.info(
+        `Registered ${body.length} command(s) globally (may take up to an hour to appear in new servers).`,
+      );
+
+      // Dev convenience only: the home guild sees changes immediately.
+      if (env.DISCORD_GUILD_ID) {
+        await client.rest.put(
+          Routes.applicationGuildCommands(
+            env.DISCORD_CLIENT_ID,
+            env.DISCORD_GUILD_ID,
+          ),
+          { body },
+        );
+        log.info(`Also registered to home guild ${env.DISCORD_GUILD_ID} for instant updates.`);
+      }
     } catch (err) {
       // Don't take the bot down over this - it still works for buttons/menus,
       // and the operator can run `pnpm bot:deploy-commands` manually.

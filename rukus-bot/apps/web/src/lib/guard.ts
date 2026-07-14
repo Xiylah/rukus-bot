@@ -84,32 +84,50 @@ export async function requireGuildAccess(guildId: string) {
 }
 
 /**
- * Guilds to show on the dashboard home. Includes guilds the user can manage by
- * permission, plus (for the single configured guild) access via staff role /
- * allow-list so staff without Manage Server still see their server.
+ * Guilds to show on the dashboard home.
+ *
+ * A user sees a guild when they can manage it by permission, OR when that
+ * guild's own access config grants them entry (staff role / allow-list). The
+ * staff-role path used to be hard-wired to one configured guild; the bot is
+ * public now, so it has to work for whichever guilds this user actually has a
+ * staff role in.
+ *
+ * Only guilds the BOT is in are worth showing: the dashboard cannot configure a
+ * server the bot has not joined, and offering it just produces a dead page. That
+ * check is the caller's (it needs the bot's guild list), so this returns the
+ * candidates and lets the page filter.
  */
 export async function requireManageableGuilds() {
   const { session, guilds } = await requireUserGuilds();
   const byPermission = guilds.filter(canManageGuild);
+  const discordId = session.discordId!;
 
-  const configuredGuildId = process.env.DISCORD_GUILD_ID;
-  if (!configuredGuildId) return { session, guilds: byPermission };
+  // Guilds the user is in but cannot manage: they may still be staff there.
+  const managed = new Set(byPermission.map((g) => g.id));
+  const candidates = guilds.filter((g) => !managed.has(g.id));
 
-  // If the user is in the configured guild but lacks Manage Server, check
-  // whether the access config grants them entry.
-  const already = byPermission.some((g) => g.id === configuredGuildId);
-  const inConfigured = guilds.find((g) => g.id === configuredGuildId);
-  if (already || !inConfigured) return { session, guilds: byPermission };
+  // Check each in parallel, but only the ones that actually configured staff
+  // access. A guild with no access config costs one cheap read and no Discord
+  // call, so this stays bounded by how many guilds the user shares with the bot.
+  const extra = await Promise.all(
+    candidates.map(async (g): Promise<DiscordGuild | null> => {
+      try {
+        const access = await getAccessConfig(g.id);
+        if (access.allowUserIds.includes(discordId)) return g;
+        if (access.staffRoleIds.length === 0) return null;
 
-  const access = await getAccessConfig(configuredGuildId);
-  let allowed = access.allowUserIds.includes(session.discordId!);
-  if (!allowed && access.staffRoleIds.length > 0) {
-    const roleIds = await fetchMemberRoleIds(configuredGuildId, session.discordId!);
-    allowed = roleIds.some((r) => access.staffRoleIds.includes(r));
-  }
+        const roleIds = await fetchMemberRoleIds(g.id, discordId);
+        return roleIds.some((r) => access.staffRoleIds.includes(r)) ? g : null;
+      } catch {
+        // The bot is probably not in that guild (so it cannot read members).
+        // Not an error: it just means no staff access to grant.
+        return null;
+      }
+    }),
+  );
 
-  const merged: DiscordGuild[] = allowed
-    ? [...byPermission, inConfigured]
-    : byPermission;
-  return { session, guilds: merged };
+  return {
+    session,
+    guilds: [...byPermission, ...extra.filter((g): g is DiscordGuild => g !== null)],
+  };
 }
