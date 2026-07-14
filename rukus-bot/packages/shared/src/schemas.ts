@@ -216,6 +216,13 @@ export const translationConfigSchema = z.object({
   alwaysTranslate: z.array(z.string().min(1).max(200)).max(500).default([]),
 
   // ---- Scope ----
+  /**
+   * Only auto-translate in these channels. Empty means every channel, which is
+   * the old behaviour. An allowlist is what most servers actually want: a
+   * translation reply in every channel is noise, and blocklisting them one by
+   * one never keeps up with new channels.
+   */
+  onlyChannelIds: z.array(z.string()).max(200).default([]),
   ignoreChannelIds: z.array(z.string()).max(200).default([]),
   ignoreRoleIds: z.array(z.string()).max(100).default([]),
   ignoreUserIds: z.array(z.string()).max(200).default([]),

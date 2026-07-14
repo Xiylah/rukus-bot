@@ -15,6 +15,58 @@ function lines(v: string): string[] {
   return [...new Set(v.split("\n").map((s) => s.trim()).filter(Boolean))];
 }
 
+/**
+ * A textarea holding one item per line.
+ *
+ * This exists because the obvious version is broken: binding the textarea's
+ * value to `list.join("\n")` and parsing on every keystroke means the instant
+ * you press Enter, the resulting empty line is stripped by the parse and
+ * written straight back, erasing the newline as fast as you type it. The box
+ * becomes impossible to add a line to.
+ *
+ * So the raw text is the state while you are typing, and it is only parsed into
+ * a list when you leave the field. Blank lines, duplicates and stray whitespace
+ * are cleaned up then, not under your cursor.
+ */
+function LineList({
+  value,
+  onChange,
+  placeholder,
+  rows = 6,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
+  const [text, setText] = useState(value.join("\n"));
+
+  // Re-sync when the list changes from OUTSIDE the textarea (the "add defaults"
+  // button), but never while the user is typing in it.
+  const [lastSeen, setLastSeen] = useState(value);
+  if (value !== lastSeen) {
+    setLastSeen(value);
+    setText(value.join("\n"));
+  }
+
+  return (
+    <textarea
+      className="input min-h-32 font-mono text-sm"
+      rows={rows}
+      placeholder={placeholder}
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        const parsed = lines(text);
+        onChange(parsed);
+        // Reflect the cleaned-up version back, so what you see is what saves.
+        setText(parsed.join("\n"));
+        setLastSeen(parsed);
+      }}
+    />
+  );
+}
+
 type TestResult = {
   translate: boolean;
   reason: string;
@@ -219,15 +271,15 @@ export function TranslationSettingsForm({
                 Add the {DEFAULT_SLANG.length} common defaults
               </button>
             </div>
-            <textarea
-              className="input min-h-32 font-mono text-sm"
+            <LineList
+              value={config.slangWords}
+              onChange={(v) => set("slangWords", v)}
               placeholder={"bruh\nez\nlol\nngl"}
-              value={config.slangWords.join("\n")}
-              onChange={(e) => set("slangWords", lines(e.target.value))}
             />
             <p className="mt-1 text-xs text-zinc-500">
               A message made up entirely of these is never translated. Matched as
               whole words, so &quot;ez&quot; will not match &quot;ezreal&quot;.
+              Duplicates and blank lines are tidied up when you click away.
             </p>
           </div>
         )}
@@ -236,11 +288,11 @@ export function TranslationSettingsForm({
           <label className="label">
             Never translate messages containing ({config.neverTranslate.length})
           </label>
-          <textarea
-            className="input min-h-24 font-mono text-sm"
+          <LineList
+            value={config.neverTranslate}
+            onChange={(v) => set("neverTranslate", v)}
             placeholder={"gg wp\nbuild a house\nour clan tag"}
-            value={config.neverTranslate.join("\n")}
-            onChange={(e) => set("neverTranslate", lines(e.target.value))}
+            rows={4}
           />
           <p className="mt-1 text-xs text-zinc-500">
             The direct fix for a specific misfire: paste the phrase that got
@@ -252,11 +304,11 @@ export function TranslationSettingsForm({
           <label className="label">
             Always translate messages containing ({config.alwaysTranslate.length})
           </label>
-          <textarea
-            className="input min-h-24 font-mono text-sm"
+          <LineList
+            value={config.alwaysTranslate}
+            onChange={(v) => set("alwaysTranslate", v)}
             placeholder={"¿\nhola\nbonjour"}
-            value={config.alwaysTranslate.join("\n")}
-            onChange={(e) => set("alwaysTranslate", lines(e.target.value))}
+            rows={4}
           />
           <p className="mt-1 text-xs text-zinc-500">
             Forces a translation, skipping every other check. If a phrase is on
@@ -268,14 +320,33 @@ export function TranslationSettingsForm({
       {/* ---------------- Scope ---------------- */}
       <div className="card space-y-4">
         <div className="font-medium text-white">Where it runs</div>
+
+        <MultiSelect
+          label="Only auto-translate in these channels"
+          hint="Leave empty to run everywhere. Pick a few and the bot will stay silent in every other channel, which is usually what you want: a translation reply in every channel is noise."
+          values={config.onlyChannelIds}
+          onChange={(v) => set("onlyChannelIds", v)}
+          options={channels}
+          prefix="#"
+          emptyText="Every channel"
+        />
+        {config.onlyChannelIds.length > 0 && (
+          <p className="rounded-md border border-blurple/30 bg-blurple/10 px-3 py-2 text-xs text-zinc-300">
+            Auto-translate now runs in {config.onlyChannelIds.length} channel
+            {config.onlyChannelIds.length === 1 ? "" : "s"} only. Flag reactions
+            and <code className="rounded bg-panel px-1">/translate</code> still
+            work everywhere, because those are asked for on purpose.
+          </p>
+        )}
+
         <MultiSelect
           label="Never translate in these channels"
-          hint="Leave empty to run everywhere."
+          hint="A blocklist, for when you want everywhere EXCEPT a few. Ignored if you set an allowlist above."
           values={config.ignoreChannelIds}
           onChange={(v) => set("ignoreChannelIds", v)}
           options={channels}
           prefix="#"
-          emptyText="Every channel"
+          emptyText="No channels blocked"
         />
         <MultiSelect
           label="Never translate these roles"

@@ -20,6 +20,7 @@ export type SkipReason =
   | "too-few-words"
   | "slang-only"
   | "no-letters"
+  | "not-allowed-channel"
   | "ignored-channel"
   | "ignored-role"
   | "ignored-user"
@@ -54,6 +55,7 @@ export interface GateConfig {
   slangWords: string[];
   neverTranslate: string[];
   alwaysTranslate: string[];
+  onlyChannelIds: string[];
   ignoreChannelIds: string[];
   ignoreRoleIds: string[];
   ignoreUserIds: string[];
@@ -153,6 +155,18 @@ export function shouldTranslate(
   // ---- Who / where ----
   if (ctx.isBot && config.ignoreBots) {
     return no("bot", "Message is from a bot, and bots are ignored.");
+  }
+  // An allowlist, when set, beats everything: "only these channels" is a
+  // stronger statement than "not that one".
+  if (
+    config.onlyChannelIds.length > 0 &&
+    ctx.channelId &&
+    !config.onlyChannelIds.includes(ctx.channelId)
+  ) {
+    return no(
+      "not-allowed-channel",
+      "Auto-translate is limited to specific channels, and this is not one of them.",
+    );
   }
   if (ctx.channelId && config.ignoreChannelIds.includes(ctx.channelId)) {
     return no("ignored-channel", "This channel is on the ignore list.");
@@ -431,7 +445,7 @@ export const TRANSLATION_LANGS: [string, string][] = [
 ];
 
 /** Sensible defaults for a brand-new server. Ported from the old hardcoded list. */
-export const DEFAULT_SLANG = [
+const RAW_DEFAULT_SLANG = new Set([
   "ty", "tysm", "thx", "thanks", "np", "yw", "wyd", "wym", "hru", "wbu", "wb",
   "gg", "glhf", "brb", "afk", "gtg", "g2g", "ttyl", "lol", "lmao", "lmfao",
   "rofl", "omg", "omfg", "wtf", "idk", "idc", "ikr", "imo", "imho", "tbh",
@@ -445,9 +459,20 @@ export const DEFAULT_SLANG = [
   // Greetings. These are short, extremely common, and exactly the kind of thing
   // a trigram detector mislabels: "gm jakey poo" was confidently called Czech
   // and then "translated" from Pangasinan.
-  "gm", "gn", "gmorning", "gnight", "hi", "hey", "hello", "yo", "sup", "hiya",
-  "morning", "night", "bye", "cya", "seeya", "gtg", "o7",
-  "lol", "lolol", "haha", "hahaha", "hehe", "xd", "lmaoo", "ez",
+  "gm", "gn", "gmorning", "gnight", "hi", "hey", "hello", "hiya",
+  "morning", "night", "bye", "cya", "seeya", "o7",
+  "lolol", "haha", "hahaha", "hehe", "xd", "lmaoo",
   "ily", "ilysm", "wby", "hbu", "nm", "nmu", "same", "true", "facts",
-  "yessir", "yep", "yup", "nope", "nvm", "brb", "wait", "what", "huh",
-];
+  "yessir", "yup", "wait", "what", "huh",
+]);
+
+/**
+ * The defaults, de-duplicated.
+ *
+ * Deduping here rather than trusting the literal above: the list is edited by
+ * hand and grouped by theme, so the same word naturally gets added twice (it
+ * did: nine of them). The dashboard merges this into a Set, so the duplicates
+ * were silently dropped while the button still advertised the raw count, which
+ * made it look like words were being refused.
+ */
+export const DEFAULT_SLANG: string[] = [...RAW_DEFAULT_SLANG];
