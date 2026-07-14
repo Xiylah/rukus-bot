@@ -196,6 +196,15 @@ export const translationConfigSchema = z.object({
   /** Messages shorter than this (after stripping links/emoji) are ignored. */
   minLength: z.number().int().min(1).max(500).default(12),
 
+  /**
+   * How many words of 3+ letters a message needs before we trust ANY language
+   * detection of it. Character length is not enough: "gm jakey poo" clears a
+   * 12-character minimum but is a name and two abbreviations, and detectors
+   * confidently mislabel it (that exact message was translated from
+   * "Pangasinan"). Raising this is the cure for short-message misfires.
+   */
+  minWords: z.number().int().min(1).max(20).default(3),
+
   /** Skip messages that are only chat slang. */
   skipSlang: z.boolean().default(true),
   /** The slang list itself, fully editable. */

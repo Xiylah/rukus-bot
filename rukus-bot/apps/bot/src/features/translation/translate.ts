@@ -5,6 +5,7 @@ import {
   coreText,
   shouldTranslate,
   scoreDetection,
+  englishMarkerRatio,
   type TranslationConfig,
   type TranslationGateResult,
 } from "@rukus/shared";
@@ -169,10 +170,41 @@ export async function translateText(
 
   const detected = detectWithConfidence(core, target);
 
+  /**
+   * Sanity-check what the API claims it translated FROM.
+   *
+   * The gate runs before the API and can only act on our local detector. When
+   * that detector has no opinion, the message still goes to DeepL, which is
+   * obliged to answer and will happily claim a short English message is
+   * Pangasinan and "translate" it ("gm jakey poo" -> "Good morning, Jakey Poo",
+   * reported as PAG -> EN).
+   *
+   * So: after the API answers, check its verdict against the one signal it does
+   * not have, the English-marker ratio. If the text reads as the target language
+   * to us, the API's exotic source language is nonsense and we throw the
+   * translation away. Cheap, and it catches exactly the case the pre-gate cannot.
+   */
+  function apiVerdictIsNonsense(src: string): boolean {
+    if (!src || src === "auto") return false;
+    const base = (s: string) => s.split("-")[0]?.toLowerCase() ?? s;
+    if (base(src) === base(target)) return true; // already the target: nothing to do
+
+    // Only English has a marker list, so this check only applies when English
+    // is what we are translating INTO.
+    if (base(target) !== "en") return false;
+    return englishMarkerRatio(core) >= 0.4;
+  }
+
   // Prefer DeepL, fall back to Google.
   const viaDeepl = await deeplTranslate(core, target);
   if (viaDeepl) {
     if (normForCompare(viaDeepl.text) === normForCompare(core)) return null;
+    if (apiVerdictIsNonsense(viaDeepl.src)) {
+      log.info(
+        `Discarded a translation: DeepL claimed ${viaDeepl.src.toUpperCase()} but the text reads as ${target.toUpperCase()}: ${JSON.stringify(core.slice(0, 60))}`,
+      );
+      return null;
+    }
     cachePut(key, viaDeepl);
     return viaDeepl;
   }
@@ -183,6 +215,7 @@ export async function translateText(
     if (!translated) return null;
     if (normForCompare(translated) === normForCompare(core)) return null;
     const src = detected.lang ?? "auto";
+    if (apiVerdictIsNonsense(src)) return null;
     const out = { text: translated, src };
     cachePut(key, out);
     return out;

@@ -139,20 +139,39 @@ export function TranslationSettingsForm({
           onChange={(v) => set("requireConfidentDetect", v)}
         />
 
-        <div>
-          <label className="label">Minimum message length</label>
-          <input
-            type="number"
-            min={1}
-            max={500}
-            className="input max-w-32"
-            value={config.minLength}
-            onChange={(e) => set("minLength", Number(e.target.value) || 1)}
-          />
-          <p className="mt-1 text-xs text-zinc-500">
-            Characters, counted after links, mentions and emoji are removed.
-            Short messages are the least reliable to detect.
-          </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label">Minimum message length</label>
+            <input
+              type="number"
+              min={1}
+              max={500}
+              className="input max-w-32"
+              value={config.minLength}
+              onChange={(e) => set("minLength", Number(e.target.value) || 1)}
+            />
+            <p className="mt-1 text-xs text-zinc-500">
+              Characters, counted after links, mentions and emoji are removed.
+            </p>
+          </div>
+
+          <div>
+            <label className="label">Minimum real words</label>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              className="input max-w-32"
+              value={config.minWords}
+              onChange={(e) => set("minWords", Number(e.target.value) || 1)}
+            />
+            <p className="mt-1 text-xs text-zinc-500">
+              Words of 3+ letters needed before any language guess is trusted.
+              Length alone is not enough: &quot;gm jakey poo&quot; is long enough
+              but is a name and two abbreviations, and detectors confidently get
+              it wrong. Raise this if short messages keep getting translated.
+            </p>
+          </div>
         </div>
 
         <div>
@@ -184,14 +203,20 @@ export function TranslationSettingsForm({
           <div>
             <div className="flex items-center justify-between">
               <label className="label">
-                Slang words ({config.slangWords.length}) - one per line
+                Slang words ({config.slangWords.length} of 1000) - one per line
               </label>
               <button
                 type="button"
                 className="text-xs text-blurple hover:underline"
-                onClick={() => set("slangWords", [...DEFAULT_SLANG])}
+                onClick={() =>
+                  // Merge, never replace: this used to overwrite the list, so
+                  // clicking it threw away every word you had added yourself.
+                  set("slangWords", [
+                    ...new Set([...config.slangWords, ...DEFAULT_SLANG]),
+                  ])
+                }
               >
-                Load the {DEFAULT_SLANG.length} common defaults
+                Add the {DEFAULT_SLANG.length} common defaults
               </button>
             </div>
             <textarea
@@ -346,7 +371,7 @@ export function TranslationSettingsForm({
         />
         <button
           type="button"
-          className="btn-secondary"
+          className="btn-ghost"
           onClick={onTest}
           disabled={testing || !sample.trim()}
         >

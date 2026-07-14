@@ -17,6 +17,7 @@
 export type SkipReason =
   | "disabled"
   | "too-short"
+  | "too-few-words"
   | "slang-only"
   | "no-letters"
   | "ignored-channel"
@@ -48,6 +49,7 @@ export interface GateConfig {
   autoTranslate: boolean;
   targetLang: string;
   minLength: number;
+  minWords: number;
   skipSlang: boolean;
   slangWords: string[];
   neverTranslate: string[];
@@ -235,6 +237,30 @@ export function shouldTranslate(
       return no("detected-target", `Already looks like the target language.`);
     }
 
+    // Not enough evidence to detect ANYTHING, no matter how confident the
+    // detector sounds. A trigram model scores whatever it is given, so three
+    // short nonsense tokens ("gm jakey poo") come back as Czech at 100%, and the
+    // translator then invents a source language for them (that message was
+    // reported as Pangasinan). Confidence cannot save us here, because the
+    // detector is confident; what is missing is material to detect.
+    //
+    // Counting words rather than characters is what matters: a name plus two
+    // abbreviations is not a sentence, however many letters it happens to have.
+    //
+    // But "words" only means anything in a script that puts spaces between them.
+    // Japanese, Chinese and Thai do not, so a whole sentence counts as one or
+    // two "words" and would be wrongly refused. For those, a run of script
+    // characters IS the evidence, so count characters instead.
+    if (config.requireConfidentDetect && !isUnspacedScript(core)) {
+      const wordCount = words(core).filter((w) => w.length >= 3).length;
+      if (wordCount < config.minWords) {
+        return no(
+          "too-few-words",
+          `Only ${wordCount} substantial word(s), and at least ${config.minWords} are needed to identify a language reliably.`,
+        );
+      }
+    }
+
     // The core fix for "it translated my English": when the detector is not
     // confident, do nothing instead of guessing. Slangy English is exactly the
     // text franc is worst at, and a wrong guess is what produces the misfire.
@@ -311,6 +337,22 @@ const ENGLISH_MARKERS = new Set([
   "help", "please", "thanks", "someone", "anyone", "everyone", "something",
   "anything", "nothing", "now", "still", "back", "one", "two", "new", "good",
 ]);
+
+/**
+ * Does this text use a script that does NOT separate words with spaces?
+ * Japanese, Chinese, Korean (partly), Thai. For these, counting "words" is
+ * meaningless: a full sentence looks like one or two tokens, so any word-count
+ * rule would refuse to translate perfectly good text. A run of these characters
+ * is itself strong evidence of the language.
+ */
+export function isUnspacedScript(text: string): boolean {
+  // CJK ideographs, hiragana, katakana, Thai, and the Hangul syllable block.
+  const script =
+    /[぀-ヿ㐀-䶿一-鿿豈-﫿฀-๿가-힯]/gu;
+  const hits = text.match(script)?.length ?? 0;
+  // A handful of CJK characters carries more signal than several Latin words.
+  return hits >= 4;
+}
 
 /**
  * What fraction of a message's words are common English function words?
@@ -400,4 +442,12 @@ export const DEFAULT_SLANG = [
   "gyat", "rizz", "fyp", "sheesh", "yeet", "oof", "yikes", "welp", "meh", "eh",
   "hmm", "ok", "okay", "kk", "k", "yeah", "yea", "yep", "nah", "nope", "ye",
   "ya", "u", "ur", "pls", "plz", "plss", "ffs", "wdym",
+  // Greetings. These are short, extremely common, and exactly the kind of thing
+  // a trigram detector mislabels: "gm jakey poo" was confidently called Czech
+  // and then "translated" from Pangasinan.
+  "gm", "gn", "gmorning", "gnight", "hi", "hey", "hello", "yo", "sup", "hiya",
+  "morning", "night", "bye", "cya", "seeya", "gtg", "o7",
+  "lol", "lolol", "haha", "hahaha", "hehe", "xd", "lmaoo", "ez",
+  "ily", "ilysm", "wby", "hbu", "nm", "nmu", "same", "true", "facts",
+  "yessir", "yep", "yup", "nope", "nvm", "brb", "wait", "what", "huh",
 ];
