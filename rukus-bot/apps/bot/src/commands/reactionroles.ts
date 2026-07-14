@@ -1,6 +1,7 @@
 import {
   SlashCommandBuilder,
   MessageFlags,
+  PermissionFlagsBits,
   TextChannel,
   type ChatInputCommandInteraction,
   type GuildMember,
@@ -18,6 +19,10 @@ const command: Command = {
   data: new SlashCommandBuilder()
     .setName("reactionroles")
     .setDescription("Post and inspect self-role panels")
+    // Every subcommand here is staff-only. Without this the command still
+    // refuses non-staff, but Discord shows it to everyone, so members see a
+    // command they can only ever be told off for using.
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setDMPermission(false)
     .addSubcommand((s) =>
       s
