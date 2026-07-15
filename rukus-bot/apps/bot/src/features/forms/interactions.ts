@@ -160,13 +160,18 @@ async function resolveAndUpdate(
 
   await interaction.update({ embeds: [updated], components: [] });
 
-  // DM the applicant the result (best-effort).
-  const user = await interaction.client.users.fetch(submission.userId).catch(() => null);
-  await user
-    ?.send(
-      status === "APPROVED"
-        ? `Your **${submission.formName}** submission was approved. 🎉`
-        : `Your **${submission.formName}** submission was denied.`,
-    )
-    .catch(() => {});
+  // DM the applicant the result, unless the server turned result DMs off.
+  const cfg = await formsConfig(interaction.guildId);
+  if (cfg.dmResult) {
+    const user = await interaction.client.users
+      .fetch(submission.userId)
+      .catch(() => null);
+    await user
+      ?.send(
+        status === "APPROVED"
+          ? `Your **${submission.formName}** submission was approved. 🎉`
+          : `Your **${submission.formName}** submission was denied.`,
+      )
+      .catch(() => {});
+  }
 }

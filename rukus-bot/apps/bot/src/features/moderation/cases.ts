@@ -148,20 +148,23 @@ export async function createCase(params: NewCase): Promise<CaseResult> {
   const style = ACTION_STYLE[action];
   const durationText = durationMin ? ` for ${formatMinutes(durationMin)}` : "";
   const proofUrl = stored?.url;
+  const mod = await moderationConfig(guild.id);
 
-  // DM the member (best effort; closed DMs are normal).
-  await target
-    .send(
-      `${style.emoji} You were ${style.verb}${durationText} in **${guild.name}**.` +
-        (reason ? `\nReason: ${reason}` : "") +
-        (proofUrl ? `\nProof: ${proofUrl}` : "") +
-        `\nCase #${String(number).padStart(4, "0")}`,
-    )
-    .catch(() => {});
+  // DM the member (best effort; closed DMs are normal), unless the server turned
+  // action DMs off.
+  if (mod.dmOnAction) {
+    await target
+      .send(
+        `${style.emoji} You were ${style.verb}${durationText} in **${guild.name}**.` +
+          (reason ? `\nReason: ${reason}` : "") +
+          (proofUrl ? `\nProof: ${proofUrl}` : "") +
+          `\nCase #${String(number).padStart(4, "0")}`,
+      )
+      .catch(() => {});
+  }
 
   // Mod-log embed, with the proof image shown inline when available.
   try {
-    const mod = await moderationConfig(guild.id);
     if (mod.logChannelId) {
       const channel = guild.channels.cache.get(mod.logChannelId);
       if (channel?.isSendable()) {

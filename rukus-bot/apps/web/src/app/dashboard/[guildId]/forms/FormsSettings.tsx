@@ -50,6 +50,7 @@ export function FormsSettings({
   roles: Option[];
 }) {
   const [enabled, setEnabled] = useState(initial.enabled);
+  const [dmResult, setDmResult] = useState(initial.dmResult);
   const [forms, setForms] = useState<Form[]>(initial.forms);
   const [panel, setPanel] = useState(initial.panel);
   const [pending, startTransition] = useTransition();
@@ -101,7 +102,7 @@ export function FormsSettings({
 
   function onSave() {
     setMsg(null);
-    const payload: FormsConfig = { enabled, forms, panel };
+    const payload: FormsConfig = { enabled, dmResult, forms, panel };
     startTransition(async () => {
       const res = await saveFormsConfig(guildId, payload);
       setMsg(
@@ -132,6 +133,15 @@ export function FormsSettings({
             }`}
           />
         </button>
+      </div>
+
+      <div className="card">
+        <Toggle
+          label="DM the applicant on approve/deny"
+          hint="Sends the applicant a DM when their submission is approved or denied. Off = they are not notified by the bot."
+          checked={dmResult}
+          onChange={setDmResult}
+        />
       </div>
 
       <div className="card">

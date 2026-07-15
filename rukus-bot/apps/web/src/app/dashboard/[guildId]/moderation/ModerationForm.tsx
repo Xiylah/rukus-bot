@@ -67,9 +67,15 @@ export function ModerationForm({
         />
         <Toggle
           label="Record cases"
-          hint="Every warn, mute, kick and ban gets a numbered case with proof, a DM to the member, and a mod-log entry. Off = the commands still work, they just leave no record."
+          hint="Every warn, mute, kick and ban gets a numbered case with proof and a mod-log entry. Off = the commands still work, they just leave no record."
           checked={config.casesEnabled}
           onChange={(v) => setConfig((c) => ({ ...c, casesEnabled: v }))}
+        />
+        <Toggle
+          label="DM the member when actioned"
+          hint="Send the member a DM (with the reason and case number) when they are warned, muted, timed out, kicked or banned. Off = they are not notified by the bot."
+          checked={config.dmOnAction}
+          onChange={(v) => setConfig((c) => ({ ...c, dmOnAction: v }))}
         />
         {!config.enabled && (
           <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">

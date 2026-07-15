@@ -413,7 +413,7 @@ export async function closeTicketFlow(
 
   // Ask the opener how it went (5-star DM). Never blocks the close.
   try {
-    if (!ticket.rating) {
+    if (config.ratingsEnabled && !ticket.rating) {
       const opener = await channel.client.users.fetch(ticket.openerId);
       const stars = new ActionRowBuilder<ButtonBuilder>().addComponents(
         [1, 2, 3, 4, 5].map((n) =>

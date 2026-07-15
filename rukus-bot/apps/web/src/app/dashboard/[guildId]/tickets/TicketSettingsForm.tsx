@@ -138,6 +138,12 @@ export function TicketSettingsForm({
           checked={config.pingSupportOnOpen}
           onChange={(v) => update("pingSupportOnOpen", v)}
         />
+        <Toggle
+          label="Ask for a rating when a ticket closes"
+          hint="DMs the opener a 5-star rating prompt after their ticket closes. Off = no rating DM is sent."
+          checked={config.ratingsEnabled}
+          onChange={(v) => update("ratingsEnabled", v)}
+        />
         <div>
           <label className="label">Max open tickets per user</label>
           <input

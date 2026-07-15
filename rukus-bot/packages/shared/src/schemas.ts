@@ -79,6 +79,12 @@ export const ticketConfigSchema = z.object({
   panelMessageId: snowflake,
   /** Ping the support roles when a ticket opens, so staff notice fast. */
   pingSupportOnOpen: z.boolean().default(false),
+  /**
+   * DM the opener a 5-star rating prompt when their ticket closes. On by
+   * default. Turn off if you do not want the bot DMing people after a ticket,
+   * or if unsolicited rating DMs feel like spam for your community.
+   */
+  ratingsEnabled: z.boolean().default(true),
   /** Auto-close tickets after a period with no messages. */
   autoCloseEnabled: z.boolean().default(false),
   /** Hours of inactivity before auto-close (a warning fires ~12h earlier). */
@@ -169,6 +175,12 @@ export type Form = z.infer<typeof formSchema>;
 export const formsConfigSchema = z.object({
   enabled: z.boolean().default(false),
   forms: z.array(formSchema).default([]),
+  /**
+   * DM the applicant when their submission is approved or denied. On by
+   * default: people usually want to know the outcome. Turn off if you announce
+   * results another way and do not want the bot DMing applicants.
+   */
+  dmResult: z.boolean().default(true),
   /** Where the live panel message lives, so the dashboard can update it
    *  in place instead of posting duplicates. Set by the publish action. */
   panelChannelId: snowflake,
@@ -394,6 +406,14 @@ export const moderationConfigSchema = z.object({
    * filters without the paperwork, or the paperwork without the filters.
    */
   casesEnabled: z.boolean().default(true),
+
+  /**
+   * DM the member when a mod action is taken against them (warn, mute, timeout,
+   * kick, ban). On by default so people know why they were actioned. Turn off
+   * if you would rather not notify them, or handle that yourself. Independent of
+   * casesEnabled: you can log the case without the DM, or the reverse.
+   */
+  dmOnAction: z.boolean().default(true),
 
   /** Delete + warn on messages containing drug/substance terms. */
   drugFilter: z.boolean().default(false),
