@@ -169,8 +169,11 @@ const handler: EventHandler<Events.MessageCreate> = {
       } catch (e) {
         log.warn(`Ticket conversation translate failed: ${String(e)}`);
       }
-    } else if (trans.autoTranslate) {
+    } else if (trans.autoTranslate && !(ticketMeta && !trans.translateInTickets)) {
       // The gate decides here. This is the path that used to misfire on slang.
+      // Skipped inside a ticket when the server has turned off translation in
+      // tickets. (ticketMeta is truthy for ANY open ticket channel, not only
+      // ones running the two-way /ticket translate mode above.)
       try {
         const result = await translateText(content, trans, gateCtx);
         if (result) {

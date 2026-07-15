@@ -207,6 +207,15 @@ export const translationConfigSchema = z.object({
 
   /** Auto-translate non-English messages posted in the server. */
   autoTranslate: z.boolean().default(false),
+  /**
+   * Let auto-translate run inside TICKET channels too. On by default, since a
+   * ticket is exactly where a language barrier bites. A server that handles
+   * tickets a different way (a dedicated bilingual team, manual translation)
+   * can switch it off to keep the bot quiet in tickets while still
+   * auto-translating the rest of the server. Does NOT affect the per-ticket
+   * two-way /ticket translate mode, which staff turn on deliberately.
+   */
+  translateInTickets: z.boolean().default(true),
   /** Allow flag-emoji reactions to trigger a translation. */
   flagReactions: z.boolean().default(true),
   /** Target language for auto-translation (deep-translator/DeepL code). */

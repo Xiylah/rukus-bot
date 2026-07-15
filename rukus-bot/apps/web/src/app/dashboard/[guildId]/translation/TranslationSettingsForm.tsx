@@ -140,6 +140,14 @@ export function TranslationSettingsForm({
           checked={config.autoTranslate}
           onChange={(v) => set("autoTranslate", v)}
         />
+        {config.autoTranslate && (
+          <Toggle
+            label="Auto-translate inside tickets"
+            hint="On by default. Turn off if you handle tickets a different way and do not want the bot translating in ticket channels. The per-ticket /ticket translate mode is separate and unaffected."
+            checked={config.translateInTickets}
+            onChange={(v) => set("translateInTickets", v)}
+          />
+        )}
         <Toggle
           label="Flag-reaction translations"
           hint="React with a country flag to translate a message. Always works, even if the rules below would skip it."
