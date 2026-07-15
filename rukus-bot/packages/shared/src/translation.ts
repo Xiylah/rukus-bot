@@ -426,6 +426,20 @@ export function scoreDetection(
   // "already target language" check should fire cleanly.
   if (base(lang) === targetBase) return { lang, confidence: 100 };
 
+  // Clearly NOT English by its own words: trust the detection.
+  //
+  // The lead formula below has a blind spot on LONG text. franc's scores rise
+  // with length for EVERY language, English included, so a long French
+  // paragraph can have English scoring ~0.85 and shrink the "lead" to nothing,
+  // tanking confidence on exactly the messages that are easiest to read. The
+  // English-marker ratio does not have that flaw: a real French paragraph sits
+  // near zero English function words. So when the target is English and the
+  // text barely contains any, the winner is believed outright. (0.15 is well
+  // below the ~0.3+ that real English prose produces.)
+  if (targetBase === "en" && text && englishMarkerRatio(text) < 0.15) {
+    return { lang, confidence: 100 };
+  }
+
   const targetEntry = ranked.find(
     ([iso3]) => base(ISO3_TO_ISO2[iso3] ?? "") === targetBase,
   );
