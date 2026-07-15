@@ -70,14 +70,18 @@ export function buildFormModal(form: Form): ModalBuilder {
 export function reviewMessage(params: {
   formName: string;
   userId: string;
+  /** Applicant's display name, shown next to the mention so it stays readable
+   *  on mobile even when the client has not cached that user. */
+  userName?: string;
   submissionId: string;
   answers: { label: string; value: string }[];
 }) {
-  const { formName, userId, submissionId, answers } = params;
+  const { formName, userId, userName, submissionId, answers } = params;
+  const from = userName ? `<@${userId}> (${userName})` : `<@${userId}>`;
   const embed = new EmbedBuilder()
     .setColor(COLORS.warning)
     .setTitle(`New submission - ${formName}`)
-    .setDescription(`From <@${userId}>`)
+    .setDescription(`From ${from}`)
     .addFields(
       answers.map((a) => ({
         name: a.label.slice(0, 256),

@@ -8,6 +8,7 @@ import {
 } from "discord.js";
 import { prisma, type SuggestionStatus } from "@rukus/db";
 import { suggestionsConfig } from "../lib/configCache.js";
+import { mentionWithName } from "../lib/mentions.js";
 import {
   getSuggestion,
   refreshSuggestionMessage,
@@ -107,12 +108,15 @@ const command: Command = {
           .setColor(meta.color)
           .setTitle(`${meta.emoji} Suggestion #${number} ${meta.label.toLowerCase()}`)
           .setDescription(suggestion.text.slice(0, 2000))
-          .addFields({ name: "Decided by", value: `<@${interaction.user.id}>` });
+          .addFields({
+            name: "Decided by",
+            value: await mentionWithName(interaction.client, interaction.user.id),
+          });
         if (reason) embed.addFields({ name: "Reason", value: reason });
         if (!config.anonymous) {
           embed.addFields({
             name: "Suggested by",
-            value: `<@${suggestion.authorId}>`,
+            value: await mentionWithName(interaction.client, suggestion.authorId),
           });
         }
         embed.addFields({ name: "Original", value: `[Jump](${link})` });

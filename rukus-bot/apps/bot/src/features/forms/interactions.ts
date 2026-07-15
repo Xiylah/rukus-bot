@@ -81,6 +81,9 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
         reviewMessage({
           formName: form.name,
           userId: interaction.user.id,
+          // Pass the applicant's display name so the "From" line stays readable
+          // on mobile, where a bare mention often shows the raw id instead.
+          userName: interaction.user.globalName ?? interaction.user.username,
           submissionId: submission.id,
           answers,
         }),

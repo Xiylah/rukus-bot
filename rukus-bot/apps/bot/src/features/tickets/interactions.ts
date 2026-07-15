@@ -24,6 +24,7 @@ import {
 } from "@rukus/shared";
 import { ticketConfig, formsConfig } from "../../lib/configCache.js";
 import { hasAnyRole } from "../../lib/perms.js";
+import { mentionWithName } from "../../lib/mentions.js";
 import { log } from "../../lib/logger.js";
 import {
   createTicket,
@@ -353,15 +354,21 @@ export async function closeTicketFlow(
           .map((p) => `${p.count} - <@${p.id}> - ${p.tag}`)
           .join("\n")
           .slice(0, 1024);
+        // Resolve the owner and closer to "<@id> (name)" so the summary reads
+        // correctly on mobile even when that client has never cached them.
+        const [ownerMention, closerMention] = await Promise.all([
+          mentionWithName(channel.client, ticket.openerId),
+          mentionWithName(channel.client, closedById),
+        ]);
         const summary = {
           embeds: [
             {
               color: hexToInt(config.panel.color),
               fields: [
-                { name: "Ticket Owner", value: `<@${ticket.openerId}>`, inline: true },
+                { name: "Ticket Owner", value: ownerMention, inline: true },
                 { name: "Ticket Name", value: ticketName, inline: true },
                 { name: "Panel", value: ticket.subject ?? "Support", inline: true },
-                { name: "Closed By", value: `<@${closedById}>`, inline: true },
+                { name: "Closed By", value: closerMention, inline: true },
                 { name: "Messages", value: String(count), inline: true },
                 { name: "Users in transcript", value: userList || "none" },
               ],
@@ -483,6 +490,12 @@ export async function handleRateButton(interaction: ButtonInteraction) {
     if (!logChannelId) return;
     const logChannel = guild.channels.cache.get(logChannelId);
     if (!logChannel?.isSendable()) return;
+    const [openedBy, handledBy] = await Promise.all([
+      mentionWithName(logChannel.client, ticket.openerId),
+      ticket.claimedBy
+        ? mentionWithName(logChannel.client, ticket.claimedBy)
+        : Promise.resolve(""),
+    ]);
     await logChannel.send({
       embeds: [
         new EmbedBuilder()
@@ -490,8 +503,8 @@ export async function handleRateButton(interaction: ButtonInteraction) {
           .setDescription(
             `${"⭐".repeat(stars)} (${stars}/5) rating for ticket ` +
               `**#${String(ticket.number).padStart(4, "0")}** (${ticket.subject ?? "Support"})` +
-              `\nOpened by <@${ticket.openerId}>` +
-              (ticket.claimedBy ? ` • handled by <@${ticket.claimedBy}>` : ""),
+              `\nOpened by ${openedBy}` +
+              (handledBy ? ` • handled by ${handledBy}` : ""),
           ),
       ],
     });

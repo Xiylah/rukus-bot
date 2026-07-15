@@ -5,6 +5,7 @@ import {
   EmbedBuilder,
   type Guild,
   type TextChannel,
+  type User,
 } from "discord.js";
 import { prisma, type Giveaway } from "@rukus/db";
 import { COLORS } from "@rukus/shared";
@@ -74,6 +75,9 @@ export function giveawayEmbed(
     "prize" | "winnerCount" | "endsAt" | "hostId" | "requiredRoleId" | "entrantIds" | "ended" | "winnerIds"
   >,
   config: GiveawaysConfig,
+  /** id -> display name, so the ended panel reads on mobile. The winners were
+   *  already fetched to be DMed, so passing this in costs nothing extra. */
+  winnerNames?: Map<string, string>,
 ): EmbedBuilder {
   const endsUnix = Math.floor(giveaway.endsAt.getTime() / 1000);
   const embed = new EmbedBuilder()
@@ -85,9 +89,13 @@ export function giveawayEmbed(
     );
 
   if (giveaway.ended) {
+    const winner = (id: string) => {
+      const name = winnerNames?.get(id);
+      return name ? `<@${id}> (${name})` : `<@${id}>`;
+    };
     embed.setDescription(
       giveaway.winnerIds.length > 0
-        ? `Winner(s): ${giveaway.winnerIds.map((id) => `<@${id}>`).join(", ")}`
+        ? `Winner(s): ${giveaway.winnerIds.map(winner).join(", ")}`
         : "Ended with no valid entries.",
     );
     embed.addFields(
@@ -137,6 +145,7 @@ export async function refreshGiveawayMessage(
   guild: Guild,
   giveaway: Giveaway,
   config: GiveawaysConfig,
+  winnerNames?: Map<string, string>,
 ): Promise<boolean> {
   const channel =
     guild.channels.cache.get(giveaway.channelId) ??
@@ -149,7 +158,7 @@ export async function refreshGiveawayMessage(
   if (!message) return false;
 
   await message.edit({
-    embeds: [giveawayEmbed(giveaway, config)],
+    embeds: [giveawayEmbed(giveaway, config, winnerNames)],
     components: giveawayComponents(giveaway, config),
   });
   return true;
@@ -193,7 +202,19 @@ export async function endGiveaway(
     where: { id: giveaway.id },
   });
 
-  await refreshGiveawayMessage(guild, updated, config);
+  // Resolve winner names once, so the ended panel reads on mobile. Reused below
+  // for the DMs, so nobody is fetched twice.
+  const winnerNames = new Map<string, string>();
+  const winnerUsers = new Map<string, User>();
+  for (const id of winners) {
+    const user = await guild.client.users.fetch(id).catch(() => null);
+    if (user) {
+      winnerNames.set(id, user.globalName ?? user.username);
+      winnerUsers.set(id, user);
+    }
+  }
+
+  await refreshGiveawayMessage(guild, updated, config, winnerNames);
 
   const channel =
     guild.channels.cache.get(giveaway.channelId) ??
@@ -212,7 +233,8 @@ export async function endGiveaway(
 
   if (config.dmWinners) {
     for (const id of winners) {
-      const user = await guild.client.users.fetch(id).catch(() => null);
+      // Reuse the user we already fetched for the panel names; no second fetch.
+      const user = winnerUsers.get(id);
       await user
         ?.send(
           `🎉 You won **${giveaway.prize}** in **${guild.name}**! ` +
