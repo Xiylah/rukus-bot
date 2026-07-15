@@ -81,13 +81,10 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
         reviewMessage({
           formName: form.name,
           userId: interaction.user.id,
-          // The applicant's name shown next to the mention, so the "From" line
+          // The applicant's @handle next to the mention, so the "From" line
           // stays readable on mobile even when the client cannot resolve the
-          // mention. Prefer their server nickname to match everything else.
-          userName:
-            interaction.member?.nickname ??
-            interaction.user.globalName ??
-            interaction.user.username,
+          // mention. The handle matches what resolvedMention shows everywhere.
+          userName: interaction.user.username,
           submissionId: submission.id,
           answers,
         }),

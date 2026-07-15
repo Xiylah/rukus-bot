@@ -10,17 +10,17 @@ import type { Guild } from "discord.js";
  * fix the viewer's cache from its side, so a bare mention can always fall back
  * to an id on someone's phone.
  *
- * So we keep the clickable mention AND write the name next to it: "<@id> (name)".
- * When the client can resolve the mention it shows the normal blue pill and the
- * parenthetical is a mild duplicate; when it cannot, the name is still right
- * there to read instead of a meaningless number.
+ * So we keep the clickable mention AND write the handle next to it:
+ * "<@id> (handle)". When the client resolves the mention it shows the normal
+ * blue pill and the handle is a mild duplicate; when it cannot, the handle is
+ * still there to read instead of a meaningless number. This mirrors the
+ * "Users in transcript" list, e.g. "@MOD | XCableGod95 - xcablegod95".
  *
- * The name is the GUILD nickname where they have one ("MOD | XCableGod95"),
- * falling back to their display name then their handle, so it matches what
- * everyone sees in that server.
+ * The name shown is the global @HANDLE (username), not the per-server nickname,
+ * so it is stable and unambiguous.
  *
- * Never throws: if the member cannot be fetched (left the guild, deleted
- * account), the bare mention is returned, which is no worse than today.
+ * Never throws: if the user cannot be fetched (left the guild AND is uncached,
+ * or deleted their account), the bare mention is returned, no worse than today.
  *
  * NOTE: deliberately NOT used inside the HTML transcript, which keeps raw ids on
  * purpose and has no client to resolve anything anyway.
@@ -29,15 +29,8 @@ export async function resolvedMention(
   guild: Guild,
   userId: string,
 ): Promise<string> {
-  const member = await guild.members.fetch(userId).catch(() => null);
-  if (member) {
-    // displayName is already nickname -> global name -> handle, i.e. exactly the
-    // name the rest of the server sees.
-    return `<@${userId}> (${member.displayName})`;
-  }
-
-  // Left the guild: no nickname to show, but a global name still beats a number.
+  // The username lives on the User, so the plain user fetch is all we need; it
+  // also works for someone who has left the guild but is still a real account.
   const user = await guild.client.users.fetch(userId).catch(() => null);
-  const name = user?.globalName ?? user?.username;
-  return name ? `<@${userId}> (${name})` : `<@${userId}>`;
+  return user ? `<@${userId}> (${user.username})` : `<@${userId}>`;
 }
