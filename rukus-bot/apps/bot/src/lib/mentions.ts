@@ -1,36 +1,43 @@
-import type { Client } from "discord.js";
+import type { Guild } from "discord.js";
 
 /**
  * A user mention that stays readable on mobile.
  *
- * A bare <@id> is resolved to a name by the CLIENT, and the mobile app only
- * manages it when it already has that user cached, which it often does not for
- * someone who has left the channel or that this device has never seen. When it
- * cannot, it renders the raw "<@1040460600867831808>", which is what shows up in
- * ticket summaries and app submissions.
+ * A bare <@id> is turned into a name by the VIEWER'S client, and only when that
+ * client already has the user cached. Your own screenshot shows the proof: in a
+ * single embed, active staff resolved to "@Name" while the ticket owner, who had
+ * left the channel, rendered as the raw "<@1040460600867831808>". The bot cannot
+ * fix the viewer's cache from its side, so a bare mention can always fall back
+ * to an id on someone's phone.
  *
- * Discord's own guidance is to not depend on that resolution: pair the mention
- * with a name we resolved ourselves. The mention still pings/links correctly on
- * every client, and the name is always there to read even when the mention is
- * not rendered. So this returns "<@id> (username)".
+ * So we keep the clickable mention AND write the name next to it: "<@id> (name)".
+ * When the client can resolve the mention it shows the normal blue pill and the
+ * parenthetical is a mild duplicate; when it cannot, the name is still right
+ * there to read instead of a meaningless number.
  *
- * It never throws: a fetch failure (the user deleted their account, left, etc.)
- * falls back to the bare mention, which is no worse than today.
+ * The name is the GUILD nickname where they have one ("MOD | XCableGod95"),
+ * falling back to their display name then their handle, so it matches what
+ * everyone sees in that server.
  *
- * NOTE: deliberately NOT used inside the HTML transcript. That file has no
- * Discord client to resolve anything, and the transcript is meant to keep the
- * raw ids on purpose.
+ * Never throws: if the member cannot be fetched (left the guild, deleted
+ * account), the bare mention is returned, which is no worse than today.
+ *
+ * NOTE: deliberately NOT used inside the HTML transcript, which keeps raw ids on
+ * purpose and has no client to resolve anything anyway.
  */
-export async function mentionWithName(
-  client: Client,
+export async function resolvedMention(
+  guild: Guild,
   userId: string,
 ): Promise<string> {
-  try {
-    const user = await client.users.fetch(userId);
-    // globalName is the new display name; username is the @handle fallback.
-    const name = user.globalName ?? user.username;
-    return `<@${userId}> (${name})`;
-  } catch {
-    return `<@${userId}>`;
+  const member = await guild.members.fetch(userId).catch(() => null);
+  if (member) {
+    // displayName is already nickname -> global name -> handle, i.e. exactly the
+    // name the rest of the server sees.
+    return `<@${userId}> (${member.displayName})`;
   }
+
+  // Left the guild: no nickname to show, but a global name still beats a number.
+  const user = await guild.client.users.fetch(userId).catch(() => null);
+  const name = user?.globalName ?? user?.username;
+  return name ? `<@${userId}> (${name})` : `<@${userId}>`;
 }

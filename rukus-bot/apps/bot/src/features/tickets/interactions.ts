@@ -24,7 +24,7 @@ import {
 } from "@rukus/shared";
 import { ticketConfig, formsConfig } from "../../lib/configCache.js";
 import { hasAnyRole } from "../../lib/perms.js";
-import { mentionWithName } from "../../lib/mentions.js";
+import { resolvedMention } from "../../lib/mentions.js";
 import { log } from "../../lib/logger.js";
 import {
   createTicket,
@@ -357,8 +357,8 @@ export async function closeTicketFlow(
         // Resolve the owner and closer to "<@id> (name)" so the summary reads
         // correctly on mobile even when that client has never cached them.
         const [ownerMention, closerMention] = await Promise.all([
-          mentionWithName(channel.client, ticket.openerId),
-          mentionWithName(channel.client, closedById),
+          resolvedMention(channel.guild, ticket.openerId),
+          resolvedMention(channel.guild, closedById),
         ]);
         const summary = {
           embeds: [
@@ -491,9 +491,9 @@ export async function handleRateButton(interaction: ButtonInteraction) {
     const logChannel = guild.channels.cache.get(logChannelId);
     if (!logChannel?.isSendable()) return;
     const [openedBy, handledBy] = await Promise.all([
-      mentionWithName(logChannel.client, ticket.openerId),
+      resolvedMention(guild, ticket.openerId),
       ticket.claimedBy
-        ? mentionWithName(logChannel.client, ticket.claimedBy)
+        ? resolvedMention(guild, ticket.claimedBy)
         : Promise.resolve(""),
     ]);
     await logChannel.send({

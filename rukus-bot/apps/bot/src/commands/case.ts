@@ -13,7 +13,7 @@ import {
   formatMinutes,
   ACTION_STYLE,
 } from "../features/moderation/cases.js";
-import { mentionWithName } from "../lib/mentions.js";
+import { resolvedMention } from "../lib/mentions.js";
 import type { Command } from "../lib/types.js";
 
 const ephemeral = { flags: MessageFlags.Ephemeral as const };
@@ -105,7 +105,7 @@ const command: Command = {
           { name: "Member", value: `<@${c.userId}> (${c.userTag ?? "?"})`, inline: true },
           {
             name: "Moderator",
-            value: await mentionWithName(interaction.client, c.moderatorId),
+            value: await resolvedMention(interaction.guild, c.moderatorId),
             inline: true,
           },
           ...(c.durationMin
