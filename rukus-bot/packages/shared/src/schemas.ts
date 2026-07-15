@@ -53,6 +53,12 @@ export const ticketTypeSchema = z.object({
    * Empty = use the global supportRoleIds.
    */
   supportRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).default([]),
+  /**
+   * Per-type rating override. null = use the server-wide ratingsEnabled; true =
+   * always ask, false = never ask for this type. Lets a server collect ratings
+   * on support tickets but skip them on, say, a report or appeal type.
+   */
+  ratingsEnabled: z.boolean().nullable().default(null),
 });
 
 export type TicketType = z.infer<typeof ticketTypeSchema>;

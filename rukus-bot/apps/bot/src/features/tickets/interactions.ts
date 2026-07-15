@@ -412,8 +412,13 @@ export async function closeTicketFlow(
   await channel.send(closedControlsMessage(closedById));
 
   // Ask the opener how it went (5-star DM). Never blocks the close.
+  // A ticket type can override the server-wide rating setting: its own
+  // ratingsEnabled wins when set (true/false), and null defers to the global.
+  const ratingType = config.types.find((t) => t.id === ticket.typeId);
+  const askForRating =
+    ratingType?.ratingsEnabled ?? config.ratingsEnabled;
   try {
-    if (config.ratingsEnabled && !ticket.rating) {
+    if (askForRating && !ticket.rating) {
       const opener = await channel.client.users.fetch(ticket.openerId);
       const stars = new ActionRowBuilder<ButtonBuilder>().addComponents(
         [1, 2, 3, 4, 5].map((n) =>

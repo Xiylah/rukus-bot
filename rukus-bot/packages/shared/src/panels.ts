@@ -41,6 +41,7 @@ export function resolveTypes(config: TicketConfig): TicketType[] {
       formId: undefined,
       transcriptChannelId: undefined,
       supportRoleIds: [],
+      ratingsEnabled: null,
     },
   ];
 }

@@ -24,6 +24,7 @@ function emptyType(): TicketType {
     formId: undefined,
     transcriptChannelId: undefined,
     supportRoleIds: [],
+    ratingsEnabled: null,
   };
 }
 
@@ -140,7 +141,7 @@ export function TicketSettingsForm({
         />
         <Toggle
           label="Ask for a rating when a ticket closes"
-          hint="DMs the opener a 5-star rating prompt after their ticket closes. Off = no rating DM is sent."
+          hint="DMs the opener a 5-star rating prompt after their ticket closes. This is the default; each ticket type can override it below."
           checked={config.ratingsEnabled}
           onChange={(v) => update("ratingsEnabled", v)}
         />
@@ -334,6 +335,38 @@ export function TicketSettingsForm({
                 prefix="@"
                 emptyText="Use the default support roles"
               />
+              <div>
+                <label className="label">Rating prompt for this type</label>
+                <select
+                  className="input"
+                  value={
+                    type.ratingsEnabled === null
+                      ? "default"
+                      : type.ratingsEnabled
+                        ? "on"
+                        : "off"
+                  }
+                  onChange={(e) =>
+                    updateType(ti, {
+                      ratingsEnabled:
+                        e.target.value === "default"
+                          ? null
+                          : e.target.value === "on",
+                    })
+                  }
+                >
+                  <option value="default">
+                    Use the server setting{" "}
+                    {config.ratingsEnabled ? "(on)" : "(off)"}
+                  </option>
+                  <option value="on">Always ask for a rating</option>
+                  <option value="off">Never ask for a rating</option>
+                </select>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Override the server-wide rating prompt for this type only. For
+                  example, ask on support tickets but skip it on reports.
+                </p>
+              </div>
             </div>
           </div>
         )}
