@@ -362,6 +362,39 @@ const LEGACY_EVENT_EXCLUSIONS = [
   "stuck",
 ];
 
+/**
+ * Praise and hypotheticals, not a report.
+ *
+ * A rule about lost items cannot rely on "is it a question?": a real cry for
+ * help is usually a statement ("i lost my items please help"), so requiring a
+ * question silences the people who need answering. The reliable tell is the
+ * other way round: someone THANKING you for how inventory works, or musing
+ * about what they "won't have to" do, is not asking for anything, and those
+ * phrases never appear in a genuine "my stuff is gone" message.
+ *
+ * This is what caught the reported false positive: "I like how ... which means
+ * ... I won't have to worry about selling furniture" scored 98% against
+ * "all my items are missing" on the words alone.
+ */
+const PRAISE_EXCLUSIONS = [
+  "i like how",
+  "i like that",
+  "love how",
+  "love that",
+  "nice that",
+  "good thing",
+  "glad",
+  "thanks for",
+  "thank you for",
+  "appreciate",
+  "which means",
+  "i wont have to",
+  "i won't have to",
+  "dont have to worry",
+  "don't have to worry",
+  "no longer have to",
+];
+
 const LEGACY_LOST_TRIGGERS = [
   "i lost my items",
   "i lost my inventory",
@@ -399,7 +432,7 @@ export function migrateLegacyRules(
       enabled: true,
       name: "Event questions",
       triggers: [...LEGACY_EVENT_TRIGGERS, ...config.extraEventPhrases],
-      exclusions: LEGACY_EVENT_EXCLUSIONS,
+      exclusions: [...LEGACY_EVENT_EXCLUSIONS, ...PRAISE_EXCLUSIONS],
       matchMode: "fuzzy",
       threshold: 60,
       questionsOnly: true,
@@ -423,7 +456,7 @@ export function migrateLegacyRules(
       enabled: true,
       name: "Lost items",
       triggers: LEGACY_LOST_TRIGGERS,
-      exclusions: [],
+      exclusions: [...PRAISE_EXCLUSIONS],
       matchMode: "fuzzy",
       threshold: 60,
       // Lost-item reports are statements, not questions.
