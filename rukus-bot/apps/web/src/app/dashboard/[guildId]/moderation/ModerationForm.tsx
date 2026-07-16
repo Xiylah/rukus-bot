@@ -5,6 +5,57 @@ import type { ModerationConfig } from "@rukus/shared";
 import { Toggle } from "@/components/Toggle";
 import { Select, MultiSelect, type Option } from "@/components/Pickers";
 import { saveModerationConfig } from "../actions";
+import { WarnEscalationEditor } from "./WarnEscalationEditor";
+
+/** Split a textarea into a trimmed, lower-cased, de-duplicated list. */
+function dedupeLines(v: string): string[] {
+  return [
+    ...new Set(v.split("\n").map((s) => s.trim().toLowerCase()).filter(Boolean)),
+  ];
+}
+
+/**
+ * One item per line, parsed on BLUR not on every keystroke. Binding to
+ * `list.join("\n")` and parsing per-keystroke eats the newline the instant you
+ * press Enter, so the raw text is the state while typing and only becomes a list
+ * when you leave the field. Same contract as the translation form's LineList.
+ */
+function LineList({
+  value,
+  onChange,
+  placeholder,
+  rows = 6,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
+  const [text, setText] = useState(value.join("\n"));
+
+  // Re-sync when the list changes from outside the textarea, never while typing.
+  const [lastSeen, setLastSeen] = useState(value);
+  if (value !== lastSeen) {
+    setLastSeen(value);
+    setText(value.join("\n"));
+  }
+
+  return (
+    <textarea
+      className="input min-h-28 font-mono text-sm"
+      rows={rows}
+      placeholder={placeholder}
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        const parsed = dedupeLines(text);
+        onChange(parsed);
+        setText(parsed.join("\n"));
+        setLastSeen(parsed);
+      }}
+    />
+  );
+}
 
 export function ModerationForm({
   guildId,
@@ -274,6 +325,41 @@ export function ModerationForm({
           checked={config.drugFilter}
           onChange={(v) => set("drugFilter", v)}
         />
+        {config.drugFilter && (
+          <>
+            <div>
+              <label className="label">
+                Drug terms ({config.drugTerms.length}) - one per line
+              </label>
+              <LineList
+                value={config.drugTerms}
+                onChange={(v) => set("drugTerms", v)}
+                placeholder={"weed\nxanax\nmolly"}
+              />
+              <p className="mt-1 text-xs text-zinc-500">
+                Leave empty to use the built-in default list. Adding any terms
+                replaces the defaults with exactly this list. Single words match
+                whole words only, so &quot;420&quot; will not match a bare number
+                inside another word. Duplicates and blanks are tidied when you
+                click away.
+              </p>
+            </div>
+            <div>
+              <label className="label">Warning message</label>
+              <input
+                className="input"
+                maxLength={2000}
+                placeholder="Please keep all conversations appropriate for all ages. 🙏"
+                value={config.drugWarning}
+                onChange={(e) => set("drugWarning", e.target.value)}
+              />
+              <p className="mt-1 text-xs text-zinc-500">
+                Posted publicly when the filter fires. Leave empty to rotate
+                through the built-in family-friendly reminders.
+              </p>
+            </div>
+          </>
+        )}
         <Toggle
           label="Banned words"
           hint="Delete messages containing your custom banned words or phrases."
@@ -314,6 +400,13 @@ export function ModerationForm({
           </p>
         </div>
       </div>
+
+      <WarnEscalationEditor
+        rungs={config.warnEscalation}
+        expiryDays={config.warnExpiryDays}
+        onChangeRungs={(v) => set("warnEscalation", v)}
+        onChangeExpiry={(v) => set("warnExpiryDays", v)}
+      />
 
       <div className="card space-y-4">
         <div className="font-medium text-white">Staff settings</div>

@@ -98,10 +98,22 @@ const command: Command = {
           value:
             "`/warn` `/mute` `/timeout` `/kick` `/ban` each recorded as a case\n" +
             "`/unmute` `/history` `/case view|delete|clear`\n" +
+            "`/note add|list|remove|clear` private staff notes on a member\n" +
+            "Warn escalation: enough active warns auto-applies a timeout, kick or ban\n" +
             "Anti-spam blocks scam blasts automatically\n" +
             "Auto-filters: drug terms, banned words, invite links, mass mentions\n" +
-            "`/moderation` configure filters (admin)\n" +
+            "`/moderation` configure filters and escalation (admin)\n" +
             "`/purge` bulk-delete, `/slowmode` set channel slowmode",
+        },
+        {
+          name: "✅ Verification and raid protection",
+          value:
+            "Verify gate: new members clear a button or captcha panel to get in.\n" +
+            "`/verification post` post the verify panel, `/verification status`\n" +
+            "Join gate screens accounts younger than a set age (kick or quarantine)\n" +
+            "Raid protection trips when joins spike: lockdown, kick-new, or alert.\n" +
+            "`/raid status` `/raid lift` `/raid panic` (admin), auto-lifts on a timer\n" +
+            "Both are configured on the dashboard",
         },
         {
           name: "📜 Logging",

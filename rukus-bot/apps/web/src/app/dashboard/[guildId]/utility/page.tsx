@@ -1,4 +1,4 @@
-import { getUtilityConfig } from "@rukus/supabase";
+import { getUtilityConfig, getAfkConfig } from "@rukus/supabase";
 import { requireGuildAccess } from "@/lib/guard";
 import { UtilityForm } from "./UtilityForm";
 
@@ -9,7 +9,10 @@ export default async function UtilityPage({
 }) {
   const { guildId } = await params;
   await requireGuildAccess(guildId);
-  const config = await getUtilityConfig(guildId);
+  const [config, afk] = await Promise.all([
+    getUtilityConfig(guildId),
+    getAfkConfig(guildId),
+  ]);
 
   return (
     <div>
@@ -18,7 +21,7 @@ export default async function UtilityPage({
         The small staff tools: reaction polls and the embed builder. Both are
         limited to members with Manage Messages.
       </p>
-      <UtilityForm guildId={guildId} initial={config} />
+      <UtilityForm guildId={guildId} initial={config} afk={afk} />
     </div>
   );
 }

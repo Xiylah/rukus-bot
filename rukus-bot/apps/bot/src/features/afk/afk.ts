@@ -37,6 +37,10 @@ export async function setAfk(
     update: { message, since: new Date() },
   });
 
+  // A server can opt out of the nickname marker entirely.
+  const config = await afkConfig(member.guild.id);
+  if (!config.renameNickname) return { nicknameChanged: false };
+
   // Renaming the owner or anyone above the bot is impossible, and that is fine:
   // the AFK itself still works, the nickname is only a courtesy.
   const changed = await member
@@ -48,10 +52,13 @@ export async function setAfk(
 }
 
 /** Clear a member's AFK and undo the nickname marker. */
-async function clearAfk(member: GuildMember): Promise<void> {
+async function clearAfk(member: GuildMember, renameNickname: boolean): Promise<void> {
   await prisma.afk.deleteMany({
     where: { guildId: member.guild.id, userId: member.id },
   });
+  // Only touch the nickname when the marker feature is on, otherwise we could
+  // strip a "[AFK] " a user typed themselves.
+  if (!renameNickname) return;
   const restored = clearAfkNickname(member.displayName);
   if (restored !== member.displayName) {
     await member.setNickname(restored || null, "Back from AFK").catch(() => {});
@@ -76,10 +83,10 @@ export async function runAfk(message: Message): Promise<boolean> {
       where: { guildId_userId: { guildId: message.guildId, userId: message.author.id } },
     });
     if (own && message.member) {
-      await clearAfk(message.member);
+      await clearAfk(message.member, config.renameNickname);
       cleared = true;
       const away = Math.round((Date.now() - own.since.getTime()) / 1000);
-      if (message.channel.isSendable()) {
+      if (config.welcomeBackEnabled && message.channel.isSendable()) {
         await message.channel
           .send({
             content: `👋 Welcome back ${message.author}, you were away for ${formatDuration(away)}.`,

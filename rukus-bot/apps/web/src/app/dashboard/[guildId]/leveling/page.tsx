@@ -2,8 +2,9 @@ import Link from "next/link";
 import { getLevelingConfig, getLeaderboardRows } from "@rukus/supabase";
 import { loadGuildOptions } from "@/lib/guildOptions";
 import { fetchGuildChannels, CHANNEL_TYPE } from "@/lib/discord";
+import { resolveMemberNames } from "@/lib/memberNames";
 import { LevelingForm } from "./LevelingForm";
-import { LeaderboardTable } from "./LeaderboardTable";
+import { LeaderboardTable, type NamedLeaderboardRow } from "./LeaderboardTable";
 
 export default async function LevelingPage({
   params,
@@ -26,6 +27,17 @@ export default async function LevelingPage({
   const voiceChannels = allChannels
     .filter((c) => c.type === CHANNEL_TYPE.voice || c.type === STAGE)
     .map((c) => ({ id: c.id, name: c.name }));
+
+  // One batched member fetch names the whole leaderboard, so the table can show
+  // and search by name instead of a raw id.
+  const names = await resolveMemberNames(
+    guildId,
+    rows.map((r) => r.userId),
+  );
+  const namedRows: NamedLeaderboardRow[] = rows.map((r) => ({
+    ...r,
+    name: names.get(r.userId) ?? r.userId,
+  }));
 
   return (
     <div>
@@ -69,7 +81,7 @@ export default async function LevelingPage({
           </>
         )}
       </p>
-      <LeaderboardTable rows={rows} />
+      <LeaderboardTable rows={namedRows} />
     </div>
   );
 }

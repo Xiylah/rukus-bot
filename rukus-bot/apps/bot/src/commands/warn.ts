@@ -5,7 +5,9 @@ import {
   type ChatInputCommandInteraction,
 } from "discord.js";
 import { createCase } from "../features/moderation/cases.js";
+import { escalateIfNeeded } from "../features/moderation/escalation.js";
 import { guardTarget } from "../features/moderation/guards.js";
+import { moderationConfig } from "../lib/configCache.js";
 import type { Command } from "../lib/types.js";
 
 const command: Command = {
@@ -45,9 +47,21 @@ const command: Command = {
       proof: interaction.options.getAttachment("proof"),
     });
 
+    // Warn escalation runs AFTER the warn case exists, so the fresh warn counts.
+    // It never throws (it posts a mod-log note on failure), and it applies its
+    // own case + DM, so the reply just needs to surface what it did.
+    const config = await moderationConfig(interaction.guild.id);
+    const escalated = await escalateIfNeeded(
+      interaction.guild,
+      target.id,
+      config,
+    );
+
     await interaction.reply({
       content:
         `⚠️ ${target} has been warned.${recorded ? ` Case #${String(number).padStart(4, "0")}.` : ""} Reason: ${reason}` +
+        (escalated ? `
+↳ Auto-escalation: ${target} was ${escalated}.` : "") +
         (proofUrl ? `
 Proof: ${proofUrl}` : "") +
         (proofError ? `

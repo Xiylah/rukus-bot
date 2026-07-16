@@ -1,5 +1,6 @@
 import { getRemindersConfig, getSupabase } from "@rukus/supabase";
 import { requireGuildAccess } from "@/lib/guard";
+import { resolveMemberNames } from "@/lib/memberNames";
 import { RemindersPanel, type ReminderRow } from "./RemindersPanel";
 
 export default async function RemindersPage({
@@ -20,9 +21,17 @@ export default async function RemindersPage({
       .limit(200),
   ]);
 
-  const reminders: ReminderRow[] = (data ?? []).map((r) => ({
+  const rows = data ?? [];
+  // One batched member fetch names every reminder owner, no per-row lookup.
+  const names = await resolveMemberNames(
+    guildId,
+    rows.map((r) => r.userId),
+  );
+
+  const reminders: ReminderRow[] = rows.map((r) => ({
     id: r.id,
     userId: r.userId,
+    userName: names.get(r.userId) ?? r.userId,
     channelId: r.channelId,
     text: r.text,
     dueAt: r.dueAt,

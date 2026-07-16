@@ -9,14 +9,22 @@ const DRUG_TERMS = [
   "shrooms", "ketamine", "vape", "vaping", "juul", "dab", "dabs",
 ];
 
-// Whole-word match so "potato"/"escape" won't trigger.
-const DRUG_PATTERN = new RegExp(
-  `\\b(${DRUG_TERMS.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\b`,
-  "i",
-);
+/** Build a whole-word matcher so "potato"/"escape" won't trigger. */
+function drugPattern(terms: readonly string[]): RegExp {
+  return new RegExp(
+    `\\b(${terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\b`,
+    "i",
+  );
+}
 
-export function containsDrugTerm(text: string): boolean {
-  return DRUG_PATTERN.test(text);
+// The built-in list is the default so existing servers are unchanged.
+const DEFAULT_DRUG_PATTERN = drugPattern(DRUG_TERMS);
+
+export function containsDrugTerm(text: string, terms?: readonly string[]): boolean {
+  // A configured list overrides the built-in one; an empty list means "unset",
+  // so we fall back rather than matching nothing.
+  const pattern = terms && terms.length > 0 ? drugPattern(terms) : DEFAULT_DRUG_PATTERN;
+  return pattern.test(text);
 }
 
 export const DRUG_WARNINGS = [
@@ -25,6 +33,8 @@ export const DRUG_WARNINGS = [
   "Reminder: please keep all discussion appropriate for all ages.",
 ];
 
-export function randomDrugWarning(): string {
+export function randomDrugWarning(override?: string): string {
+  // A configured warning replaces the rotating built-ins entirely.
+  if (override && override.trim()) return override;
   return DRUG_WARNINGS[Math.floor(Math.random() * DRUG_WARNINGS.length)]!;
 }

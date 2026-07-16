@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import type { StarboardConfig } from "@rukus/shared";
 import { Toggle } from "@/components/Toggle";
 import { Select, MultiSelect, type Option } from "@/components/Pickers";
+import { DiscordPreview } from "@/components/DiscordPreview";
 import { saveStarboardConfig } from "../actions";
 
 export function StarboardForm({
@@ -124,6 +125,22 @@ export function StarboardForm({
           options={roles}
           prefix="@"
           emptyText="No ignored roles"
+        />
+      </div>
+
+      <div className="card space-y-3">
+        <div className="font-medium text-white">Preview</div>
+        <p className="text-xs text-zinc-500">
+          {config.emoji || "⭐"} {config.threshold} on a message mirrors it to the
+          board like this. The star count and channel sit above the embed.
+        </p>
+        <DiscordPreview
+          color={config.embedColor}
+          title={`${config.emoji || "⭐"} ${config.threshold} • #general`}
+          description={
+            "This is the kind of message that makes the board." +
+            (config.showJumpLink ? "\n\nJump to message" : "")
+          }
         />
       </div>
 

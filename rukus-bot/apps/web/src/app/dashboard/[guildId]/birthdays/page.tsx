@@ -1,17 +1,27 @@
 import { getBirthdaysConfig, getSupabase } from "@rukus/supabase";
 import { requireGuildAccess } from "@/lib/guard";
 import { loadGuildOptions } from "@/lib/guildOptions";
+import { resolveMemberNames } from "@/lib/memberNames";
+import { Pagination } from "@/components/Pagination";
 import { BirthdaysForm, type BirthdayRow } from "./BirthdaysForm";
+
+const PER_PAGE = 50;
 
 export default async function BirthdaysPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ guildId: string }>;
+  searchParams: Promise<{ page?: string }>;
 }) {
   const { guildId } = await params;
+  const { page: rawPage } = await searchParams;
   await requireGuildAccess(guildId);
 
-  const [config, options, { data }] = await Promise.all([
+  const page = Math.max(1, Number(rawPage) || 1);
+  const offset = (page - 1) * PER_PAGE;
+
+  const [config, options, { data, count }] = await Promise.all([
     getBirthdaysConfig(guildId),
     loadGuildOptions(guildId),
     // Day and month ONLY. The birth year is stored so a server can work out an
@@ -19,15 +29,26 @@ export default async function BirthdaysPage({
     // member's age on a screen any staff member can open. It is not selected.
     getSupabase()
       .from("Birthday")
-      .select("userId, day, month")
+      .select("userId, day, month", { count: "exact" })
       .eq("guildId", guildId)
       .order("month", { ascending: true })
       .order("day", { ascending: true })
-      .limit(200),
+      .range(offset, offset + PER_PAGE - 1),
   ]);
 
-  const birthdays: BirthdayRow[] = (data ?? []).map((b) => ({
+  const rows = data ?? [];
+  const total = count ?? rows.length;
+  const lastPage = Math.max(1, Math.ceil(total / PER_PAGE));
+
+  // One batched member fetch names everyone on this page, no per-row lookup.
+  const names = await resolveMemberNames(
+    guildId,
+    rows.map((b) => b.userId),
+  );
+
+  const birthdays: BirthdayRow[] = rows.map((b) => ({
     userId: b.userId,
+    name: names.get(b.userId) ?? b.userId,
     day: b.day,
     month: b.month,
   }));
@@ -46,6 +67,16 @@ export default async function BirthdaysPage({
         channels={options.channels}
         roles={options.grantableRoles}
         birthdays={birthdays}
+        birthdayCount={total}
+      />
+      <Pagination
+        basePath={`/dashboard/${guildId}/birthdays`}
+        page={page}
+        lastPage={lastPage}
+        total={total}
+        shown={birthdays.length}
+        offset={offset}
+        label="birthdays"
       />
     </div>
   );

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import type { SuggestionsConfig } from "@rukus/shared";
 import { Toggle } from "@/components/Toggle";
 import { Select, type Option } from "@/components/Pickers";
+import { DiscordPreview } from "@/components/DiscordPreview";
 import { saveSuggestionsConfig } from "../actions";
 
 export function SuggestionsForm({
@@ -100,6 +101,22 @@ export function SuggestionsForm({
           hint="Keeps discussion out of the main feed, so the channel stays scannable."
           checked={config.threadPerSuggestion}
           onChange={(v) => set("threadPerSuggestion", v)}
+        />
+      </div>
+
+      <div className="card space-y-3">
+        <div className="font-medium text-white">Preview</div>
+        <p className="text-xs text-zinc-500">
+          How a new suggestion card looks when it is posted.
+          {config.allowVoting &&
+            ` Members vote with the ${config.upvoteEmoji || "👍"} and ${config.downvoteEmoji || "👎"} reactions.`}
+        </p>
+        <DiscordPreview
+          title="💡 Suggestion #42"
+          description={
+            "Add a dark theme to the member dashboard.\n\nStatus: Open" +
+            (config.anonymous ? "\nSubmitted anonymously" : "\nby @Ada")
+          }
         />
       </div>
 

@@ -7,12 +7,14 @@ import {
   setRemindersConfig,
   setHighlightsConfig,
   setUtilityConfig,
+  setAfkConfig,
 } from "@rukus/supabase";
 import {
   autoRolesConfigSchema,
   remindersConfigSchema,
   highlightsConfigSchema,
   utilityConfigSchema,
+  afkConfigSchema,
 } from "@rukus/shared";
 import { requireGuildAccess } from "@/lib/guard";
 
@@ -80,6 +82,20 @@ export async function saveUtilityConfig(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
   }
   await setUtilityConfig(guildId, parsed.data);
+  revalidatePath(`/dashboard/${guildId}/utility`);
+  return { ok: true };
+}
+
+export async function saveAfkConfig(
+  guildId: string,
+  payload: unknown,
+): Promise<ActionResult> {
+  await requireGuildAccess(guildId);
+  const parsed = afkConfigSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  }
+  await setAfkConfig(guildId, parsed.data);
   revalidatePath(`/dashboard/${guildId}/utility`);
   return { ok: true };
 }

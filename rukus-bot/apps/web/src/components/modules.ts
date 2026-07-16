@@ -14,6 +14,7 @@ export type ModuleCategory =
   | "Support"
   | "Engagement"
   | "Moderation"
+  | "Safety"
   | "Community"
   | "Utility";
 
@@ -21,6 +22,7 @@ export const MODULE_CATEGORIES: ModuleCategory[] = [
   "Support",
   "Engagement",
   "Moderation",
+  "Safety",
   "Community",
   "Utility",
 ];
@@ -149,6 +151,26 @@ export const MODULES: ModuleDef[] = [
     name: "Auto-responder",
     description: "Reply to common phrases without a mod lifting a finger.",
     category: "Moderation",
+    toggleable: true,
+  },
+
+  // ---- Safety ----
+  {
+    slug: "verification",
+    feature: "verification",
+    icon: "✅",
+    name: "Verification",
+    description: "Make new members clear a gate before they get in.",
+    category: "Safety",
+    toggleable: true,
+  },
+  {
+    slug: "raid",
+    feature: "raid",
+    icon: "🚨",
+    name: "Raid protection",
+    description: "Trip a lockdown when joins spike like a raid.",
+    category: "Safety",
     toggleable: true,
   },
 

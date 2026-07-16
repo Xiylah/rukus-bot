@@ -4,6 +4,8 @@ import {
   getTranslationConfig,
   getAutoResponderConfig,
   getModerationConfig,
+  getVerificationConfig,
+  getRaidConfig,
   getWelcomeConfig,
   getCustomCommandsConfig,
   getReactionRolesConfig,
@@ -28,6 +30,8 @@ import {
   translationConfigSchema,
   autoResponderConfigSchema,
   moderationConfigSchema,
+  verificationConfigSchema,
+  raidConfigSchema,
   welcomeConfigSchema,
   customCommandsConfigSchema,
   reactionRolesConfigSchema,
@@ -50,6 +54,8 @@ import {
   type TranslationConfig,
   type AutoResponderConfig,
   type ModerationConfig,
+  type VerificationConfig,
+  type RaidConfig,
   type WelcomeConfig,
   type CustomCommandsConfig,
   type ReactionRolesConfig,
@@ -175,6 +181,18 @@ export const autoResponderConfig = (
 export const moderationConfig = (guildId: string): Promise<ModerationConfig> =>
   cached(`moderation:${guildId}`, () => getModerationConfig(guildId), () =>
     moderationConfigSchema.parse({}),
+  );
+
+export const verificationConfig = (
+  guildId: string,
+): Promise<VerificationConfig> =>
+  cached(`verification:${guildId}`, () => getVerificationConfig(guildId), () =>
+    verificationConfigSchema.parse({}),
+  );
+
+export const raidConfig = (guildId: string): Promise<RaidConfig> =>
+  cached(`raid:${guildId}`, () => getRaidConfig(guildId), () =>
+    raidConfigSchema.parse({}),
   );
 
 export const welcomeConfig = (guildId: string): Promise<WelcomeConfig> =>

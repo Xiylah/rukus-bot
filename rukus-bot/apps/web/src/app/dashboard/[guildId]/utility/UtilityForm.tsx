@@ -1,21 +1,41 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { UtilityConfig } from "@rukus/shared";
+import type { UtilityConfig, AfkConfig } from "@rukus/shared";
 import { Toggle } from "@/components/Toggle";
 import { DiscordPreview } from "@/components/DiscordPreview";
-import { saveUtilityConfig } from "../utility-actions";
+import { saveUtilityConfig, saveAfkConfig } from "../utility-actions";
 
 export function UtilityForm({
   guildId,
   initial,
+  afk: afkInitial,
 }: {
   guildId: string;
   initial: UtilityConfig;
+  afk: AfkConfig;
 }) {
   const [config, setConfig] = useState<UtilityConfig>(initial);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // AFK rides along on this page but is its own config row, so it gets its own
+  // state and save so the two never clobber each other.
+  const [afk, setAfk] = useState<AfkConfig>(afkInitial);
+  const [afkPending, startAfkTransition] = useTransition();
+  const [afkMsg, setAfkMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  function setAfkField<K extends keyof AfkConfig>(key: K, value: AfkConfig[K]) {
+    setAfk((c) => ({ ...c, [key]: value }));
+  }
+
+  function onSaveAfk() {
+    setAfkMsg(null);
+    startAfkTransition(async () => {
+      const res = await saveAfkConfig(guildId, afk);
+      setAfkMsg(res.ok ? { ok: true, text: "Saved." } : { ok: false, text: res.error });
+    });
+  }
 
   // Draft state for the embed preview. It is deliberately NOT saved: /embed
   // posts one message, it has no persistent config, and pretending otherwise
@@ -133,6 +153,37 @@ export function UtilityForm({
             {msg.text}
           </span>
         )}
+      </div>
+
+      <div className="card space-y-4">
+        <div className="font-medium text-white">AFK</div>
+        <p className="text-sm text-zinc-400">
+          Members can mark themselves away with /afk; anyone who pings them sees
+          the reason instead of waiting for a reply.
+        </p>
+        <Toggle
+          label="Rename to [AFK]"
+          hint="Prefix an away member's nickname with [AFK] and restore it when they return. Off leaves nicknames untouched."
+          checked={afk.renameNickname}
+          onChange={(v) => setAfkField("renameNickname", v)}
+        />
+        <Toggle
+          label="Welcome-back message"
+          hint="Post a short 'welcome back, you were away for…' note in the channel when someone returns."
+          checked={afk.welcomeBackEnabled}
+          onChange={(v) => setAfkField("welcomeBackEnabled", v)}
+        />
+
+        <div className="flex items-center gap-3">
+          <button className="btn-primary" onClick={onSaveAfk} disabled={afkPending}>
+            {afkPending ? "Saving…" : "Save changes"}
+          </button>
+          {afkMsg && (
+            <span className={afkMsg.ok ? "text-green-400" : "text-red-400"}>
+              {afkMsg.text}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

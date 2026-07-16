@@ -20,6 +20,8 @@ import {
   getBirthdaysConfig,
   getInviteTrackerConfig,
   getTempVoiceConfig,
+  getVerificationConfig,
+  getRaidConfig,
 } from "@rukus/supabase";
 import { ModuleCard } from "@/components/ModuleCard";
 import { MODULES, MODULE_CATEGORIES, type FeatureKey } from "@/components/modules";
@@ -59,6 +61,8 @@ export default async function GuildOverview({
     birthdays,
     invites,
     tempvoice,
+    verification,
+    raid,
   ] = await Promise.all([
     getTicketConfig(guildId),
     getFormsConfig(guildId),
@@ -81,6 +85,8 @@ export default async function GuildOverview({
     getBirthdaysConfig(guildId),
     getInviteTrackerConfig(guildId),
     getTempVoiceConfig(guildId),
+    getVerificationConfig(guildId),
+    getRaidConfig(guildId),
   ]);
 
   // Count only the event toggles: the destination and scope keys are not events
@@ -208,6 +214,16 @@ export default async function GuildOverview({
       detail: `Polls ${utility.polls ? "on" : "off"}, embed builder ${
         utility.embedBuilder ? "on" : "off"
       }`,
+    },
+    verification: {
+      enabled: verification.enabled,
+      detail: verification.verifiedRoleId
+        ? `${verification.mode === "captcha" ? "Captcha" : "Button"} gate`
+        : "No verified role set",
+    },
+    raid: {
+      enabled: raid.enabled,
+      detail: `${raid.joinRateCount} joins / ${raid.joinRateSeconds}s trips ${raid.action}`,
     },
     // Registered features that have no card of their own: AFK rides along with
     // Utility, and Access lives under Admin in the sidebar.

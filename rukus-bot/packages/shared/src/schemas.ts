@@ -476,9 +476,102 @@ export const moderationConfigSchema = z.object({
    * accounts. 0 = off.
    */
   minAccountAgeDaysForLinks: z.number().int().min(0).max(365).default(0),
+
+  // ---------------- Warn escalation ----------------
+  /**
+   * Automatic punishment ladder driven by a member's warn count. "After N
+   * warns, do X." Evaluated against existing ModCase rows, so it needs no new
+   * table. Multiple rungs let a server ramp: timeout at 3, kick at 5, ban at 7.
+   */
+  warnEscalation: z
+    .array(
+      z.object({
+        /** Trigger this rung once the member reaches this many warns. */
+        warns: z.number().int().min(1).max(100),
+        action: z.enum(["timeout", "kick", "ban"]),
+        /** Timeout length in minutes; only read when action is "timeout". */
+        durationMin: z.number().int().min(0).max(40320).default(60),
+      }),
+    )
+    .max(20)
+    .default([]),
+  /** Warns older than this many days stop counting toward escalation. 0 = never expire. */
+  warnExpiryDays: z.number().int().min(0).max(3650).default(0),
+
+  // ---------------- Drug filter customization ----------------
+  /**
+   * Override the built-in drug/substance term list. Empty = use the hardcoded
+   * default list. Populated = these terms replace it entirely, so a server can
+   * tune false positives without a code change.
+   */
+  drugTerms: z.array(z.string().min(1).max(60)).max(500).default([]),
+  /** Override the warning shown when the drug filter fires. Empty = built-in message. */
+  drugWarning: z.string().max(2000).default(""),
 });
 
 export type ModerationConfig = z.infer<typeof moderationConfigSchema>;
+
+// ---------------- Verification ----------------
+
+/**
+ * Membrane between the outside and the rest of the server: a panel a new member
+ * must clear before they get the verified role. Optionally quarantines fresh
+ * accounts and screens out ones younger than a threshold.
+ */
+export const verificationConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** button = click-to-verify; captcha = solve a challenge first. */
+  mode: z.enum(["button", "captcha"]).default("button"),
+  /** Role granted on a successful verify. */
+  verifiedRoleId: snowflake,
+  /** Optional quarantine role held until the member verifies. */
+  unverifiedRoleId: snowflake,
+  /** Where the verify panel is posted. */
+  channelId: snowflake,
+  panelTitle: z.string().max(256).default("Verify to access the server"),
+  panelDescription: z
+    .string()
+    .max(4000)
+    .default("Click the button below to verify you are human."),
+  buttonLabel: z.string().max(80).default("Verify"),
+
+  // ---- Join gate ----
+  /** Accounts younger than this many days are actioned on join. 0 = off. */
+  minAccountAgeDays: z.number().int().min(0).max(365).default(0),
+  /** What to do with an account that fails the age gate. */
+  minAccountAgeAction: z
+    .enum(["kick", "quarantine", "none"])
+    .default("none"),
+
+  /** Where the live panel message lives, so it can be edited in place. */
+  panelChannelId: snowflake,
+  panelMessageId: snowflake,
+});
+
+export type VerificationConfig = z.infer<typeof verificationConfigSchema>;
+
+// ---------------- Raid protection ----------------
+
+/**
+ * Trips when joins spike past a rate, the signature of a raid or a bot swarm.
+ * The action ranges from a quiet alert to a full lockdown, and can auto-lift so
+ * a false alarm does not wall off the server until a human notices.
+ */
+export const raidConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** N joins... */
+  joinRateCount: z.number().int().min(2).max(100).default(10),
+  /** ...within M seconds trips raid mode. */
+  joinRateSeconds: z.number().int().min(5).max(600).default(60),
+  action: z
+    .enum(["lockdown", "kick-new", "quarantine", "alert-only"])
+    .default("alert-only"),
+  alertChannelId: snowflake,
+  /** Auto-lift raid mode after this many minutes. 0 = manual lift only. */
+  autoLiftMinutes: z.number().int().min(0).max(1440).default(30),
+});
+
+export type RaidConfig = z.infer<typeof raidConfigSchema>;
 
 // ---------------- Custom commands ----------------
 
@@ -1001,6 +1094,15 @@ export const giveawaysConfigSchema = z.object({
     .default("#5865f2"),
   /** DM winners, so a win isn't missed in a fast channel. */
   dmWinners: z.boolean().default(true),
+  /**
+   * Public winner announcement. {winners} → the winner mentions, {prize} → the
+   * prize text. Mentions stay locked to users only when this is posted, so a
+   * stray @everyone in the template can never mass-ping.
+   */
+  announceMessage: z
+    .string()
+    .max(2000)
+    .default("🎉 Congratulations {winners}, you won {prize}!"),
 });
 
 export type GiveawaysConfig = z.infer<typeof giveawaysConfigSchema>;
@@ -1035,6 +1137,10 @@ export type HighlightsConfig = z.infer<typeof highlightsConfigSchema>;
 
 export const afkConfigSchema = z.object({
   enabled: z.boolean().default(false),
+  /** Prepend [AFK] to the member's nickname while away. Off = leave nicks alone. */
+  renameNickname: z.boolean().default(true),
+  /** Greet the member when they return and their AFK is cleared. */
+  welcomeBackEnabled: z.boolean().default(true),
 });
 
 export type AfkConfig = z.infer<typeof afkConfigSchema>;
@@ -1160,6 +1266,8 @@ export const FEATURE_SCHEMAS = {
   translation: translationConfigSchema,
   autoresponder: autoResponderConfigSchema,
   moderation: moderationConfigSchema,
+  verification: verificationConfigSchema,
+  raid: raidConfigSchema,
   welcome: welcomeConfigSchema,
   customcommands: customCommandsConfigSchema,
   access: accessConfigSchema,

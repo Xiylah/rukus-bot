@@ -28,8 +28,8 @@ export function checkFilters(
     if (config.exemptRoleIds.some((r) => member.roles.cache.has(r))) return null;
   }
 
-  if (config.drugFilter && containsDrugTerm(content)) {
-    return { rule: "drug filter", warning: randomDrugWarning() };
+  if (config.drugFilter && containsDrugTerm(content, config.drugTerms)) {
+    return { rule: "drug filter", warning: randomDrugWarning(config.drugWarning) };
   }
 
   if (config.bannedWordsEnabled && config.bannedWords.length > 0) {

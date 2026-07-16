@@ -6,6 +6,49 @@ import { Toggle } from "@/components/Toggle";
 import { Select, MultiSelect, type Option } from "@/components/Pickers";
 import { saveWelcomeConfig } from "../actions";
 
+/** Fill the {placeholders} with sample values so staff see a realistic message. */
+function renderSample(text: string): string {
+  return text
+    .replace(/\{user\}/gi, "@NewMember")
+    .replace(/\{username\}/gi, "NewMember")
+    .replace(/\{server\}/gi, "Your Server")
+    .replace(/\{memberCount\}/gi, "1234");
+}
+
+/**
+ * A Discord message mockup for the welcome/leave preview.
+ *
+ * The bot posts these as plain message content, not an embed (see the bot's
+ * guildMemberAdd), so this renders a bare message bubble rather than an embed
+ * card, matching exactly what a member will see. Empty input shows a hint.
+ */
+function MessagePreview({ text }: { text: string }) {
+  const rendered = renderSample(text);
+  return (
+    <div className="rounded-lg border border-edge bg-[#313338] p-4 font-sans">
+      <div className="flex gap-3">
+        <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-blurple text-sm font-bold text-white">
+          R
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-white">Rukus</span>
+            <span className="rounded bg-blurple px-1 py-px text-[10px] font-semibold uppercase text-white">
+              App
+            </span>
+            <span className="text-xs text-zinc-500">Today</span>
+          </div>
+          <div className="mt-1 whitespace-pre-wrap text-sm text-zinc-200">
+            {rendered || (
+              <span className="text-zinc-600">Nothing to preview</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function WelcomeForm({
   guildId,
   initial,
@@ -57,12 +100,12 @@ export function WelcomeForm({
             onChange={(e) => set("message", e.target.value)}
           />
           <p className="mt-1 text-xs text-zinc-500">
-            Preview: {config.message
-              .replace(/\{user\}/gi, "@NewMember")
-              .replace(/\{username\}/gi, "NewMember")
-              .replace(/\{server\}/gi, "Your Server")
-              .replace(/\{memberCount\}/gi, "1234")}
+            {"{user}"} pings them, {"{username}"} is their name, {"{server}"} is
+            the server name, {"{memberCount}"} is the new member total.
           </p>
+          <div className="mt-2">
+            <MessagePreview text={config.message} />
+          </div>
         </div>
         <Toggle
           label="Also send a welcome DM"
@@ -78,6 +121,9 @@ export function WelcomeForm({
               value={config.dmMessage}
               onChange={(e) => set("dmMessage", e.target.value)}
             />
+            <div className="mt-2">
+              <MessagePreview text={config.dmMessage} />
+            </div>
           </div>
         )}
       </div>
@@ -116,6 +162,9 @@ export function WelcomeForm({
             value={config.leaveMessage}
             onChange={(e) => set("leaveMessage", e.target.value)}
           />
+          <div className="mt-2">
+            <MessagePreview text={config.leaveMessage} />
+          </div>
         </div>
       </div>
 

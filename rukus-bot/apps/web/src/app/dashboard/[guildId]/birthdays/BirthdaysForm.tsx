@@ -8,6 +8,7 @@ import { saveBirthdaysConfig } from "./actions";
 
 export interface BirthdayRow {
   userId: string;
+  name: string;
   day: number;
   month: number;
 }
@@ -65,12 +66,15 @@ export function BirthdaysForm({
   channels,
   roles,
   birthdays,
+  birthdayCount,
 }: {
   guildId: string;
   initial: BirthdaysConfig;
   channels: Option[];
   roles: Option[];
   birthdays: BirthdayRow[];
+  /** Total saved birthdays across all pages (birthdays is only the page shown). */
+  birthdayCount: number;
 }) {
   const [config, setConfig] = useState<BirthdaysConfig>(initial);
   const [pending, startTransition] = useTransition();
@@ -189,7 +193,7 @@ export function BirthdaysForm({
 
       <div className="card space-y-3">
         <div className="font-medium text-white">
-          Saved birthdays ({birthdays.length})
+          Saved birthdays ({birthdayCount})
         </div>
         <p className="text-xs text-zinc-500">
           Members add themselves with /birthday set, and can delete themselves
@@ -207,7 +211,9 @@ export function BirthdaysForm({
                 <span className="text-zinc-300">
                   {formatDayMonth(b.day, b.month)}
                 </span>
-                <span className="text-zinc-500">{b.userId}</span>
+                <span className="text-zinc-400" title={b.userId}>
+                  {b.name}
+                </span>
               </div>
             ))}
           </div>

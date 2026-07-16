@@ -165,6 +165,21 @@ model CaseCounter {
   @@schema("rukus")
 }
 
+/// A freeform staff note about a member. Unlike a ModCase this is not a
+/// punishment: it is context ("history of ban evasion", "was helpful in #x")
+/// that staff leave for each other. Pure data, so no config schema.
+model UserNote {
+  id       String   @id @default(cuid())
+  guildId  String
+  userId   String
+  authorId String
+  note     String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([guildId, userId])
+  @@schema("rukus")
+}
+
 enum SubmissionStatus {
   PENDING
   APPROVED

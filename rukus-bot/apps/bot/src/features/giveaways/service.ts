@@ -222,13 +222,19 @@ export async function endGiveaway(
 
   if (channel?.isTextBased()) {
     const link = `https://discord.com/channels/${guild.id}/${giveaway.channelId}/${giveaway.messageId}`;
+    const mentions = winners.map((id) => `<@${id}>`).join(", ");
+    const announce = config.announceMessage
+      .replaceAll("{winners}", mentions)
+      .replaceAll("{prize}", giveaway.prize);
     const text =
       winners.length === 0
         ? `🎉 Nobody entered the giveaway for **${giveaway.prize}**, so there is no winner. ${link}`
-        : `🎉 ${options.reroll ? "Rerolled" : "Congratulations"} ${winners
-            .map((id) => `<@${id}>`)
-            .join(", ")}, you won **${giveaway.prize}**! ${link}`;
-    await (channel as TextChannel).send({ content: text }).catch(() => {});
+        : `${options.reroll ? `🎉 Rerolled ${mentions}, you won **${giveaway.prize}**!` : announce} ${link}`;
+    // allowedMentions stays locked to users so a template with @everyone/@here
+    // cannot turn a win announcement into a mass ping.
+    await (channel as TextChannel)
+      .send({ content: text, allowedMentions: { parse: ["users"] } })
+      .catch(() => {});
   }
 
   if (config.dmWinners) {

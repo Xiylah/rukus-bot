@@ -9,6 +9,7 @@ export interface CaseRow {
   userId: string;
   userTag: string;
   moderatorId: string;
+  moderatorName: string;
   reason: string;
   durationMin: number | null;
   createdAt: string;
@@ -53,6 +54,8 @@ export function CasesTable({
         (c) =>
           c.userTag.toLowerCase().includes(q) ||
           c.userId.includes(q) ||
+          c.moderatorName.toLowerCase().includes(q) ||
+          c.moderatorId.includes(q) ||
           c.reason.toLowerCase().includes(q) ||
           c.action.toLowerCase().includes(q),
       )
@@ -168,8 +171,8 @@ export function CasesTable({
                     </span>
                   </td>
                   <td className="px-4 py-2.5 text-white">{c.userTag}</td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-zinc-400">
-                    {c.moderatorId}
+                  <td className="px-4 py-2.5 text-zinc-300" title={c.moderatorId}>
+                    {c.moderatorName}
                   </td>
                   <td className="max-w-xs truncate px-4 py-2.5 text-zinc-300">
                     {c.reason || "no reason"}

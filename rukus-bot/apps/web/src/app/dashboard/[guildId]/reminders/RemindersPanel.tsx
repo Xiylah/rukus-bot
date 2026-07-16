@@ -9,6 +9,7 @@ import { saveRemindersConfig, deleteReminder } from "../utility-actions";
 export interface ReminderRow {
   id: string;
   userId: string;
+  userName: string;
   channelId: string;
   text: string;
   dueAt: string;
@@ -110,8 +111,8 @@ export function RemindersPanel({
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id} className="border-b border-edge/50 last:border-0">
-                    <td className="px-4 py-2.5 font-mono text-xs text-zinc-400">
-                      {r.userId}
+                    <td className="px-4 py-2.5 text-zinc-300" title={r.userId}>
+                      {r.userName}
                     </td>
                     <td className="max-w-sm truncate px-4 py-2.5 text-zinc-200">
                       {r.text}

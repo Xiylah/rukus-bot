@@ -17,8 +17,8 @@ export default async function ModerationPage({
     <div>
       <h1 className="mb-1 text-2xl font-bold text-white">🛡️ Moderation</h1>
       <p className="mb-6 text-sm text-zinc-400">
-        Basic automod ported from the original bot. Warn/mute/ban tools are
-        coming in a later update.
+        Automod, anti-spam and the warn-escalation ladder. Staff drive
+        warn/mute/kick/ban from the bot commands; the record lives under Cases.
       </p>
       <ModerationForm
         guildId={guildId}

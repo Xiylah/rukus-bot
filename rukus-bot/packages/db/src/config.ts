@@ -5,6 +5,8 @@ import {
   translationConfigSchema,
   autoResponderConfigSchema,
   moderationConfigSchema,
+  verificationConfigSchema,
+  raidConfigSchema,
   welcomeConfigSchema,
   customCommandsConfigSchema,
   reactionRolesConfigSchema,
@@ -27,6 +29,8 @@ import {
   type TranslationConfig,
   type AutoResponderConfig,
   type ModerationConfig,
+  type VerificationConfig,
+  type RaidConfig,
   type WelcomeConfig,
   type CustomCommandsConfig,
   type ReactionRolesConfig,
@@ -120,6 +124,18 @@ export const getModerationConfig = (guildId: string) =>
 
 export const setModerationConfig = (guildId: string, config: unknown) =>
   writeConfig<ModerationConfig>(guildId, "moderation", config);
+
+export const getVerificationConfig = (guildId: string) =>
+  readConfig<VerificationConfig>(guildId, "verification");
+
+export const setVerificationConfig = (guildId: string, config: unknown) =>
+  writeConfig<VerificationConfig>(guildId, "verification", config);
+
+export const getRaidConfig = (guildId: string) =>
+  readConfig<RaidConfig>(guildId, "raid");
+
+export const setRaidConfig = (guildId: string, config: unknown) =>
+  writeConfig<RaidConfig>(guildId, "raid", config);
 
 export const getWelcomeConfig = (guildId: string) =>
   readConfig<WelcomeConfig>(guildId, "welcome");
@@ -229,6 +245,8 @@ export {
   translationConfigSchema,
   autoResponderConfigSchema,
   moderationConfigSchema,
+  verificationConfigSchema,
+  raidConfigSchema,
   welcomeConfigSchema,
   customCommandsConfigSchema,
   reactionRolesConfigSchema,

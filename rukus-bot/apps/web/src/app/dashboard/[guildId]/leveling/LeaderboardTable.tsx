@@ -15,13 +15,20 @@ import type { LeaderboardRow } from "@rukus/supabase";
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 
-export function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
+/** A leaderboard row with the member's display name resolved by the server. */
+export type NamedLeaderboardRow = LeaderboardRow & { name: string };
+
+export function LeaderboardTable({ rows }: { rows: NamedLeaderboardRow[] }) {
   const [query, setQuery] = useState("");
 
   const q = query.trim().toLowerCase();
-  // Only the user id is stored, so that is what there is to search on. Names
-  // would mean a Discord fetch per row, which is not worth it here.
-  const filtered = q ? rows.filter((r) => r.userId.includes(q)) : rows;
+  // Names are resolved server-side in one batched fetch, so search covers both
+  // the display name and the raw id.
+  const filtered = q
+    ? rows.filter(
+        (r) => r.name.toLowerCase().includes(q) || r.userId.includes(q),
+      )
+    : rows;
 
   if (rows.length === 0) {
     return (
@@ -36,7 +43,7 @@ export function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
     <div className="space-y-4">
       <input
         className="input max-w-sm"
-        placeholder="Search by user ID…"
+        placeholder="Search by name or user ID…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
@@ -68,8 +75,8 @@ export function LeaderboardTable({ rows }: { rows: LeaderboardRow[] }) {
                     <td className="px-4 py-2.5 font-mono text-zinc-400">
                       {MEDALS[place - 1] ?? `#${place}`}
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-zinc-300">
-                      {r.userId}
+                    <td className="px-4 py-2.5 text-zinc-200" title={r.userId}>
+                      {r.name}
                     </td>
                     <td className="px-4 py-2.5 font-semibold text-white">
                       {p.level}

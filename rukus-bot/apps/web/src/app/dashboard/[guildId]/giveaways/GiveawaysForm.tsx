@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import type { GiveawaysConfig } from "@rukus/shared";
 import { Toggle } from "@/components/Toggle";
 import { MultiSelect, type Option } from "@/components/Pickers";
+import { DiscordPreview } from "@/components/DiscordPreview";
 import { saveGiveawaysConfig } from "../actions";
 
 export function GiveawaysForm({
@@ -68,6 +69,54 @@ export function GiveawaysForm({
           checked={config.dmWinners}
           onChange={(v) => set("dmWinners", v)}
         />
+        <div>
+          <div className="label">Giveaway embed preview</div>
+          <DiscordPreview
+            color={config.embedColor}
+            title="🎉 Nitro (1 month)"
+            description={"Press **Enter** below to join.\n\nEnds: in 2 days · Winners: 1"}
+            buttons={[{ emoji: config.emoji, label: "Enter (0)" }]}
+          />
+        </div>
+      </div>
+
+      <div className="card space-y-4">
+        <div className="font-medium text-white">Win announcement</div>
+        <p className="text-sm text-zinc-400">
+          The public message posted in the channel when a giveaway ends. Use{" "}
+          <code className="rounded bg-panel px-1">{"{winners}"}</code> for the
+          winner mentions and{" "}
+          <code className="rounded bg-panel px-1">{"{prize}"}</code> for the
+          prize.
+        </p>
+        <div>
+          <label className="label">Announcement template</label>
+          <textarea
+            className="input min-h-20"
+            maxLength={2000}
+            placeholder="🎉 Congratulations {winners}, you won {prize}!"
+            value={config.announceMessage}
+            onChange={(e) => set("announceMessage", e.target.value)}
+          />
+          <p className="mt-1 text-xs text-zinc-500">
+            A link to the giveaway is always appended. Only real winners get
+            pinged: an @everyone or @here in here is shown as text, never a mass
+            ping.
+          </p>
+        </div>
+        <div>
+          <div className="label">Preview</div>
+          <DiscordPreview
+            color={config.embedColor}
+            title=""
+            description={
+              (config.announceMessage || "🎉 Congratulations {winners}, you won {prize}!")
+                .replaceAll("{winners}", "@Ada, @Rai")
+                .replaceAll("{prize}", "Nitro (1 month)") +
+              "\nhttps://discord.com/channels/…"
+            }
+          />
+        </div>
       </div>
 
       <div className="card space-y-4">
