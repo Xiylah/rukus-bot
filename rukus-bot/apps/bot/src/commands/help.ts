@@ -67,10 +67,11 @@ const command: Command = {
         {
           name: "📈 Leveling",
           value:
-            "Earn XP for chatting, level up, unlock role rewards.\n" +
+            "Earn XP for chatting and in voice, level up, unlock role rewards.\n" +
             "`/rank [user]` see a rank card\n" +
             "`/leaderboard [page]` see the server leaderboard\n" +
-            "`/xp give|take|set <user> <amount>` adjust XP (admin)",
+            "`/xp give|take|set <user> <amount>` adjust XP (admin)\n" +
+            "`/levels reset <user>` `/levels reset-all` wipe XP (admin)",
         },
         {
           name: "⭐ Starboard",
@@ -132,6 +133,14 @@ const command: Command = {
             "`/remind list` `/remind delete <id>`\n" +
             "`/highlight add|remove|list|clear` get a DM when a word you care about is said\n" +
             "`/afk [message]` tell people you're away",
+        },
+        {
+          name: "🎂 Community",
+          value:
+            "`/birthday set <day> <month>` `/birthday remove|list|view` birthdays\n" +
+            "`/invites [user]` see who has invited the most members\n" +
+            "`/social add|list|remove|test` YouTube, Twitch and RSS alerts (admin)\n" +
+            "Temporary voice channels: join the lobby channel to get your own (set on the dashboard)",
         },
         {
           name: "🔧 Utility",

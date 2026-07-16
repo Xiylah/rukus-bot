@@ -29,6 +29,28 @@ const lastNotified = new Map<string, number>(); // `${guildId}:${userId}` -> ts
 /** How long after speaking in a channel a member is considered "present". */
 const PRESENT_MS = 5 * 60_000;
 
+/**
+ * Both maps hold time-windowed entries, so anything older than we could ever
+ * act on is dead weight. Without eviction they grow with every (channel, user)
+ * and (guild, user) pair the bot ever sees, which on a public bot is an
+ * unbounded leak. A cheap sweep, run at most once a minute from the hot path,
+ * drops entries past their usefulness. lastNotified is kept for the longest
+ * cooldown any guild might set (capped at an hour), lastSpoke only for the
+ * presence window.
+ */
+const MAX_COOLDOWN_MS = 60 * 60_000;
+let lastSweep = 0;
+function sweepStale(now: number): void {
+  if (now - lastSweep < 60_000) return;
+  lastSweep = now;
+  for (const [k, ts] of lastSpoke) {
+    if (now - ts > PRESENT_MS) lastSpoke.delete(k);
+  }
+  for (const [k, ts] of lastNotified) {
+    if (now - ts > MAX_COOLDOWN_MS) lastNotified.delete(k);
+  }
+}
+
 /** Whole-word, case-insensitive. Multi-word highlights match as a phrase. */
 export function matchesHighlight(content: string, word: string): boolean {
   const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -46,12 +68,13 @@ export async function runHighlights(message: Message): Promise<void> {
   const guildId = message.guildId;
   const now = Date.now();
 
-  // Record presence BEFORE the enabled check: if the feature is toggled on
-  // mid-conversation, we still want a sane idea of who is here.
-  lastSpoke.set(`${message.channelId}:${message.author.id}`, now);
-
   const config = await highlightsConfig(guildId);
   if (!config.enabled) return;
+
+  // Only track presence for guilds that actually use highlights, or the maps
+  // would grow for every guild the bot is in whether or not the feature is on.
+  sweepStale(now);
+  lastSpoke.set(`${message.channelId}:${message.author.id}`, now);
 
   const content = message.content;
   if (!content) return;

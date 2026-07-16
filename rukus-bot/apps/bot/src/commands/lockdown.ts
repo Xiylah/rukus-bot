@@ -3,6 +3,10 @@ import {
   PermissionFlagsBits,
   MessageFlags,
   ChannelType,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ComponentType,
   type GuildBasedChannel,
   type Guild,
   type ChatInputCommandInteraction,
@@ -126,7 +130,44 @@ const command: Command = {
     const auditReason = `Lockdown by ${interaction.user.tag}: ${reasonText}`;
     const existing = await listLockedChannels(guild.id);
 
-    await interaction.deferReply();
+    // Locking the whole server silences everyone at once, so make it a
+    // deliberate two-step action, the same confirmation pattern as
+    // /levels reset-all. A single channel lock stays instant.
+    if (sub === "server") {
+      const confirmId = `lockdown:server:${interaction.id}`;
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(confirmId)
+          .setLabel("Yes, lock every channel")
+          .setStyle(ButtonStyle.Danger),
+      );
+      const prompt = await interaction.reply({
+        content:
+          "⚠️ This locks **every** channel in the server so only staff can " +
+          "post. Confirm within 30 seconds.",
+        components: [row],
+        withResponse: true,
+        ...ephemeral,
+      });
+      const click = await prompt
+        .resource!.message!.awaitMessageComponent({
+          componentType: ComponentType.Button,
+          time: 30_000,
+          filter: (i) =>
+            i.user.id === interaction.user.id && i.customId === confirmId,
+        })
+        .catch(() => null);
+      if (!click) {
+        await interaction.editReply({
+          content: "Cancelled (no confirmation).",
+          components: [],
+        });
+        return;
+      }
+      await click.deferUpdate();
+    } else {
+      await interaction.deferReply();
+    }
 
     const targets: GuildBasedChannel[] =
       sub === "server"
