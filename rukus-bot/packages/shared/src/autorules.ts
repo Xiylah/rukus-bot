@@ -50,7 +50,24 @@ function wordSimilarity(a: string, b: string): number {
   if (max === 0) return 1;
   // Only bother with fuzzy matching for words long enough to have typos.
   if (max < 4) return 0;
-  return Math.max(0, 1 - editDistance(a, b) / max);
+
+  /**
+   * Allow fewer typos the shorter the word is.
+   *
+   * A ratio alone is far too generous at the short end: "gone" vs "gold" is one
+   * edit over four characters, which scores 0.75 and sails past the 0.75 accept
+   * threshold, so a trigger's key word counted as present in a message that
+   * never contained it ("my items are gone" scored 80% on a message about
+   * houses and gold). Those are different words, not a typo.
+   *
+   * Length 4-5 must be exact, 6-7 allow one edit, 8+ allow two. Long words are
+   * where real typos live and where an accidental collision is unlikely.
+   */
+  const budget = max <= 5 ? 0 : max <= 7 ? 1 : 2;
+  const dist = editDistance(a, b);
+  if (dist > budget) return 0;
+
+  return Math.max(0, 1 - dist / max);
 }
 
 /**
@@ -125,6 +142,25 @@ export function phraseScore(message: string, trigger: string): number {
 
   if (totalWeight === 0) return 0;
   let score = matchedWeight / totalWeight;
+
+  /**
+   * A trigger is only "present" if its CONTENT words are.
+   *
+   * Stopwords are everywhere, so a trigger like "my items are gone" can score
+   * on `my` + `are` plus a single content word and look like a strong match
+   * against a message that shares none of its meaning (a member listing their
+   * houses scored 80% on it). Requiring most of the content words to actually
+   * appear is what separates "the same subject" from "the same filler".
+   *
+   * Triggers made ENTIRELY of stopwords are left alone: there is nothing to
+   * require, and the server author clearly meant those exact words.
+   */
+  const contentWords = trigWords.filter((w) => wordWeight(w) === 1);
+  if (contentWords.length > 0) {
+    // Require a majority: 1 of 1, 1 of 2, 2 of 3, 2 of 4, 3 of 5, and so on.
+    const needed = Math.ceil(contentWords.length / 2);
+    if (positions.length < needed) return 0;
+  }
 
   // Proximity: how tightly did the trigger's content words cluster?
   if (positions.length >= 2) {
