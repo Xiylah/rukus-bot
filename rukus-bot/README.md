@@ -11,7 +11,7 @@ A TypeScript monorepo containing **one all-in-one bot** plus a dashboard:
     items" via keyword matching
   - 🛡️ **Moderation** - drug-term filter, image-only channel enforcement
 - **`apps/web`** - a Next.js dashboard (Discord OAuth login) to configure every
-  feature, MEE6 / Ticket Tool style.
+  feature without touching a command.
 - **`packages/db`** - Prisma schema + client (Postgres / Supabase).
 - **`packages/shared`** - shared types, constants, and Zod schemas.
 

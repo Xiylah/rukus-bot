@@ -6,8 +6,9 @@
  * If the two ever disagreed, staff would be looking at a leaderboard that
  * contradicts what members see in /rank.
  *
- * The curve is MEE6's, deliberately: it is the de facto standard, so a server
- * migrating from MEE6 (or Carl-bot, which copies it) keeps everyone's level.
+ * The curve is the de facto standard one used across the ecosystem, chosen
+ * deliberately so a server migrating in from another bot keeps everyone's level
+ * instead of resetting the whole community to zero.
  *   xp to go from level n to n+1 = 5*n^2 + 50*n + 100
  * Nothing here touches discord.js or the network.
  */

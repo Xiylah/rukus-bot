@@ -529,7 +529,7 @@ function testCondition(expr: string): boolean {
     }
   }
 
-  // No operator: truthiness, the way Carl-bot treats a bare {if(true):...}.
+  // No operator: fall back to truthiness, so a bare {if(true):...} works.
   const lowered = text.toLowerCase();
   return lowered !== "false" && lowered !== "0" && lowered !== "";
 }

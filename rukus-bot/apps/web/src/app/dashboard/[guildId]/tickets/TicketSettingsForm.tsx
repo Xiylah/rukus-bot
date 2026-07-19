@@ -46,8 +46,8 @@ export function TicketSettingsForm({
   const [config, setConfig] = useState<TicketConfig>(initial);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  // Ticket-Tool-style editing: pick ONE type from a dropdown instead of
-  // scrolling through every editor stacked on the page.
+  // Edit ONE type at a time, picked from a dropdown, instead of scrolling
+  // through every editor stacked down the page.
   const [selectedTypeId, setSelectedTypeId] = useState<string | undefined>(
     initial.types[0]?.id,
   );
@@ -194,9 +194,8 @@ export function TicketSettingsForm({
             Ticket types ({config.types.length || "1 default"})
           </div>
           <p className="mt-1 text-sm text-zinc-400">
-            With 2+ types the panel becomes a dropdown (like Ticket Tool), and
-            each type names its channels so staff instantly know what a ticket
-            is about. <code className="rounded bg-panel px-1">{"{count}"}</code>{" "}
+            With 2+ types the panel becomes a dropdown, and each type names its
+            channels so staff instantly know what a ticket is about. <code className="rounded bg-panel px-1">{"{count}"}</code>{" "}
             becomes the ticket number - e.g.{" "}
             <code className="rounded bg-panel px-1">mute-appeal-{"{count}"}</code>{" "}
             → <code className="rounded bg-panel px-1">mute-appeal-0007</code>.

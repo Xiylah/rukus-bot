@@ -19,7 +19,7 @@ const snowflake = z
 
 /**
  * One kind of ticket (Support, Mute Appeal, ...). With multiple types the
- * panel renders a Ticket-Tool-style dropdown; each type controls how its
+ * panel renders a dropdown; each type controls how its
  * ticket channel is named so staff can tell tickets apart at a glance.
  * Unset per-type fields fall back to the guild-level ticket config.
  */
@@ -718,8 +718,8 @@ export const reactionRoleModeSchema = z.enum([
 export type ReactionRoleMode = z.infer<typeof reactionRoleModeSchema>;
 
 /**
- * How the panel is rendered. Reactions are the legacy Carl-style approach and
- * are fragile (a member can strip a reaction, Discord rate-limits them, and the
+ * How the panel is rendered. Reactions are the legacy approach and are
+ * fragile (a member can strip a reaction, Discord rate-limits them, and the
  * emoji must be usable in the guild). Buttons and dropdowns are interactions:
  * they are instant, ephemeral-confirmable, and cannot be spoofed, so they are
  * the recommended default.

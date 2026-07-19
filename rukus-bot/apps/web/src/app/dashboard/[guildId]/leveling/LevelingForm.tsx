@@ -130,7 +130,7 @@ export function LevelingForm({
         <div className="font-medium text-white">XP earning</div>
         <Toggle
           label="Enable leveling"
-          hint="Members earn XP for messages and level up on the MEE6 curve."
+          hint="Members earn XP for messages and level up on the standard XP curve."
           checked={config.enabled}
           onChange={(v) => set("enabled", v)}
         />

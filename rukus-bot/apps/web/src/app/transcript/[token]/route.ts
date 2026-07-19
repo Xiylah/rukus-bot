@@ -1,13 +1,12 @@
 import { getSupabase } from "@rukus/supabase";
 
 /**
- * Public transcript viewer, Ticket-Tool style: the bot stores each closed
- * ticket's transcript HTML under a long random token, and this route serves it
- * at /transcript/<token>.
+ * Public transcript viewer: the bot stores each closed ticket's transcript HTML
+ * under a long random token, and this route serves it at /transcript/<token>.
  *
  * There is deliberately NO login: the 48-hex-char token (~2^192 possibilities)
- * is the secret, exactly like Ticket Tool's transcript links, so staff can
- * share a link with anyone who needs it.
+ * is the secret, so staff can share a link with anyone who needs it without
+ * giving them dashboard access.
  */
 export async function GET(
   _req: Request,

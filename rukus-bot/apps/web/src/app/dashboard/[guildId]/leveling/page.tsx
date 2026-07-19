@@ -43,7 +43,7 @@ export default async function LevelingPage({
     <div>
       <h1 className="mb-1 text-2xl font-bold text-white">📈 Leveling & XP</h1>
       <p className="mb-6 text-sm text-zinc-400">
-        Members earn XP for talking and climb levels on the standard MEE6 curve,
+        Members earn XP for talking and climb levels on the standard XP curve,
         so anyone importing from another bot keeps their rank. Members check
         themselves with /rank and the server with /leaderboard.
       </p>

@@ -14,7 +14,7 @@ import { log } from "../../lib/logger.js";
 import { applyDecision } from "./apply.js";
 
 /**
- * The legacy Carl-style surface: reactions on a panel message.
+ * The legacy surface: emoji reactions on a panel message.
  *
  * Panels are typically months old, so the message is never in the bot's cache.
  * discord.js delivers those as PARTIAL reactions (Partials.Reaction is enabled

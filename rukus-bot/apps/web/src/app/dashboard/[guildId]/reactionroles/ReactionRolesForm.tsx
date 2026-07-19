@@ -45,7 +45,7 @@ const STYLE_HELP: Record<ReactionRoleStyle, string> = {
   dropdown:
     "A single dropdown. Best when you have a lot of roles: it stays tidy, and members can pick several at once.",
   reactions:
-    "Classic emoji reactions, the way Carl-bot does it. Works, but members can strip the emoji, Discord rate-limits them, and the bot can never explain a refusal.",
+    "Classic emoji reactions. Works, but members can strip the emoji, Discord rate-limits them, and the bot can never explain a refusal.",
 };
 
 function emptyPair(): ReactionRolePair {

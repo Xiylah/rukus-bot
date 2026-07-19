@@ -15,7 +15,7 @@ import { reactionRolesConfig } from "../../lib/configCache.js";
 import { applyDecision, resultMessage } from "./apply.js";
 
 /**
- * Button and dropdown panels: the surface Carl-bot does not have.
+ * Button and dropdown panels, the modern alternative to emoji reactions.
  *
  * Every reply is ephemeral, so a busy self-role channel never fills up with
  * "you got the role" spam, and the member always gets told WHY nothing happened

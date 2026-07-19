@@ -318,7 +318,7 @@ export async function closeTicketFlow(
     ticketType?.transcriptChannelId ?? config.transcriptChannelId;
 
   // Build the transcript, host it behind an unguessable dashboard URL, and
-  // post a Ticket-Tool-style summary (owner, panel, per-user message counts,
+  // post a summary (owner, panel, per-user message counts,
   // attached HTML, Direct Link button) to the transcript channel.
   let transcriptNote = "";
   let transcript: { url?: string; token?: string; html?: string } | undefined;
