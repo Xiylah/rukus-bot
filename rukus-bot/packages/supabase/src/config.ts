@@ -25,6 +25,7 @@ import {
   type BirthdaysConfig,
   type InviteTrackerConfig,
   type TempVoiceConfig,
+  type ContestsConfig,
 } from "@rukus/shared";
 import { getSupabase } from "./index.js";
 
@@ -220,3 +221,8 @@ export const getTempVoiceConfig = (guildId: string) =>
   readConfig<TempVoiceConfig>(guildId, "tempvoice");
 export const setTempVoiceConfig = (guildId: string, config: unknown) =>
   writeConfig<TempVoiceConfig>(guildId, "tempvoice", config);
+
+export const getContestsConfig = (guildId: string) =>
+  readConfig<ContestsConfig>(guildId, "contests");
+export const setContestsConfig = (guildId: string, config: unknown) =>
+  writeConfig<ContestsConfig>(guildId, "contests", config);

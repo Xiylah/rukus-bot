@@ -19,6 +19,7 @@ import { findCommand, runCustomCommand } from "../features/custom/commands.js";
 import { runHighlights } from "../features/highlights/notify.js";
 import { runAfk } from "../features/afk/afk.js";
 import { handleMessageXp } from "../features/leveling/xp.js";
+import { runContestEntry } from "../features/contests/entries.js";
 
 /** Post a translation, honouring the guild's output settings. */
 async function postTranslation(
@@ -122,6 +123,12 @@ const handler: EventHandler<Events.MessageCreate> = {
     // for the auto-responder to care about it.
     await runAfk(message);
     await runHighlights(message);
+
+    // --- Contest entries ---
+    // After XP (posting an entry is still activity) but before the text
+    // features: an image post has no meaningful text for them to act on, and a
+    // consumed entry should not also trip the auto-responder.
+    if (await runContestEntry(message)) return;
 
     // --- Custom prefix commands (!codes etc.) ---
     // Before the length gate: commands are short by nature.

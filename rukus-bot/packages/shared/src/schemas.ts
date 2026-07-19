@@ -1259,6 +1259,55 @@ export type TempVoiceConfig = z.infer<typeof tempVoiceConfigSchema>;
 
 // ---------------- Registry ----------------
 
+// ---------------- Contests ----------------
+
+/**
+ * Photo/video contests: members post an entry in a channel, everyone reacts,
+ * and the most-reacted entries win when the timer runs out.
+ *
+ * Entries are auto-detected (any message with an image or video in the contest
+ * channel while a contest is running), so a member just posts. The bot adds the
+ * vote emoji to each entry, which makes voting one click and stops members
+ * having to know a command.
+ */
+export const contestsConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /**
+   * Only this emoji counts as a vote. A single emoji keeps the result
+   * unambiguous: counting every reaction turns joke emoji into votes.
+   */
+  voteEmoji: z.string().min(1).max(64).default("⭐"),
+  /**
+   * Ignore a reaction from the person who posted the entry. Self-votes add the
+   * same point to everyone, so they carry no signal and just look unfair.
+   */
+  ignoreSelfVotes: z.boolean().default(true),
+  /** Max entries one member may post per contest. 0 = unlimited. */
+  maxEntriesPerUser: z.number().int().min(0).max(50).default(1),
+  /** Delete non-image/video chatter posted in the contest channel while it runs. */
+  enforceMediaOnly: z.boolean().default(false),
+  /** Roles allowed to start a contest, on top of Manage Server. */
+  hostRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).max(20).default([]),
+  embedColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .default("#f1c40f"),
+  /** Announce the winners here. Empty = announce in the contest channel. */
+  resultsChannelId: snowflake,
+  /** DM each winner as well as announcing publicly. */
+  dmWinners: z.boolean().default(false),
+  /**
+   * Winner announcement template. {winners} is the placed list, {title} the
+   * contest name, {count} the number of entries.
+   */
+  announceMessage: z
+    .string()
+    .max(2000)
+    .default("🏆 **{title}** is over! Thanks to everyone who entered.\n{winners}"),
+});
+
+export type ContestsConfig = z.infer<typeof contestsConfigSchema>;
+
 /** Map a feature key to its schema so callers can validate generically. */
 export const FEATURE_SCHEMAS = {
   tickets: ticketConfigSchema,
@@ -1286,6 +1335,7 @@ export const FEATURE_SCHEMAS = {
   birthdays: birthdaysConfigSchema,
   invitetracker: inviteTrackerConfigSchema,
   tempvoice: tempVoiceConfigSchema,
+  contests: contestsConfigSchema,
 } as const;
 
 export { z };

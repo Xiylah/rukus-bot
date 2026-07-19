@@ -20,6 +20,7 @@ import {
   getBirthdaysConfig,
   getInviteTrackerConfig,
   getTempVoiceConfig,
+  getContestsConfig,
   getVerificationConfig,
   getRaidConfig,
 } from "@rukus/supabase";
@@ -61,6 +62,7 @@ export default async function GuildOverview({
     birthdays,
     invites,
     tempvoice,
+    contests,
     verification,
     raid,
   ] = await Promise.all([
@@ -85,6 +87,7 @@ export default async function GuildOverview({
     getBirthdaysConfig(guildId),
     getInviteTrackerConfig(guildId),
     getTempVoiceConfig(guildId),
+    getContestsConfig(guildId),
     getVerificationConfig(guildId),
     getRaidConfig(guildId),
   ]);
@@ -186,6 +189,14 @@ export default async function GuildOverview({
     tempvoice: {
       enabled: tempvoice.enabled,
       detail: tempvoice.lobbyChannelId ? "Lobby channel set" : "No lobby set",
+    },
+    contests: {
+      enabled: contests.enabled,
+      detail: `Votes with ${contests.voteEmoji}${
+        contests.maxEntriesPerUser > 0
+          ? `, ${contests.maxEntriesPerUser} entry/person`
+          : ", unlimited entries"
+      }`,
     },
     translation: {
       enabled: translation.autoTranslate || translation.flagReactions,

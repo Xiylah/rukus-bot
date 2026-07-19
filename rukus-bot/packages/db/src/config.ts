@@ -48,6 +48,7 @@ import {
   type BirthdaysConfig,
   type InviteTrackerConfig,
   type TempVoiceConfig,
+  type ContestsConfig,
 } from "@rukus/shared";
 import { prisma } from "./index.js";
 
@@ -238,6 +239,12 @@ export const getTempVoiceConfig = (guildId: string) =>
 
 export const setTempVoiceConfig = (guildId: string, config: unknown) =>
   writeConfig<TempVoiceConfig>(guildId, "tempvoice", config);
+
+export const getContestsConfig = (guildId: string) =>
+  readConfig<ContestsConfig>(guildId, "contests");
+
+export const setContestsConfig = (guildId: string, config: unknown) =>
+  writeConfig<ContestsConfig>(guildId, "contests", config);
 
 export {
   ticketConfigSchema,

@@ -23,6 +23,7 @@ import {
   getBirthdaysConfig,
   getInviteTrackerConfig,
   getTempVoiceConfig,
+  getContestsConfig,
 } from "@rukus/db";
 import {
   ticketConfigSchema,
@@ -49,6 +50,7 @@ import {
   birthdaysConfigSchema,
   inviteTrackerConfigSchema,
   tempVoiceConfigSchema,
+  contestsConfigSchema,
   type TicketConfig,
   type FormsConfig,
   type TranslationConfig,
@@ -73,6 +75,7 @@ import {
   type BirthdaysConfig,
   type InviteTrackerConfig,
   type TempVoiceConfig,
+  type ContestsConfig,
 } from "@rukus/shared";
 import { log } from "./logger.js";
 
@@ -288,6 +291,11 @@ export const inviteTrackerConfig = (
 export const tempVoiceConfig = (guildId: string): Promise<TempVoiceConfig> =>
   cached(`tempvoice:${guildId}`, () => getTempVoiceConfig(guildId), () =>
     tempVoiceConfigSchema.parse({}),
+  );
+
+export const contestsConfig = (guildId: string): Promise<ContestsConfig> =>
+  cached(`contests:${guildId}`, () => getContestsConfig(guildId), () =>
+    contestsConfigSchema.parse({}),
   );
 
 /** Drop a guild's cached entries (e.g. after an in-bot config command). */

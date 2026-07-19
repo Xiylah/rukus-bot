@@ -427,3 +427,53 @@ model Tag {
   @@index([guildId])
   @@schema("rukus")
 }
+
+/// A photo/video contest. Entries are messages posted in `channelId` while the
+/// contest is running; votes are reactions counted when it ends.
+model Contest {
+  id          String   @id @default(cuid())
+  guildId     String
+  /// Where entries are posted and auto-detected.
+  channelId   String
+  /// The announcement message, so it can be edited live with the countdown.
+  messageId   String?  @unique
+  hostId      String
+  title       String
+  description String   @default("")
+  /// How many places are awarded (1 = winner only, 3 = 1st/2nd/3rd).
+  winnerCount Int      @default(3)
+  endsAt      DateTime
+  ended       Boolean  @default(false)
+  /// Resolved at the end and kept on the row, so results survive the entry
+  /// messages being deleted afterwards.
+  winnerIds   String[]
+  createdAt   DateTime @default(now())
+
+  entries ContestEntry[]
+
+  /// The scheduler's query: contests past their end time that have not ended.
+  @@index([endsAt, ended])
+  @@index([guildId])
+  @@schema("rukus")
+}
+
+/// One submitted image/video. `votes` is a snapshot taken when the contest
+/// ends; live counts are read from Discord.
+model ContestEntry {
+  id        String   @id @default(cuid())
+  contest   Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  contestId String
+  guildId   String
+  /// The member's message holding the image or video.
+  messageId String   @unique
+  userId    String
+  /// Direct link to the media, kept so results can still show it if the
+  /// original message is deleted.
+  mediaUrl  String   @default("")
+  votes     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([contestId])
+  @@index([guildId, userId])
+  @@schema("rukus")
+}

@@ -4,6 +4,7 @@ import type { BotClient, EventHandler } from "../lib/types.js";
 import { log } from "../lib/logger.js";
 import { startAutoCloseSweeper } from "../features/tickets/autoclose.js";
 import { startGiveawaySweeper } from "../features/giveaways/sweeper.js";
+import { startContestSweeper } from "../features/contests/sweeper.js";
 import { startReminderSweeper } from "../features/reminders/sweeper.js";
 import { startRoleSweeper } from "../features/roles/sweeper.js";
 import { startBirthdaySweeper } from "../features/birthdays/sweeper.js";
@@ -35,6 +36,7 @@ const handler: EventHandler<Events.ClientReady> = {
     client.user?.setActivity("Discord API");
     startAutoCloseSweeper(client);
     startGiveawaySweeper(client);
+    startContestSweeper(client);
     startReminderSweeper(client);
     startRoleSweeper(client);
     startSocialPoller(client);

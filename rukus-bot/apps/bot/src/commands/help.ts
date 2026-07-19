@@ -86,6 +86,15 @@ const command: Command = {
             "`/suggestion approve|deny|consider|implement <number> [reason]` decide (staff)",
         },
         {
+          name: "📸 Contests",
+          value:
+            "Photo and video contests decided by member votes.\n" +
+            "`/contest start <title> <duration> [winners] [channel]` begin one\n" +
+            "`/contest status` live standings, `/contest end` finish early\n" +
+            "Members just post an image or video in the channel to enter, then " +
+            "everyone reacts to vote. Self-votes do not count.",
+        },
+        {
           name: "🎉 Giveaways",
           value:
             "`/giveaway start <duration> <winners> <prize>`\n" +

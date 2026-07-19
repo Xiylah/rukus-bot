@@ -220,6 +220,15 @@ export const MODULES: ModuleDef[] = [
     category: "Community",
     toggleable: true,
   },
+  {
+    slug: "contests",
+    feature: "contests",
+    icon: "📸",
+    name: "Contests",
+    description: "Photo and video contests decided by member votes.",
+    category: "Engagement",
+    toggleable: true,
+  },
 
   // ---- Utility ----
   {
