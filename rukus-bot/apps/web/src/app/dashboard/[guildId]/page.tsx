@@ -130,7 +130,7 @@ export default async function GuildOverview({
   const moderationOn =
     moderation.drugFilter || moderation.bannedWordsEnabled || !!moderation.imageOnlyChannelId;
 
-  const state: Record<FeatureKey | "cases", ModuleState> = {
+  const state: Record<FeatureKey, ModuleState> = {
     tickets: {
       enabled: tickets.enabled,
       detail: `${tickets.supportRoleIds.length} support role(s)`,
@@ -171,7 +171,6 @@ export default async function GuildOverview({
         ? `${loggedEvents} event(s) logged`
         : "No log channel set",
     },
-    cases: { enabled: true, detail: "Browse the moderation history" },
     autoresponder: {
       enabled: autoresponder.enabled,
       detail: `${autoresponder.rules.length} rule(s)`,
@@ -259,7 +258,14 @@ export default async function GuildOverview({
     access: { enabled: false, detail: "" },
   };
 
-  // Cases has no config of its own, so it is not a module you can count as "on".
+  // Modules with no feature config of their own, keyed by slug. Neither is a
+  // switch: Cases is a view over what moderation wrote, Premium is billing.
+  const SLUG_STATE: Record<string, ModuleState> = {
+    cases: { enabled: true, detail: "Browse the moderation history" },
+    premium: { enabled: false, detail: "Subscription and usage" },
+  };
+
+  // Feature-less modules are not modules you can count as "on".
   const configurable = MODULES.flatMap((m) => (m.feature ? [m.feature] : []));
   const activeCount = configurable.filter((f) => state[f].enabled).length;
 
@@ -283,7 +289,13 @@ export default async function GuildOverview({
             </h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {mods.map((m) => {
-                const s = state[m.feature ?? "cases"];
+                // Feature-less modules (Cases, Premium) have no config to read,
+                // so they get a static card keyed by slug rather than by
+                // feature. Falling back to a fixed key would show one module's
+                // detail line on every other feature-less card.
+                const s: ModuleState = m.feature
+                  ? state[m.feature]
+                  : (SLUG_STATE[m.slug] ?? { enabled: false, detail: "" });
                 return (
                   <ModuleCard
                     key={m.slug}

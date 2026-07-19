@@ -303,4 +303,13 @@ export const MODULES: ModuleDef[] = [
     category: "Utility",
     toggleable: true,
   },
+  {
+    slug: "premium",
+    feature: null,
+    icon: "✨",
+    name: "Premium",
+    description: "Subscription, billing and this month's translation usage.",
+    category: "Utility",
+    toggleable: false,
+  },
 ];

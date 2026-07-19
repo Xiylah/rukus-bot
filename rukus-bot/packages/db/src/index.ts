@@ -20,3 +20,4 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export * from "./config.js";
+export * from "./premium.js";

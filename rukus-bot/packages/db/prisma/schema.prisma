@@ -567,6 +567,62 @@ model Purchase {
   @@schema("rukus")
 }
 
+/// A guild's paid premium subscription. One row per guild: a guild either has
+/// premium or it does not, and the row survives cancellation so the dashboard
+/// can still show who bought it and when it lapsed.
+model GuildSubscription {
+  id                   String  @id @default(cuid())
+  guildId              String  @unique
+  /// Who bought it, so the dashboard can show "managed by @x".
+  purchasedByUserId    String
+  /// Stripe ids, null for a manually granted comp/trial.
+  stripeCustomerId     String?
+  stripeSubscriptionId String? @unique
+  /// active | past_due | canceled | trialing | incomplete
+  status               String  @default("inactive")
+  /// Access is granted while now() < currentPeriodEnd AND status is good.
+  /// Storing the end date means a webhook outage cannot instantly revoke a
+  /// paying customer: they keep what they paid for until the period runs out.
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  /// Set by hand for a comp or a friend. Beats Stripe status when later.
+  manualUntil          DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@schema("rukus")
+}
+
+/// A Stripe event we have already handled. Stripe delivers AT LEAST ONCE, so a
+/// retry of the same event must not extend a subscription twice; inserting this
+/// row inside the same transaction as the effect makes handling idempotent.
+model StripeEvent {
+  /// Stripe's event id. Presence means "already processed": the idempotency
+  /// guard against at-least-once delivery.
+  id        String   @id
+  type      String
+  createdAt DateTime @default(now())
+
+  @@schema("rukus")
+}
+
+/// Metered DeepL character usage for one guild in one month.
+model TranslationUsage {
+  id          String   @id @default(cuid())
+  guildId     String
+  /// First day of the UTC month this row counts, so a month rolls over by
+  /// writing a new row rather than needing a reset job.
+  periodStart DateTime
+  characters  Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([guildId, periodStart])
+  @@index([guildId])
+  @@schema("rukus")
+}
+
 /// A temporary XP multiplier bought from the shop. Expiry is a timestamp rather
 /// than a timer, so a bot restart cannot lose someone's paid-for boost.
 model ActiveBoost {

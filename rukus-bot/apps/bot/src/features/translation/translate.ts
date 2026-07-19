@@ -11,6 +11,7 @@ import {
 } from "@rukus/shared";
 import { env } from "../../env.js";
 import { log } from "../../lib/logger.js";
+import { deeplAccess, meterDeepl } from "../premium/metering.js";
 import { GOOGLE_TO_DEEPL_TARGET, LANG_CODE_TO_NAME } from "./lang.js";
 
 /**
@@ -83,29 +84,22 @@ if (env.DEEPL_API_KEY) {
 }
 
 /**
- * Guilds allowed to use the paid DeepL engine.
- *
- * Parsed once at module load: this cannot change without a redeploy, and
- * re-splitting the string on every message would be wasted work on the hot path.
- */
-const DEEPL_GUILDS = new Set(
-  (process.env.DEEPL_ALLOWED_GUILD_IDS ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean),
-);
-
-/**
  * May this guild use DeepL?
  *
- * DeepL is metered and billed to whoever runs the bot, so it is opt-in per
- * guild. Everyone else gets Google, which is free and unmetered, so translation
- * still works everywhere: the difference is quality, not availability.
+ * DeepL is metered and billed to whoever runs the bot, so access is earned two
+ * ways: the operator's own guilds (uncapped, they pay the invoice) and guilds
+ * with an active subscription that are still under the monthly character
+ * allowance. Everyone else gets Google, which is free and unmetered, so
+ * translation still works everywhere: the difference is quality, not
+ * availability.
+ *
+ * Async because entitlement lives in the database. The read goes through a
+ * 30s cache, so the hot path is not paying a round trip per message.
  */
-export function canUseDeepl(guildId: string | undefined): boolean {
+export async function canUseDeepl(guildId: string | undefined): Promise<boolean> {
   if (!deeplClient) return false;
-  if (!guildId) return false;
-  return DEEPL_GUILDS.has(guildId);
+  const { allowed } = await deeplAccess(guildId);
+  return allowed;
 }
 
 async function deeplTranslate(
@@ -113,8 +107,9 @@ async function deeplTranslate(
   target: string,
   guildId: string | undefined,
 ): Promise<{ text: string; src: string } | null> {
-  if (!canUseDeepl(guildId)) return null;
   if (!deeplClient) return null;
+  const access = await deeplAccess(guildId);
+  if (!access.allowed) return null;
   const deeplTarget = GOOGLE_TO_DEEPL_TARGET[target];
   if (!deeplTarget) return null; // unsupported target → fall back to Google
   try {
@@ -125,6 +120,10 @@ async function deeplTranslate(
     );
     const text = result.text;
     if (!text) return null;
+    // Bill on success only, and bill the INPUT: that is what DeepL charges for,
+    // and a failed call costs nothing. Not awaited into the caller's path by
+    // way of a throw, meterDeepl swallows its own errors.
+    if (access.metered) await meterDeepl(guildId, core.length);
     const src = (result.detectedSourceLang ?? "auto").toLowerCase();
     return { text, src };
   } catch (e) {
@@ -270,14 +269,21 @@ export async function detectLanguage(
 
   // Prefer DeepL's genuine detection, but only for guilds allowed to use it:
   // this route calls the TRANSLATE endpoint just to read the detected source,
-  // so it bills characters exactly like a real translation would.
-  if (deeplClient && canUseDeepl(guildId)) {
-    try {
-      const result = await deeplClient.translateText(core, null, "en-US");
-      const code = (result.detectedSourceLang ?? "").toLowerCase();
-      if (code) return { code, name: nameFor(code) };
-    } catch {
-      /* fall through to local */
+  // so it bills characters exactly like a real translation would and therefore
+  // has to be gated and metered exactly like one.
+  if (deeplClient) {
+    const access = await deeplAccess(guildId);
+    if (access.allowed) {
+      try {
+        const result = await deeplClient.translateText(core, null, "en-US");
+        const code = (result.detectedSourceLang ?? "").toLowerCase();
+        if (code) {
+          if (access.metered) await meterDeepl(guildId, core.length);
+          return { code, name: nameFor(code) };
+        }
+      } catch {
+        /* fall through to local */
+      }
     }
   }
 
