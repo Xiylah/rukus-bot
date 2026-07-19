@@ -24,6 +24,8 @@ import {
   getInviteTrackerConfig,
   getTempVoiceConfig,
   getContestsConfig,
+  getEconomyConfig,
+  getShopConfig,
 } from "@rukus/db";
 import {
   ticketConfigSchema,
@@ -51,6 +53,8 @@ import {
   inviteTrackerConfigSchema,
   tempVoiceConfigSchema,
   contestsConfigSchema,
+  economyConfigSchema,
+  shopConfigSchema,
   type TicketConfig,
   type FormsConfig,
   type TranslationConfig,
@@ -76,6 +80,8 @@ import {
   type InviteTrackerConfig,
   type TempVoiceConfig,
   type ContestsConfig,
+  type EconomyConfig,
+  type ShopConfig,
 } from "@rukus/shared";
 import { log } from "./logger.js";
 
@@ -296,6 +302,16 @@ export const tempVoiceConfig = (guildId: string): Promise<TempVoiceConfig> =>
 export const contestsConfig = (guildId: string): Promise<ContestsConfig> =>
   cached(`contests:${guildId}`, () => getContestsConfig(guildId), () =>
     contestsConfigSchema.parse({}),
+  );
+
+export const economyConfig = (guildId: string): Promise<EconomyConfig> =>
+  cached(`economy:${guildId}`, () => getEconomyConfig(guildId), () =>
+    economyConfigSchema.parse({}),
+  );
+
+export const shopConfig = (guildId: string): Promise<ShopConfig> =>
+  cached(`shop:${guildId}`, () => getShopConfig(guildId), () =>
+    shopConfigSchema.parse({}),
   );
 
 /** Drop a guild's cached entries (e.g. after an in-bot config command). */

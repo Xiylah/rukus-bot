@@ -8,14 +8,22 @@ import {
   type TextChannel,
 } from "discord.js";
 import { prisma } from "@rukus/db";
-import { parseDuration, formatDuration } from "@rukus/shared";
+import {
+  parseDuration,
+  formatDuration,
+  MIN_JUDGE_SCORE,
+  MAX_JUDGE_SCORE,
+} from "@rukus/shared";
 import { canManageGuild, hasAnyRole } from "../lib/perms.js";
 import { contestsConfig } from "../lib/configCache.js";
 import { resolvedMention } from "../lib/mentions.js";
 import {
   activeContestFor,
   endContest,
+  listEntries,
   placeLabel,
+  resolveEntry,
+  scoreEntry,
   standings,
 } from "../features/contests/service.js";
 import type { Command } from "../lib/types.js";
@@ -122,6 +130,31 @@ const command: Command = {
     )
     .addSubcommand((s) =>
       s.setName("end").setDescription("End the running contest now and announce winners"),
+    )
+    .addSubcommand((s) =>
+      s
+        .setName("entries")
+        .setDescription("List the running contest's entries and their ids"),
+    )
+    .addSubcommand((s) =>
+      s
+        .setName("judge")
+        .setDescription("Score an entry out of 10 (judges only)")
+        .addStringOption((o) =>
+          o
+            .setName("entry")
+            .setDescription("Entry id from /contest entries, or a message link")
+            .setRequired(true)
+            .setMaxLength(200),
+        )
+        .addIntegerOption((o) =>
+          o
+            .setName("score")
+            .setDescription("1 = poor, 10 = excellent")
+            .setRequired(true)
+            .setMinValue(MIN_JUDGE_SCORE)
+            .setMaxValue(MAX_JUDGE_SCORE),
+        ),
     ),
 
   execute: async (interaction: ChatInputCommandInteraction) => {
@@ -137,19 +170,35 @@ const command: Command = {
       return;
     }
 
+    const sub = interaction.options.getSubcommand();
+
     // Manage Server always works; hostRoleIds is the opt-in for an events team.
     const member = interaction.member;
-    const allowed =
+    const isHost =
       canManageGuild(member) || hasAnyRole(member, config.hostRoleIds);
-    if (!allowed) {
+
+    // Judging is a separate authority from hosting: a judge panel is usually
+    // members trusted to score, not staff trusted to start and end contests.
+    // `entries` is readable by either, since a judge needs it to find an id.
+    if (sub === "judge" || sub === "entries") {
+      const isJudge =
+        config.judgingEnabled && hasAnyRole(member, config.judgeRoleIds);
+      if (!isHost && !isJudge) {
+        await interaction.reply({
+          content: config.judgingEnabled
+            ? "You need to be a contest judge (or have Manage Server) to do that."
+            : "Judging is turned off for this server. Turn it on in the dashboard first.",
+          ...ephemeral,
+        });
+        return;
+      }
+    } else if (!isHost) {
       await interaction.reply({
         content: "You need Manage Server (or a contest host role) to do that.",
         ...ephemeral,
       });
       return;
     }
-
-    const sub = interaction.options.getSubcommand();
 
     // ---- start ----
     if (sub === "start") {
@@ -329,13 +378,103 @@ const command: Command = {
       const lines = await Promise.all(
         board.map(async (s, i) => {
           const who = await resolvedMention(interaction.guild, s.userId);
-          return `${placeLabel(i)} ${who} - **${s.votes}** vote${s.votes === 1 ? "" : "s"}`;
+          const votes = `**${s.votes}** vote${s.votes === 1 ? "" : "s"}`;
+          // Show the judge number too, so a blended order does not look wrong.
+          const judged =
+            config.judgingEnabled && s.judgeCount > 0
+              ? `, judges **${s.judgeAverage.toFixed(1)}**/10 (${s.judgeCount})`
+              : config.judgingEnabled
+                ? ", not judged"
+                : "";
+          return `${placeLabel(i)} ${who} - ${votes}${judged}`;
         }),
       );
       await interaction.editReply({
         content:
           `**${contest.title}** ends <t:${Math.floor(contest.endsAt.getTime() / 1000)}:R>\n\n` +
-          (lines.length ? lines.join("\n") : "_No entries yet._"),
+          (lines.length ? lines.join("\n") : "_No entries yet._") +
+          (config.judgingEnabled
+            ? `\n\nRanked by ${config.judgeWeightPercent}% judges / ${100 - config.judgeWeightPercent}% public votes.`
+            : ""),
+      });
+      return;
+    }
+
+    // ---- entries ----
+    if (sub === "entries") {
+      await interaction.deferReply(ephemeral);
+      const rows = await listEntries(contest.id);
+      if (rows.length === 0) {
+        await interaction.editReply({
+          content: `No entries in **${contest.title}** yet.`,
+        });
+        return;
+      }
+
+      const lines = await Promise.all(
+        rows.map(async ({ entry, shortId }) => {
+          const who = await resolvedMention(interaction.guild, entry.userId);
+          const link = `https://discord.com/channels/${interaction.guildId}/${entry.channelId}/${entry.messageId}`;
+          // The id is first and in backticks so it can be tapped and copied on
+          // a phone without selecting half the line.
+          return `\`${shortId}\` ${who} - [entry](${link})`;
+        }),
+      );
+
+      // An ephemeral reply is capped at 2000 characters, and a busy contest can
+      // have more entries than that. Trim rather than fail the whole listing.
+      let content = `**${contest.title}** - ${rows.length} entr${rows.length === 1 ? "y" : "ies"}\nScore one with \`/contest judge entry:<id> score:1-10\`\n\n`;
+      const shown: string[] = [];
+      for (const line of lines) {
+        if (content.length + line.length + 40 > 1900) break;
+        shown.push(line);
+        content += `${line}\n`;
+      }
+      if (shown.length < lines.length) {
+        content += `\n_…and ${lines.length - shown.length} more._`;
+      }
+
+      await interaction.editReply({
+        content,
+        allowedMentions: { parse: [] },
+      });
+      return;
+    }
+
+    // ---- judge ----
+    if (sub === "judge") {
+      await interaction.deferReply(ephemeral);
+      const reference = interaction.options.getString("entry", true);
+      const score = interaction.options.getInteger("score", true);
+
+      const entry = await resolveEntry(contest.id, reference);
+      if (!entry) {
+        await interaction.editReply({
+          content:
+            `I couldn't find an entry matching \`${reference.slice(0, 60)}\` in **${contest.title}**. ` +
+            "Run `/contest entries` to see the ids.",
+        });
+        return;
+      }
+
+      // A judge scoring their own entry is the same conflict of interest that
+      // ignoreSelfVotes exists to stop, and it is worse here because a judge's
+      // score carries far more weight than one reaction.
+      if (entry.userId === interaction.user.id) {
+        await interaction.editReply({
+          content: "You can't judge your own entry.",
+        });
+        return;
+      }
+
+      const { previous } = await scoreEntry(entry, interaction.user.id, score);
+      const who = await resolvedMention(interaction.guild, entry.userId);
+      await interaction.editReply({
+        content:
+          previous === null
+            ? `Scored ${who}'s entry \`${reference.trim().toUpperCase().replace(/^#/, "")}\` **${score}**/10.`
+            : `Updated your score for ${who}'s entry from **${previous}** to **${score}**/10.`,
+        allowedMentions: { parse: [] },
       });
       return;
     }

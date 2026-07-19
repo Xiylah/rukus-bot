@@ -6,7 +6,12 @@ import {
   type TextChannel,
 } from "discord.js";
 import { prisma, type Contest, type ContestEntry } from "@rukus/db";
-import type { ContestsConfig } from "@rukus/shared";
+import {
+  rankEntries,
+  hasAnyScore,
+  type EntryScore,
+  type ContestsConfig,
+} from "@rukus/shared";
 import { log } from "../../lib/logger.js";
 import { resolvedMention } from "../../lib/mentions.js";
 
@@ -159,6 +164,146 @@ export async function activeContestFor(
 }
 
 /**
+ * A short, typeable handle for an entry.
+ *
+ * A cuid is 25 characters, which nobody is typing on a phone. The last 4 are
+ * enough to be unique within one contest's entry list (a contest with enough
+ * entries to collide on 4 base-36 characters would need ~1600 entries before a
+ * collision is even likely), and `resolveEntry` disambiguates by matching
+ * against that contest's entries only.
+ */
+export function shortEntryId(entryId: string): string {
+  return entryId.slice(-4).toUpperCase();
+}
+
+/** Pull a message id out of a Discord message link, or null if it is not one. */
+function messageIdFromLink(input: string): string | null {
+  const match = input.match(/channels\/\d+\/\d+\/(\d+)/);
+  return match?.[1] ?? null;
+}
+
+/**
+ * Find the entry a member is referring to.
+ *
+ * Accepts a short id, a full entry id, a raw message id, or a message link,
+ * because a judge on mobile will paste whichever of those is easiest to get at.
+ * Scoped to one contest so a short id can never resolve to another contest's
+ * entry.
+ */
+export async function resolveEntry(
+  contestId: string,
+  reference: string,
+): Promise<ContestEntry | null> {
+  const raw = reference.trim();
+  if (!raw) return null;
+
+  const entries = await prisma.contestEntry
+    .findMany({ where: { contestId } })
+    .catch(() => [] as ContestEntry[]);
+
+  const linked = messageIdFromLink(raw);
+  if (linked) {
+    return entries.find((e) => e.messageId === linked) ?? null;
+  }
+
+  const exact = entries.find((e) => e.id === raw || e.messageId === raw);
+  if (exact) return exact;
+
+  const wanted = raw.toUpperCase().replace(/^#/, "");
+  const matches = entries.filter((e) => shortEntryId(e.id) === wanted);
+  // An ambiguous short id must not silently score the wrong entry.
+  return matches.length === 1 ? (matches[0] ?? null) : null;
+}
+
+/**
+ * Record (or update) one judge's score for one entry.
+ *
+ * An upsert on the [entryId, judgeId] unique constraint, so a judge changing
+ * their mind overwrites rather than stacking a second score.
+ */
+export async function scoreEntry(
+  entry: ContestEntry,
+  judgeId: string,
+  score: number,
+): Promise<{ previous: number | null }> {
+  const existing = await prisma.contestJudgement
+    .findUnique({ where: { entryId_judgeId: { entryId: entry.id, judgeId } } })
+    .catch(() => null);
+
+  await prisma.contestJudgement.upsert({
+    where: { entryId_judgeId: { entryId: entry.id, judgeId } },
+    create: {
+      contestId: entry.contestId,
+      entryId: entry.id,
+      judgeId,
+      score,
+    },
+    update: { score },
+  });
+
+  return { previous: existing?.score ?? null };
+}
+
+/** Every judge score for a contest, grouped by entry id. */
+export async function judgeScoresByEntry(
+  contestId: string,
+): Promise<Map<string, number[]>> {
+  const rows = await prisma.contestJudgement
+    .findMany({ where: { contestId }, select: { entryId: true, score: true } })
+    .catch(() => [] as { entryId: string; score: number }[]);
+
+  const byEntry = new Map<string, number[]>();
+  for (const row of rows) {
+    const list = byEntry.get(row.entryId);
+    if (list) list.push(row.score);
+    else byEntry.set(row.entryId, [row.score]);
+  }
+  return byEntry;
+}
+
+/**
+ * Score every entry of a contest and rank them.
+ *
+ * The ranking maths itself is pure and lives in @rukus/shared; this function is
+ * only the IO around it (read votes from Discord, read judgements from the DB).
+ * Judge scores are only fetched when judging is on, so the default path costs
+ * no extra query.
+ */
+async function scoreAllEntries(
+  guild: Guild,
+  contest: Contest,
+  config: ContestsConfig,
+): Promise<{ ranked: EntryScore[]; byId: Map<string, ContestEntry> }> {
+  const entries = await prisma.contestEntry.findMany({
+    where: { contestId: contest.id },
+  });
+
+  const judgements = config.judgingEnabled
+    ? await judgeScoresByEntry(contest.id)
+    : new Map<string, number[]>();
+
+  // countVotes resolves each entry's own channel, so entries spread across the
+  // contest's channels are all counted.
+  const inputs = [];
+  for (const entry of entries) {
+    const votes = await countVotes(guild, entry, config);
+    inputs.push({
+      id: entry.id,
+      votes,
+      judgeScores: judgements.get(entry.id) ?? [],
+      createdAt: entry.createdAt,
+    });
+  }
+
+  const ranked = rankEntries(inputs, {
+    judgingEnabled: config.judgingEnabled,
+    judgeWeightPercent: config.judgeWeightPercent,
+  });
+
+  return { ranked, byId: new Map(entries.map((e) => [e.id, e])) };
+}
+
+/**
  * Count the votes on one entry.
  *
  * Reads the live reaction from Discord rather than a stored counter: a stored
@@ -223,36 +368,29 @@ export async function endContest(
   });
   if (claimed.count === 0) return null;
 
-  const entries = await prisma.contestEntry.findMany({
-    where: { contestId: contest.id },
-  });
+  // Ranked highest first, blending votes and judge scores per config. With
+  // judging off this is votes only, so nothing changes for existing servers.
+  const { ranked, byId } = await scoreAllEntries(guild, contest, config);
 
-  // countVotes resolves each entry's own channel, so entries spread across the
-  // contest's channels are all counted.
-  const scored: { entry: ContestEntry; votes: number }[] = [];
-  for (const entry of entries) {
-    const votes = await countVotes(guild, entry, config);
-    scored.push({ entry, votes });
-  }
-
-  // Highest first; a tie is broken by who posted first, which is at least a
-  // rule everyone can see rather than an arbitrary shuffle.
-  scored.sort(
-    (a, b) =>
-      b.votes - a.votes ||
-      a.entry.createdAt.getTime() - b.entry.createdAt.getTime(),
-  );
+  const scored = ranked
+    .map((score) => {
+      const entry = byId.get(score.id);
+      return entry ? { entry, score } : null;
+    })
+    .filter((s): s is { entry: ContestEntry; score: EntryScore } => s !== null);
 
   // Persist the snapshot so results survive the entry messages being deleted.
   await Promise.all(
     scored.map((s) =>
       prisma.contestEntry
-        .update({ where: { id: s.entry.id }, data: { votes: s.votes } })
+        .update({ where: { id: s.entry.id }, data: { votes: s.score.votes } })
         .catch(() => null),
     ),
   );
 
-  const placed = scored.filter((s) => s.votes > 0).slice(0, contest.winnerCount);
+  const placed = scored
+    .filter((s) => hasAnyScore(s.score, config.judgingEnabled))
+    .slice(0, contest.winnerCount);
   await prisma.contest
     .update({
       where: { id: contest.id },
@@ -265,7 +403,7 @@ export async function endContest(
   return {
     winners: placed.map((p) => ({
       userId: p.entry.userId,
-      votes: p.votes,
+      votes: p.score.votes,
       url: p.entry.mediaUrl,
     })),
   };
@@ -275,7 +413,7 @@ async function announceResults(
   guild: Guild,
   contest: Contest,
   config: ContestsConfig,
-  placed: { entry: ContestEntry; votes: number }[],
+  placed: { entry: ContestEntry; score: EntryScore }[],
 ): Promise<void> {
   // Fall back to the contest's first channel, which is where the announcement
   // was posted.
@@ -297,7 +435,17 @@ async function announceResults(
       // The entry's own channel, not the contest's first one: a winner may have
       // posted in any of the contest's channels.
       const link = `https://discord.com/channels/${guild.id}/${p.entry.channelId}/${p.entry.messageId}`;
-      return `${placeLabel(i)} ${who} with **${p.votes}** vote${p.votes === 1 ? "" : "s"} ([entry](${link}))`;
+      const votes = p.score.votes;
+      const votePart = `**${votes}** vote${votes === 1 ? "" : "s"}`;
+      // Show the judge number too, otherwise a blended result looks arbitrary:
+      // the entry with fewer votes winning needs a visible reason.
+      const judgePart =
+        config.judgingEnabled && p.score.judgeCount > 0
+          ? `, judges **${p.score.judgeAverage.toFixed(1)}**/10 (${p.score.judgeCount})`
+          : config.judgingEnabled
+            ? ", not judged"
+            : "";
+      return `${placeLabel(i)} ${who} with ${votePart}${judgePart} ([entry](${link}))`;
     }),
   );
 
@@ -337,31 +485,67 @@ async function announceResults(
       const user = await guild.client.users.fetch(p.entry.userId).catch(() => null);
       await user
         ?.send(
-          `🏆 You placed in **${contest.title}** in **${guild.name}** with ${p.votes} vote(s). Congratulations!`,
+          `🏆 You placed in **${contest.title}** in **${guild.name}** with ${p.score.votes} vote(s). Congratulations!`,
         )
         .catch(() => {});
     }
   }
 }
 
-/** Live standings, for /contest status. */
+/**
+ * Live standings, for /contest status.
+ *
+ * Ranked by the same blend the final result will use, so the board a host looks
+ * at mid-contest is not reordered by surprise at the end.
+ */
 export async function standings(
   guild: Guild,
   contest: Contest,
   config: ContestsConfig,
   limit = 10,
-): Promise<{ userId: string; votes: number; messageId: string }[]> {
-  const entries = await prisma.contestEntry.findMany({
-    where: { contestId: contest.id },
-  });
+): Promise<
+  {
+    userId: string;
+    votes: number;
+    messageId: string;
+    shortId: string;
+    judgeAverage: number;
+    judgeCount: number;
+  }[]
+> {
+  const { ranked, byId } = await scoreAllEntries(guild, contest, config);
 
-  const scored: { userId: string; votes: number; messageId: string }[] = [];
-  for (const entry of entries) {
-    const votes = await countVotes(guild, entry, config);
-    scored.push({ userId: entry.userId, votes, messageId: entry.messageId });
-  }
-  scored.sort((a, b) => b.votes - a.votes);
-  return scored.slice(0, limit);
+  return ranked.slice(0, limit).flatMap((score) => {
+    const entry = byId.get(score.id);
+    if (!entry) return [];
+    return [
+      {
+        userId: entry.userId,
+        votes: score.votes,
+        messageId: entry.messageId,
+        shortId: shortEntryId(entry.id),
+        judgeAverage: score.judgeAverage,
+        judgeCount: score.judgeCount,
+      },
+    ];
+  });
+}
+
+/**
+ * Every entry of a contest with its short id, for /contest entries.
+ *
+ * Deliberately does NOT count votes: this list exists so a judge can find the
+ * entry they want to score, and counting votes would mean one Discord fetch per
+ * entry for information the judge did not ask for.
+ */
+export async function listEntries(
+  contestId: string,
+): Promise<{ entry: ContestEntry; shortId: string }[]> {
+  const entries = await prisma.contestEntry.findMany({
+    where: { contestId },
+    orderBy: { createdAt: "asc" },
+  });
+  return entries.map((entry) => ({ entry, shortId: shortEntryId(entry.id) }));
 }
 
 export type { Contest, ContestEntry };

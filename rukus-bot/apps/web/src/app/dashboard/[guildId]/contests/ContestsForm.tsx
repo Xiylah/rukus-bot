@@ -7,6 +7,12 @@ import { Select, MultiSelect, type Option } from "@/components/Pickers";
 import { DiscordPreview } from "@/components/DiscordPreview";
 import { saveContestsConfig } from "./actions";
 
+/** Indexed 0 = Sunday, matching recurringDayOfWeek and JS getDay(). */
+const DAY_NAMES = [
+  "Sunday", "Monday", "Tuesday", "Wednesday",
+  "Thursday", "Friday", "Saturday",
+];
+
 /**
  * One item per line, parsed on BLUR not on every keystroke. Binding to
  * `list.join("\n")` and parsing per-keystroke eats the newline the instant you
@@ -222,6 +228,161 @@ export function ContestsForm({
               accepted whatever the host.
             </p>
           </div>
+        )}
+      </div>
+
+      {/* ---------- Judging ---------- */}
+      <div className="card space-y-4">
+        <div className="font-medium text-white">Judging</div>
+        <Toggle
+          label="Let judges score entries"
+          hint="Judges run /contest judge to score an entry 1-10. Pure reaction voting rewards whoever has the most friends online; a judged score is the counterweight."
+          checked={config.judgingEnabled}
+          onChange={(v) => set("judgingEnabled", v)}
+        />
+
+        {config.judgingEnabled && (
+          <>
+            <MultiSelect
+              label="Judge roles"
+              hint="These roles can run /contest judge and /contest entries. Members with Manage Server can always judge."
+              values={config.judgeRoleIds}
+              onChange={(v) => set("judgeRoleIds", v)}
+              options={roles}
+              prefix="@"
+              emptyText="Manage Server only"
+            />
+
+            <div>
+              <label className="label">
+                Judges decide {config.judgeWeightPercent}% of the result
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                className="w-full"
+                value={config.judgeWeightPercent}
+                onChange={(e) =>
+                  set("judgeWeightPercent", Number(e.target.value))
+                }
+              />
+              <div className="flex justify-between text-xs text-zinc-500">
+                <span>0% - public votes only</span>
+                <span>100% - judges only</span>
+              </div>
+              <p className="mt-1 text-xs text-zinc-500">
+                Votes and judge scores are each scaled against the best entry in
+                the contest before blending, so a contest with 3 votes and one
+                with 300 both behave sensibly. Judges cannot score their own
+                entry.
+              </p>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ---------- Recurring ---------- */}
+      <div className="card space-y-4">
+        <div className="font-medium text-white">Recurring contest</div>
+        <Toggle
+          label="Start a contest automatically"
+          hint="The bot opens a new contest on the day and hour you pick, so nobody has to remember to."
+          checked={config.recurringEnabled}
+          onChange={(v) => set("recurringEnabled", v)}
+        />
+
+        {config.recurringEnabled && (
+          <>
+            {config.defaultChannelIds.length === 0 && (
+              <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                Pick at least one contest channel above. A scheduled contest has
+                no channel to fall back on, so it will be skipped.
+              </p>
+            )}
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="label">Day</label>
+                <select
+                  className="input"
+                  value={config.recurringDayOfWeek}
+                  onChange={(e) =>
+                    set("recurringDayOfWeek", Number(e.target.value))
+                  }
+                >
+                  {DAY_NAMES.map((name, i) => (
+                    <option key={name} value={i}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">Hour (0-23)</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={23}
+                  className="input max-w-32"
+                  value={config.recurringHour}
+                  onChange={(e) =>
+                    set("recurringHour", Number(e.target.value) || 0)
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="label">Runs for (hours)</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={720}
+                  className="input max-w-32"
+                  value={config.recurringDurationHours}
+                  onChange={(e) =>
+                    set("recurringDurationHours", Number(e.target.value) || 1)
+                  }
+                />
+                <p className="mt-1 text-xs text-zinc-500">
+                  168 is one week. Up to 720 (30 days).
+                </p>
+              </div>
+              <div>
+                <label className="label">Timezone</label>
+                <input
+                  className="input"
+                  maxLength={64}
+                  placeholder="Europe/London"
+                  value={config.timezone}
+                  onChange={(e) => set("timezone", e.target.value)}
+                />
+                <p className="mt-1 text-xs text-zinc-500">
+                  An IANA name like Europe/London or America/New_York. Unknown
+                  zones fall back to UTC.
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className="label">Contest title</label>
+              <input
+                className="input"
+                maxLength={200}
+                value={config.recurringTitle}
+                onChange={(e) => set("recurringTitle", e.target.value)}
+              />
+            </div>
+
+            <p className="text-xs text-zinc-500">
+              If a contest is already running in those channels when the
+              schedule comes round, that occurrence is skipped rather than
+              stacking a second one.
+            </p>
+          </>
         )}
       </div>
 

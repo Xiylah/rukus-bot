@@ -24,6 +24,9 @@ import {
   birthdaysConfigSchema,
   inviteTrackerConfigSchema,
   tempVoiceConfigSchema,
+  contestsConfigSchema,
+  economyConfigSchema,
+  shopConfigSchema,
   type TicketConfig,
   type FormsConfig,
   type TranslationConfig,
@@ -49,6 +52,8 @@ import {
   type InviteTrackerConfig,
   type TempVoiceConfig,
   type ContestsConfig,
+  type EconomyConfig,
+  type ShopConfig,
 } from "@rukus/shared";
 import { prisma } from "./index.js";
 
@@ -246,6 +251,18 @@ export const getContestsConfig = (guildId: string) =>
 export const setContestsConfig = (guildId: string, config: unknown) =>
   writeConfig<ContestsConfig>(guildId, "contests", config);
 
+export const getEconomyConfig = (guildId: string) =>
+  readConfig<EconomyConfig>(guildId, "economy");
+
+export const setEconomyConfig = (guildId: string, config: unknown) =>
+  writeConfig<EconomyConfig>(guildId, "economy", config);
+
+export const getShopConfig = (guildId: string) =>
+  readConfig<ShopConfig>(guildId, "shop");
+
+export const setShopConfig = (guildId: string, config: unknown) =>
+  writeConfig<ShopConfig>(guildId, "shop", config);
+
 export {
   ticketConfigSchema,
   formsConfigSchema,
@@ -271,4 +288,7 @@ export {
   birthdaysConfigSchema,
   inviteTrackerConfigSchema,
   tempVoiceConfigSchema,
+  contestsConfigSchema,
+  economyConfigSchema,
+  shopConfigSchema,
 };

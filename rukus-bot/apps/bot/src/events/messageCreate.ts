@@ -19,6 +19,7 @@ import { findCommand, runCustomCommand } from "../features/custom/commands.js";
 import { runHighlights } from "../features/highlights/notify.js";
 import { runAfk } from "../features/afk/afk.js";
 import { handleMessageXp } from "../features/leveling/xp.js";
+import { handleMessageEarn } from "../features/economy/earn.js";
 import { runContestEntry } from "../features/contests/entries.js";
 
 /** Post a translation, honouring the guild's output settings. */
@@ -116,6 +117,11 @@ const handler: EventHandler<Events.MessageCreate> = {
     // Above the returns below: an image post or a one-word "gg" is still a real
     // message and earns XP. It only has to survive moderation to count.
     await handleMessageXp(message);
+
+    // --- Economy earning ---
+    // Same placement rule as XP, and the same ignore lists apply, so a channel
+    // that earns no XP earns no currency either.
+    await handleMessageEarn(message);
 
     // --- AFK + highlights ---
     // Also above the returns: someone coming back from AFK, or saying a word

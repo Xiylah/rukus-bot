@@ -1,8 +1,37 @@
 import type { Message } from "discord.js";
 import { prisma } from "@rukus/db";
-import { contestsConfig } from "../../lib/configCache.js";
+import { contestsConfig, shopConfig } from "../../lib/configCache.js";
 import { log } from "../../lib/logger.js";
 import { activeContestFor, hasMedia, mediaUrl } from "./service.js";
+
+/**
+ * Bonus entries this member bought from the shop, or 0.
+ *
+ * Loaded dynamically and behind a try/catch because the shop is a separate
+ * feature that may not be present (or may not export this yet): a member being
+ * unable to enter a contest because the shop module moved is a far worse
+ * failure than silently not applying a perk they bought.
+ */
+async function boughtExtraEntries(
+  guildId: string,
+  userId: string,
+): Promise<number> {
+  try {
+    const shop = await import("../shop/service.js");
+    if (typeof shop.extraEntriesFor !== "function") return 0;
+    const config = await shopConfig(guildId);
+    if (!config.enabled) return 0;
+    const extra = await shop.extraEntriesFor(
+      guildId,
+      userId,
+      "contest_entry",
+      config,
+    );
+    return Number.isFinite(extra) && extra > 0 ? Math.floor(extra) : 0;
+  } catch {
+    return 0;
+  }
+}
 
 /**
  * Turn a member's image/video post into a contest entry.
@@ -59,17 +88,22 @@ export async function runContestEntry(message: Message): Promise<boolean> {
       return false;
     }
 
-    // Entry cap per member.
+    // Entry cap per member. A member who bought extra entries in the shop gets
+    // their personal cap raised; the config value stays the baseline for
+    // everyone else.
     if (config.maxEntriesPerUser > 0) {
+      const bonus = await boughtExtraEntries(message.guildId, message.author.id);
+      const cap = config.maxEntriesPerUser + bonus;
       const mine = await prisma.contestEntry.count({
         where: { contestId: contest.id, userId: message.author.id },
       });
-      if (mine >= config.maxEntriesPerUser) {
+      if (mine >= cap) {
         const warn = await message.channel
           .send({
             content:
               `${message.author} you already have ${mine} entr${mine === 1 ? "y" : "ies"} in ` +
-              `**${contest.title}** (max ${config.maxEntriesPerUser}). This post is not entered.`,
+              `**${contest.title}** (max ${cap}${bonus > 0 ? `, including ${bonus} bought` : ""}). ` +
+              `This post is not entered.`,
           })
           .catch(() => null);
         if (warn) setTimeout(() => void warn.delete().catch(() => {}), 10_000);

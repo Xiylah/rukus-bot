@@ -8,6 +8,8 @@ import { handleRevealButton } from "../features/custom/commands.js";
 import { customCommandsConfig } from "../lib/configCache.js";
 import { handleEnterButton } from "../features/giveaways/interactions.js";
 import { GIVEAWAY_ENTER_CID } from "../features/giveaways/service.js";
+import * as shop from "../features/shop/interactions.js";
+import { SHOP_BUY_CID, SHOP_PAGE_CID } from "../features/shop/service.js";
 
 /**
  * Central interaction router.
@@ -58,6 +60,8 @@ const handler: EventHandler<Events.InteractionCreate> = {
         }
         if (customId.startsWith(GIVEAWAY_ENTER_CID))
           return void (await handleEnterButton(interaction));
+        if (customId.startsWith(SHOP_PAGE_CID))
+          return void (await shop.handlePageButton(interaction));
         if (customId.startsWith(CID.ticketOpen))
           return void (await tickets.handleOpenButton(interaction));
         if (customId.startsWith(CID.ticketClaim))
@@ -85,6 +89,8 @@ const handler: EventHandler<Events.InteractionCreate> = {
         // The multi-type ticket panel is a dropdown; each value is a type id.
         if (customId.startsWith(CID.ticketOpen))
           return void (await tickets.handleOpenSelect(interaction));
+        if (customId.startsWith(SHOP_BUY_CID))
+          return void (await shop.handleBuySelect(interaction));
       }
 
       if (interaction.isModalSubmit()) {

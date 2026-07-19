@@ -2,6 +2,7 @@ import { Events, type Guild } from "discord.js";
 import type { EventHandler } from "../lib/types.js";
 import { log } from "../lib/logger.js";
 import { dropGuild } from "../features/invites/cache.js";
+import { forgetGuild } from "../features/economy/earn.js";
 
 /**
  * The bot was removed from a server (kicked, banned, or the guild was deleted).
@@ -24,6 +25,7 @@ const handler: EventHandler<Events.GuildDelete> = {
 
     log.info(`Removed from guild ${guild.name ?? guild.id} (${guild.id}).`);
     dropGuild(guild.id);
+    forgetGuild(guild.id);
   },
 };
 

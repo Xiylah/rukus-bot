@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 
 export * from "./config.js";
 export * from "./leveling.js";
+export * from "./contests.js";
 
 /**
  * The client's type is specialized to the `rukus` schema by the db option, so

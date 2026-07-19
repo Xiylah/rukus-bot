@@ -12,6 +12,8 @@ import { primeAll } from "../features/invites/cache.js";
 import { cleanupOrphans } from "../features/tempvoice/tempvoice.js";
 import { startSocialPoller } from "../features/social/poller.js";
 import { startVoiceXpSweeper } from "../features/leveling/voice.js";
+import { startVoiceEarnSweeper } from "../features/economy/earn.js";
+import { startShopSweeper } from "../features/shop/sweeper.js";
 
 /**
  * On startup: log in, then register slash + context-menu commands with Discord.
@@ -41,6 +43,8 @@ const handler: EventHandler<Events.ClientReady> = {
     startRoleSweeper(client);
     startSocialPoller(client);
     startVoiceXpSweeper(client);
+    startVoiceEarnSweeper(client);
+    startShopSweeper(client);
     startBirthdaySweeper(client);
 
     // Invite tracking is a diff against a snapshot, so the snapshot has to exist

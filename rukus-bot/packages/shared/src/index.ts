@@ -7,3 +7,4 @@ export * from "./translation.js";
 export * from "./tagscript.js";
 export * from "./duration.js";
 export * from "./leveling.js";
+export * from "./contestScoring.js";

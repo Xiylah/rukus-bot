@@ -1332,9 +1332,167 @@ export const contestsConfigSchema = z.object({
     .string()
     .max(2000)
     .default("🏆 **{title}** is over! Thanks to everyone who entered.\n{winners}"),
+
+  // ---- Judging ----
+  /**
+   * Staff score entries 1-10 alongside the public vote. Pure reaction voting
+   * rewards whoever has the most friends online, which is the usual complaint
+   * about a contest; a judged score is the counterweight.
+   */
+  judgingEnabled: z.boolean().default(false),
+  judgeRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).max(20).default([]),
+  /** How much judge scores count vs public votes, 0-100. 0 = votes only. */
+  judgeWeightPercent: z.number().int().min(0).max(100).default(50),
+
+  // ---- Recurring contests ----
+  /** Auto-start a contest on a schedule, so nobody has to remember to. */
+  recurringEnabled: z.boolean().default(false),
+  /** Day of week, 0 = Sunday, evaluated in `timezone`. */
+  recurringDayOfWeek: z.number().int().min(0).max(6).default(0),
+  recurringHour: z.number().int().min(0).max(23).default(12),
+  recurringDurationHours: z.number().int().min(1).max(720).default(168),
+  recurringTitle: z.string().max(200).default("Weekly Contest"),
+  /** IANA zone, e.g. "Europe/London". The guild's clock, not the server's. */
+  timezone: z.string().min(1).max(64).default("UTC"),
 });
 
 export type ContestsConfig = z.infer<typeof contestsConfigSchema>;
+
+// ---------------- Economy ----------------
+
+/** Boosters/patrons can earn faster without moving the base rate. */
+export const currencyMultiplierRoleSchema = z.object({
+  roleId: z.string().regex(/^\d{17,20}$/),
+  /** Multiplies earned currency. 2 = double. */
+  multiplier: z.number().min(0).max(10).default(1),
+});
+
+export type CurrencyMultiplierRole = z.infer<
+  typeof currencyMultiplierRoleSchema
+>;
+
+/**
+ * Server currency: earned by chatting, sitting in voice, claiming a daily, and
+ * placing in contests or giveaways. Spent in the shop, transferred with /pay,
+ * and optionally gambled.
+ *
+ * Balances live in the Balance table, not here; this is only the rules. Every
+ * movement is written to EcoTransaction so staff can answer "where did that
+ * money come from" without guessing.
+ */
+export const economyConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  currencyName: z.string().min(1).max(40).default("coins"),
+  currencySymbol: z.string().min(1).max(16).default("🪙"),
+
+  // ---- Earning ----
+  /** Rolled in a range so the payout per message cannot be predicted exactly. */
+  perMessageMin: z.number().int().min(0).max(10_000).default(5),
+  perMessageMax: z.number().int().min(0).max(10_000).default(15),
+  /** Only one message per member per this many seconds pays out. */
+  messageCooldownSec: z.number().int().min(0).max(3600).default(60),
+  perVoiceMinute: z.number().int().min(0).max(1000).default(2),
+  /** Sitting alone in a channel is a farm, not a conversation. */
+  voiceMinMembers: z.number().int().min(1).max(50).default(2),
+  dailyAmount: z.number().int().min(0).max(100_000).default(100),
+  /** Added per consecutive day claimed. */
+  dailyStreakBonus: z.number().int().min(0).max(10_000).default(25),
+  /** The streak bonus stops growing after this many days. */
+  dailyStreakCap: z.number().int().min(1).max(365).default(7),
+  /** Payout per contest place: index 0 = 1st, 1 = 2nd, and so on. */
+  contestWinAmounts: z
+    .array(z.number().int().min(0).max(10_000_000))
+    .max(20)
+    .default([]),
+  giveawayWinAmount: z.number().int().min(0).max(1_000_000).default(0),
+  ignoreChannelIds: z
+    .array(z.string().regex(/^\d{17,20}$/))
+    .max(200)
+    .default([]),
+  /** Members with these roles earn nothing (staff alts, bots-with-roles). */
+  ignoreRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).max(100).default([]),
+  multiplierRoles: z.array(currencyMultiplierRoleSchema).max(50).default([]),
+
+  // ---- Transfers ----
+  payEnabled: z.boolean().default(true),
+  /** Skimmed off a /pay and destroyed, a sink against runaway inflation. */
+  payTaxPercent: z.number().int().min(0).max(50).default(0),
+
+  // ---- Gambling ----
+  /**
+   * Off by default and deliberately so: plenty of servers do not want a casino,
+   * and a feature that takes members' balances should be an explicit opt-in
+   * rather than something a server discovers it turned on.
+   */
+  gamblingEnabled: z.boolean().default(false),
+  gambleMinBet: z.number().int().min(1).max(1_000_000).default(10),
+  gambleMaxBet: z.number().int().min(1).max(10_000_000).default(1000),
+  /** House edge as a percent; 0 = fair coinflip. */
+  gambleHouseEdgePercent: z.number().int().min(0).max(50).default(5),
+
+  /** Granted the first time a member's balance row is created. */
+  startingBalance: z.number().int().min(0).max(1_000_000).default(0),
+});
+
+export type EconomyConfig = z.infer<typeof economyConfigSchema>;
+
+// ---------------- Shop ----------------
+
+/** What buying an item actually does. */
+export const shopItemKindSchema = z.enum([
+  "role",
+  "xpboost",
+  "contest_entry",
+  "giveaway_entry",
+  "custom",
+]);
+export type ShopItemKind = z.infer<typeof shopItemKindSchema>;
+
+export const shopItemSchema = z.object({
+  id: z.string().min(1),
+  enabled: z.boolean().default(true),
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).default(""),
+  price: z.number().int().min(0).max(100_000_000),
+  kind: shopItemKindSchema.default("custom"),
+
+  /** kind=role: the role handed over. */
+  roleId: snowflake,
+  /** kind=role: how long they keep it. 0 = permanently. */
+  roleDurationHours: z.number().int().min(0).max(8760).default(0),
+
+  /** kind=xpboost: multiplies XP while the boost is live. */
+  boostMultiplier: z.number().min(1).max(10).default(2),
+  boostHours: z.number().int().min(1).max(720).default(24),
+
+  /** kind=contest_entry / giveaway_entry: extra entries granted. */
+  extraEntries: z.number().int().min(1).max(20).default(1),
+
+  /** Stock limit. 0 = unlimited. */
+  stock: z.number().int().min(0).max(1_000_000).default(0),
+  /** Per-member purchase limit. 0 = unlimited. */
+  perUserLimit: z.number().int().min(0).max(1000).default(0),
+  /** Only holders of these roles may buy it. Empty = anyone. */
+  requiredRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).max(25).default([]),
+});
+
+export type ShopItem = z.infer<typeof shopItemSchema>;
+
+export const shopConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  /**
+   * Items are DATA, not config-only, because purchases reference them and staff
+   * fulfil custom items by hand. The catalogue stays in config (one form on the
+   * dashboard edits it), while the PURCHASES live in the Purchase table so an
+   * item being renamed or deleted cannot rewrite someone's receipt.
+   */
+  items: z.array(shopItemSchema).max(100).default([]),
+  /** Where a custom-item purchase is announced for staff to fulfil. */
+  fulfilChannelId: snowflake,
+  logChannelId: snowflake,
+});
+
+export type ShopConfig = z.infer<typeof shopConfigSchema>;
 
 /** Map a feature key to its schema so callers can validate generically. */
 export const FEATURE_SCHEMAS = {
@@ -1364,6 +1522,8 @@ export const FEATURE_SCHEMAS = {
   invitetracker: inviteTrackerConfigSchema,
   tempvoice: tempVoiceConfigSchema,
   contests: contestsConfigSchema,
+  economy: economyConfigSchema,
+  shop: shopConfigSchema,
 } as const;
 
 export { z };

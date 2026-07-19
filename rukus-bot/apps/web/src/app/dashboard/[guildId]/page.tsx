@@ -21,6 +21,8 @@ import {
   getInviteTrackerConfig,
   getTempVoiceConfig,
   getContestsConfig,
+  getEconomyConfig,
+  getShopConfig,
   getVerificationConfig,
   getRaidConfig,
 } from "@rukus/supabase";
@@ -65,6 +67,8 @@ export default async function GuildOverview({
     contests,
     verification,
     raid,
+    economy,
+    shop,
   ] = await Promise.all([
     getTicketConfig(guildId),
     getFormsConfig(guildId),
@@ -90,6 +94,8 @@ export default async function GuildOverview({
     getContestsConfig(guildId),
     getVerificationConfig(guildId),
     getRaidConfig(guildId),
+    getEconomyConfig(guildId),
+    getShopConfig(guildId),
   ]);
 
   // Count only the event toggles: the destination and scope keys are not events
@@ -189,6 +195,17 @@ export default async function GuildOverview({
     tempvoice: {
       enabled: tempvoice.enabled,
       detail: tempvoice.lobbyChannelId ? "Lobby channel set" : "No lobby set",
+    },
+    economy: {
+      enabled: economy.enabled,
+      detail: `${economy.perMessageMin}-${economy.perMessageMax} ${economy.currencyName} per message`,
+    },
+    shop: {
+      enabled: shop.enabled,
+      detail:
+        shop.items.length > 0
+          ? `${shop.items.length} item(s) for sale`
+          : "No items yet",
     },
     contests: {
       enabled: contests.enabled,

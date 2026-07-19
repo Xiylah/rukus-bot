@@ -74,6 +74,17 @@ const command: Command = {
             "`/levels reset <user>` `/levels reset-all` wipe XP (admin)",
         },
         {
+          name: "🪙 Economy and shop",
+          value:
+            "Earn currency for chatting and in voice, then spend it.\n" +
+            "`/balance [user]` see a balance, `/daily` claim your daily payout\n" +
+            "`/pay <user> <amount>` send someone coins\n" +
+            "`/richest [page]` the richest members in the server\n" +
+            "`/shop view` browse and buy from the shop, `/buy <item>` buy by name\n" +
+            "`/inventory` see what you own, `/shop fulfil <id>` mark an order done (staff)\n" +
+            "`/eco give|take|set <user> <amount>` adjust balances (admin)",
+        },
+        {
           name: "⭐ Starboard",
           value:
             "React to a message enough times and it gets mirrored to the starboard.\n" +
@@ -91,8 +102,12 @@ const command: Command = {
             "Photo and video contests decided by member votes.\n" +
             "`/contest start <title> <duration> [winners] [channel]` begin one\n" +
             "`/contest status` live standings, `/contest end` finish early\n" +
+            "`/contest entries` list entries and their ids\n" +
+            "`/contest judge <entry> <score>` score an entry 1-10 (judges)\n" +
             "Members just post an image or video in the channel to enter, then " +
-            "everyone reacts to vote. Self-votes do not count.",
+            "everyone reacts to vote. Self-votes do not count.\n" +
+            "Judging blends judge scores with votes at a weight you set, and " +
+            "contests can run on a weekly schedule automatically.",
         },
         {
           name: "🎉 Giveaways",

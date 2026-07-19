@@ -9,6 +9,7 @@ import {
   userLine,
 } from "../features/logging/index.js";
 import { handleVoiceStateXp } from "../features/leveling/voice.js";
+import { handleVoiceStateEarn } from "../features/economy/earn.js";
 import { handleVoiceState } from "../features/tempvoice/tempvoice.js";
 
 const handler: EventHandler<Events.VoiceStateUpdate> = {
@@ -18,6 +19,7 @@ const handler: EventHandler<Events.VoiceStateUpdate> = {
     if (!guild) return;
 
     handleVoiceStateXp(before, after);
+    handleVoiceStateEarn(before, after);
 
     // Join-to-create. Runs ahead of the logging returns below, and swallows its
     // own errors, so a guild with logging switched off still gets temp channels.

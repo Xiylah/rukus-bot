@@ -478,7 +478,107 @@ model ContestEntry {
   votes     Int      @default(0)
   createdAt DateTime @default(now())
 
+  judgements ContestJudgement[]
+
   @@index([contestId])
   @@index([guildId, userId])
+  @@schema("rukus")
+}
+
+/// One judge's 1-10 score for one entry. Kept per judge (not a running total)
+/// so a judge can change their mind, and so staff can see who scored what.
+model ContestJudgement {
+  id        String       @id @default(cuid())
+  contestId String
+  entry     ContestEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  entryId   String
+  judgeId   String
+  score     Int
+  createdAt DateTime     @default(now())
+
+  /// One score per judge per entry; re-scoring updates this row.
+  @@unique([entryId, judgeId])
+  @@index([contestId])
+  @@schema("rukus")
+}
+
+/// A member's currency balance in one guild.
+model Balance {
+  id      String @id @default(cuid())
+  guildId String
+  userId  String
+  /// BigInt, not Int: multipliers compound and a runaway economy would silently
+  /// overflow a 32-bit column.
+  amount   BigInt @default(0)
+  /// Total ever earned, never decremented. Drives "richest of all time" and
+  /// survives someone spending down to zero.
+  lifetime BigInt @default(0)
+
+  lastDailyAt DateTime?
+  dailyStreak Int       @default(0)
+  /// Last payout, for the per-message earn cooldown.
+  lastEarnAt  DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([guildId, userId])
+  /// Serves the balance leaderboard without a full scan.
+  @@index([guildId, amount])
+  @@schema("rukus")
+}
+
+/// Audit trail: every grant, purchase, pay and gamble. Money is adversarial, so
+/// when a member claims a bug the only useful answer is the ledger.
+model EcoTransaction {
+  id      String @id @default(cuid())
+  guildId String
+  userId  String
+  /// Signed: negative for a spend, positive for a grant.
+  amount  BigInt
+  /// Human-readable detail, e.g. "bought Custom Role".
+  reason  String
+  /// Machine-readable bucket: "message" | "voice" | "daily" | "pay" | ...
+  kind    String
+
+  createdAt DateTime @default(now())
+
+  @@index([guildId, userId])
+  @@index([guildId, createdAt])
+  @@schema("rukus")
+}
+
+/// A completed shop purchase. `itemName` and `price` are copied, not joined:
+/// the catalogue lives in config and an item being renamed or deleted must not
+/// rewrite an existing receipt.
+model Purchase {
+  id       String @id @default(cuid())
+  guildId  String
+  userId   String
+  itemId   String
+  itemName String
+  price    BigInt
+  /// COMPLETE | PENDING | REFUNDED. Custom items sit at PENDING until staff
+  /// fulfil them.
+  status   String @default("COMPLETE")
+
+  createdAt DateTime @default(now())
+
+  @@index([guildId, userId])
+  @@index([guildId, status])
+  @@schema("rukus")
+}
+
+/// A temporary XP multiplier bought from the shop. Expiry is a timestamp rather
+/// than a timer, so a bot restart cannot lose someone's paid-for boost.
+model ActiveBoost {
+  id         String   @id @default(cuid())
+  guildId    String
+  userId     String
+  multiplier Float
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([guildId, userId])
+  /// The sweeper's query: everything past its expiry.
+  @@index([expiresAt])
   @@schema("rukus")
 }
