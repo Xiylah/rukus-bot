@@ -56,6 +56,44 @@ export function ContestsForm({
         )}
       </div>
 
+      {/* ---------- Defaults ---------- */}
+      <div className="card space-y-4">
+        <div className="font-medium text-white">Defaults for a new contest</div>
+        <p className="text-sm text-zinc-400">
+          What <code className="rounded bg-panel px-1">/contest start</code> uses
+          when the host does not say otherwise. They can always override both on
+          the command.
+        </p>
+
+        <MultiSelect
+          label="Contest channels"
+          hint="A contest runs in every channel picked here, so you can accept photos in one and clips in another. Leave empty to use whichever channel the command is run in."
+          values={config.defaultChannelIds}
+          onChange={(v) => set("defaultChannelIds", v)}
+          options={channels}
+          prefix="#"
+          emptyText="The channel /contest start is run in"
+        />
+
+        <div>
+          <label className="label">How many places are awarded</label>
+          <input
+            type="number"
+            min={1}
+            max={50}
+            className="input max-w-32"
+            value={config.defaultWinnerCount}
+            onChange={(e) =>
+              set("defaultWinnerCount", Number(e.target.value) || 1)
+            }
+          />
+          <p className="mt-1 text-xs text-zinc-500">
+            1 awards a single winner, 3 gives 🥇🥈🥉. Up to 50. Entries with no
+            votes never place, so a quiet contest awards fewer than this.
+          </p>
+        </div>
+      </div>
+
       {/* ---------- Voting ---------- */}
       <div className="card space-y-4">
         <div className="font-medium text-white">Voting</div>

@@ -433,8 +433,10 @@ model Tag {
 model Contest {
   id          String   @id @default(cuid())
   guildId     String
-  /// Where entries are posted and auto-detected.
-  channelId   String
+  /// Where entries are posted and auto-detected. A contest can run across
+  /// several channels at once (photos in one, videos in another), so this is a
+  /// list; the first entry is where the announcement is posted.
+  channelIds  String[]
   /// The announcement message, so it can be edited live with the countdown.
   messageId   String?  @unique
   hostId      String
@@ -464,6 +466,9 @@ model ContestEntry {
   contest   Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
   contestId String
   guildId   String
+  /// Which of the contest's channels this entry was posted in. Needed to fetch
+  /// the message back when counting votes across several channels.
+  channelId String
   /// The member's message holding the image or video.
   messageId String   @unique
   userId    String

@@ -56,7 +56,14 @@ export async function activeContestFor(
 ): Promise<Contest | null> {
   return prisma.contest
     .findFirst({
-      where: { guildId, channelId, ended: false, endsAt: { gt: new Date() } },
+      where: {
+        guildId,
+        // A contest can span several channels, so match if this one is in its
+        // list rather than comparing a single id.
+        channelIds: { has: channelId },
+        ended: false,
+        endsAt: { gt: new Date() },
+      },
       orderBy: { createdAt: "desc" },
     })
     .catch(() => null);
@@ -71,11 +78,20 @@ export async function activeContestFor(
  * only way to drop the entrant's own vote.
  */
 export async function countVotes(
-  channel: TextChannel,
+  guild: Guild,
   entry: ContestEntry,
   config: ContestsConfig,
 ): Promise<number> {
-  const message = await channel.messages.fetch(entry.messageId).catch(() => null);
+  // Entries can live in different channels of the same contest, so the channel
+  // comes from the entry rather than being passed in.
+  const channel =
+    guild.channels.cache.get(entry.channelId) ??
+    (await guild.channels.fetch(entry.channelId).catch(() => null));
+  if (!channel?.isTextBased()) return 0;
+
+  const message = await (channel as TextChannel).messages
+    .fetch(entry.messageId)
+    .catch(() => null);
   if (!message) return 0;
 
   const reaction = message.reactions.cache.find(
@@ -118,20 +134,16 @@ export async function endContest(
   });
   if (claimed.count === 0) return null;
 
-  const channel =
-    guild.channels.cache.get(contest.channelId) ??
-    (await guild.channels.fetch(contest.channelId).catch(() => null));
-
   const entries = await prisma.contestEntry.findMany({
     where: { contestId: contest.id },
   });
 
+  // countVotes resolves each entry's own channel, so entries spread across the
+  // contest's channels are all counted.
   const scored: { entry: ContestEntry; votes: number }[] = [];
-  if (channel?.isTextBased()) {
-    for (const entry of entries) {
-      const votes = await countVotes(channel as TextChannel, entry, config);
-      scored.push({ entry, votes });
-    }
+  for (const entry of entries) {
+    const votes = await countVotes(guild, entry, config);
+    scored.push({ entry, votes });
   }
 
   // Highest first; a tie is broken by who posted first, which is at least a
@@ -176,7 +188,10 @@ async function announceResults(
   config: ContestsConfig,
   placed: { entry: ContestEntry; votes: number }[],
 ): Promise<void> {
-  const targetId = config.resultsChannelId || contest.channelId;
+  // Fall back to the contest's first channel, which is where the announcement
+  // was posted.
+  const targetId = config.resultsChannelId || contest.channelIds[0];
+  if (!targetId) return;
   const channel =
     guild.channels.cache.get(targetId) ??
     (await guild.channels.fetch(targetId).catch(() => null));
@@ -188,7 +203,9 @@ async function announceResults(
   const lines = await Promise.all(
     placed.map(async (p, i) => {
       const who = await resolvedMention(guild, p.entry.userId);
-      const link = `https://discord.com/channels/${guild.id}/${contest.channelId}/${p.entry.messageId}`;
+      // The entry's own channel, not the contest's first one: a winner may have
+      // posted in any of the contest's channels.
+      const link = `https://discord.com/channels/${guild.id}/${p.entry.channelId}/${p.entry.messageId}`;
       return `${placeLabel(i)} ${who} with **${p.votes}** vote${p.votes === 1 ? "" : "s"} ([entry](${link}))`;
     }),
   );
@@ -230,18 +247,13 @@ export async function standings(
   config: ContestsConfig,
   limit = 10,
 ): Promise<{ userId: string; votes: number; messageId: string }[]> {
-  const channel =
-    guild.channels.cache.get(contest.channelId) ??
-    (await guild.channels.fetch(contest.channelId).catch(() => null));
-  if (!channel?.isTextBased()) return [];
-
   const entries = await prisma.contestEntry.findMany({
     where: { contestId: contest.id },
   });
 
   const scored: { userId: string; votes: number; messageId: string }[] = [];
   for (const entry of entries) {
-    const votes = await countVotes(channel as TextChannel, entry, config);
+    const votes = await countVotes(guild, entry, config);
     scored.push({ userId: entry.userId, votes, messageId: entry.messageId });
   }
   scored.sort((a, b) => b.votes - a.votes);

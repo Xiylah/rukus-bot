@@ -61,6 +61,7 @@ export async function runContestEntry(message: Message): Promise<boolean> {
       data: {
         contestId: contest.id,
         guildId: message.guildId,
+        channelId: message.channelId,
         messageId: message.id,
         userId: message.author.id,
         mediaUrl: mediaUrl(message),

@@ -48,12 +48,39 @@ const command: Command = {
             .setName("winners")
             .setDescription("How many places to award (1 = winner only, 3 = 1st/2nd/3rd)")
             .setMinValue(1)
-            .setMaxValue(20),
+            .setMaxValue(50),
         )
+        // Discord has no multi-select channel option, so offer several single
+        // pickers. Anything left empty is ignored, and picking none falls back
+        // to the dashboard's default channels (then to the current channel).
         .addChannelOption((o) =>
           o
             .setName("channel")
-            .setDescription("Where entries are posted (defaults to here)")
+            .setDescription("Where entries are posted (defaults to here, or your saved channels)")
+            .addChannelTypes(ChannelType.GuildText),
+        )
+        .addChannelOption((o) =>
+          o
+            .setName("channel2")
+            .setDescription("A second channel this contest also runs in")
+            .addChannelTypes(ChannelType.GuildText),
+        )
+        .addChannelOption((o) =>
+          o
+            .setName("channel3")
+            .setDescription("A third channel this contest also runs in")
+            .addChannelTypes(ChannelType.GuildText),
+        )
+        .addChannelOption((o) =>
+          o
+            .setName("channel4")
+            .setDescription("A fourth channel this contest also runs in")
+            .addChannelTypes(ChannelType.GuildText),
+        )
+        .addChannelOption((o) =>
+          o
+            .setName("channel5")
+            .setDescription("A fifth channel this contest also runs in")
             .addChannelTypes(ChannelType.GuildText),
         )
         .addStringOption((o) =>
@@ -108,22 +135,38 @@ const command: Command = {
         return;
       }
 
-      const channel =
-        (interaction.options.getChannel("channel") as TextChannel | null) ??
-        (interaction.channel as TextChannel);
+      // Channels: explicit picks win, then the dashboard defaults, then here.
+      const picked = ["channel", "channel2", "channel3", "channel4", "channel5"]
+        .map((n) => interaction.options.getChannel(n) as TextChannel | null)
+        .filter((c): c is TextChannel => c !== null);
 
-      const running = await activeContestFor(interaction.guildId, channel.id);
-      if (running) {
-        await interaction.reply({
-          content: `**${running.title}** is already running in ${channel}. End it first with \`/contest end\`.`,
-          ...ephemeral,
-        });
-        return;
+      const channelIds = [
+        ...new Set(
+          picked.length > 0
+            ? picked.map((c) => c.id)
+            : config.defaultChannelIds.length > 0
+              ? config.defaultChannelIds
+              : [interaction.channelId],
+        ),
+      ];
+
+      // A channel can only host one contest at a time, or an entry would be
+      // ambiguous. Check every channel before creating anything.
+      for (const id of channelIds) {
+        const running = await activeContestFor(interaction.guildId, id);
+        if (running) {
+          await interaction.reply({
+            content: `**${running.title}** is already running in <#${id}>. End it first with \`/contest end\`.`,
+            ...ephemeral,
+          });
+          return;
+        }
       }
 
       const title = interaction.options.getString("title", true);
       const description = interaction.options.getString("description") ?? "";
-      const winnerCount = interaction.options.getInteger("winners") ?? 3;
+      const winnerCount =
+        interaction.options.getInteger("winners") ?? config.defaultWinnerCount;
       const endsAt = new Date(Date.now() + durationMs);
 
       await interaction.deferReply(ephemeral);
@@ -131,7 +174,7 @@ const command: Command = {
       const contest = await prisma.contest.create({
         data: {
           guildId: interaction.guildId,
-          channelId: channel.id,
+          channelIds,
           hostId: interaction.user.id,
           title,
           description,
@@ -140,13 +183,18 @@ const command: Command = {
         },
       });
 
+      const where =
+        channelIds.length === 1
+          ? "in this channel"
+          : `in ${channelIds.map((id) => `<#${id}>`).join(", ")}`;
+
       const endsUnix = Math.floor(endsAt.getTime() / 1000);
       const embed = new EmbedBuilder()
         .setColor(Number.parseInt(config.embedColor.slice(1), 16))
         .setTitle(`📸 ${title}`)
         .setDescription(
           (description ? `${description}\n\n` : "") +
-            `Post your image or video in this channel to enter.\n` +
+            `Post your image or video ${where} to enter.\n` +
             `Vote by reacting ${config.voteEmoji} on the entries you like.`,
         )
         .addFields(
@@ -168,19 +216,40 @@ const command: Command = {
         .setFooter({ text: "Self-votes do not count." })
         .setTimestamp(endsAt);
 
-      const posted = await channel
-        .send({ embeds: [embed] })
-        .catch(() => null);
-      if (posted) {
+      // Announce in every channel the contest runs in, so members only watching
+      // one of them still see it. The first successful post is the one recorded
+      // on the row (messageId is unique, and it is only used to find the
+      // announcement again).
+      let firstPostedId: string | null = null;
+      const failed: string[] = [];
+      for (const id of channelIds) {
+        const target =
+          interaction.guild.channels.cache.get(id) ??
+          (await interaction.guild.channels.fetch(id).catch(() => null));
+        if (!target?.isSendable()) {
+          failed.push(id);
+          continue;
+        }
+        const posted = await target.send({ embeds: [embed] }).catch(() => null);
+        if (!posted) failed.push(id);
+        else if (!firstPostedId) firstPostedId = posted.id;
+      }
+
+      if (firstPostedId) {
         await prisma.contest
-          .update({ where: { id: contest.id }, data: { messageId: posted.id } })
+          .update({ where: { id: contest.id }, data: { messageId: firstPostedId } })
           .catch(() => null);
       }
 
       await interaction.editReply({
         content:
-          `Started **${title}** in ${channel}, ending ${formatDuration(Math.round(durationMs / 1000))} from now.` +
-          (posted ? "" : "\nI couldn't post the announcement there, check my permissions."),
+          `Started **${title}** in ${channelIds.map((id) => `<#${id}>`).join(", ")}, ` +
+          `ending ${formatDuration(Math.round(durationMs / 1000))} from now. Top ${winnerCount} win.` +
+          (failed.length
+            ? `\nI couldn't post the announcement in ${failed
+                .map((id) => `<#${id}>`)
+                .join(", ")}, check my permissions there.`
+            : ""),
       });
       return;
     }

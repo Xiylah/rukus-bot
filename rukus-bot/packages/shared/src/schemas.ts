@@ -1284,6 +1284,18 @@ export const contestsConfigSchema = z.object({
   ignoreSelfVotes: z.boolean().default(true),
   /** Max entries one member may post per contest. 0 = unlimited. */
   maxEntriesPerUser: z.number().int().min(0).max(50).default(1),
+  /**
+   * Channels a contest runs in when /contest start is not given any. A contest
+   * can span several channels at once (photos in one, clips in another), and
+   * setting them here means the host does not have to pick every time.
+   * Empty = the channel the command was run in.
+   */
+  defaultChannelIds: z.array(z.string().regex(/^\d{17,20}$/)).max(25).default([]),
+  /**
+   * Places awarded when /contest start is not given a number. 1 = winner only,
+   * 3 = 1st/2nd/3rd.
+   */
+  defaultWinnerCount: z.number().int().min(1).max(50).default(3),
   /** Delete non-image/video chatter posted in the contest channel while it runs. */
   enforceMediaOnly: z.boolean().default(false),
   /** Roles allowed to start a contest, on top of Manage Server. */
