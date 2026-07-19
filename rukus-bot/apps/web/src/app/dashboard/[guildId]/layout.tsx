@@ -63,7 +63,18 @@ export default async function GuildLayout({
 
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 md:flex-row md:gap-8 md:py-8">
         <aside className="w-full flex-none md:w-56">
-          <div className="md:sticky md:top-20">
+          {/*
+            The nav is taller than the viewport now that there are ~28 modules,
+            and a sticky box with no height of its own simply overflows: the
+            bottom categories sit below the fold and cannot be reached without
+            scrolling the whole page past every setting first.
+
+            Capping it to the space under the header and letting it scroll
+            ITSELF means the nav is always fully reachable, whatever the page
+            beside it is doing. overscroll-contain stops a scroll that reaches
+            the end of the nav from continuing on to the page behind it.
+          */}
+          <div className="md:sticky md:top-20 md:max-h-[calc(100vh-6rem)] md:overflow-y-auto md:overscroll-contain md:pr-1">
             <SideNav groups={groups} />
           </div>
         </aside>

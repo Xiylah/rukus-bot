@@ -50,14 +50,22 @@ export function SideNav({ groups }: { groups: NavGroup[] }) {
 
   const list = (
     <div className="flex flex-col gap-4">
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search settings..."
-        aria-label="Search settings"
-        className="input"
-      />
+      {/*
+        Pinned to the top of the scrolling nav. The list is taller than the
+        viewport, so a search box that scrolled away with it would be out of
+        reach exactly when you are deep in the list and most want to jump
+        somewhere else.
+      */}
+      <div className="sticky top-0 z-10 -mx-1 bg-panel px-1 pb-1">
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search settings..."
+          aria-label="Search settings"
+          className="input"
+        />
+      </div>
 
       {filtered.length === 0 && (
         <p className="px-3 text-sm text-zinc-500">Nothing matches "{query}".</p>
