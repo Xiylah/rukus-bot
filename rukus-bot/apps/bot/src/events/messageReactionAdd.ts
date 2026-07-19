@@ -85,6 +85,7 @@ const handler: EventHandler<Events.MessageReactionAdd> = {
     const result = await translateText(text, trans, {
       target: targetLang,
       force: true,
+      guildId: reaction.message.guildId ?? undefined,
     });
     if (!result) {
       // Too short / already that language / backend hiccup: nothing to post,

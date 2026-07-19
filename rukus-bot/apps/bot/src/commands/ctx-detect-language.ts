@@ -22,7 +22,10 @@ const command: MessageContextCommand = {
       return;
     }
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-    const result = await detectLanguage(message.content);
+    const result = await detectLanguage(
+      message.content,
+      interaction.guildId ?? undefined,
+    );
     if (!result) {
       await interaction.editReply({
         content:

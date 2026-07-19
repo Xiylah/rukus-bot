@@ -82,10 +82,38 @@ if (env.DEEPL_API_KEY) {
   log.info("DeepL not configured - using Google only. Set DEEPL_API_KEY to enable.");
 }
 
+/**
+ * Guilds allowed to use the paid DeepL engine.
+ *
+ * Parsed once at module load: this cannot change without a redeploy, and
+ * re-splitting the string on every message would be wasted work on the hot path.
+ */
+const DEEPL_GUILDS = new Set(
+  (process.env.DEEPL_ALLOWED_GUILD_IDS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
+
+/**
+ * May this guild use DeepL?
+ *
+ * DeepL is metered and billed to whoever runs the bot, so it is opt-in per
+ * guild. Everyone else gets Google, which is free and unmetered, so translation
+ * still works everywhere: the difference is quality, not availability.
+ */
+export function canUseDeepl(guildId: string | undefined): boolean {
+  if (!deeplClient) return false;
+  if (!guildId) return false;
+  return DEEPL_GUILDS.has(guildId);
+}
+
 async function deeplTranslate(
   core: string,
   target: string,
+  guildId: string | undefined,
 ): Promise<{ text: string; src: string } | null> {
+  if (!canUseDeepl(guildId)) return null;
   if (!deeplClient) return null;
   const deeplTarget = GOOGLE_TO_DEEPL_TARGET[target];
   if (!deeplTarget) return null; // unsupported target → fall back to Google
@@ -144,6 +172,8 @@ export async function translateText(
     userId?: string;
     isBot?: boolean;
     target?: string;
+    /** Decides whether the paid DeepL engine is available; Google otherwise. */
+    guildId?: string;
     /**
      * Skip the gate entirely. Set for translations a human explicitly asked
      * for (/translate, a flag reaction, right-click > Translate): they said
@@ -201,7 +231,7 @@ export async function translateText(
   }
 
   // Prefer DeepL, fall back to Google.
-  const viaDeepl = await deeplTranslate(core, target);
+  const viaDeepl = await deeplTranslate(core, target, ctx.guildId);
   if (viaDeepl) {
     if (normForCompare(viaDeepl.text) === normForCompare(core)) return null;
     if (apiVerdictIsNonsense(viaDeepl.src)) {
@@ -233,12 +263,15 @@ export async function translateText(
 /** Detect the language of `text` → { code, name } or null. */
 export async function detectLanguage(
   text: string,
+  guildId?: string,
 ): Promise<{ code: string; name: string } | null> {
   const core = coreText(text);
   if (core.length < 12) return null;
 
-  // Prefer DeepL's genuine detection if available.
-  if (deeplClient) {
+  // Prefer DeepL's genuine detection, but only for guilds allowed to use it:
+  // this route calls the TRANSLATE endpoint just to read the detected source,
+  // so it bills characters exactly like a real translation would.
+  if (deeplClient && canUseDeepl(guildId)) {
     try {
       const result = await deeplClient.translateText(core, null, "en-US");
       const code = (result.detectedSourceLang ?? "").toLowerCase();

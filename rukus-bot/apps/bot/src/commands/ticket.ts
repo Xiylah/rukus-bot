@@ -180,7 +180,7 @@ const command: Command = {
             (m) => m.author.id === ticket.openerId && m.content.trim().length >= 12,
           );
           const detected = openerMsg
-            ? await detectLanguage(openerMsg.content)
+            ? await detectLanguage(openerMsg.content, interaction.guildId)
             : null;
           if (!detected) {
             await interaction.editReply({

@@ -18,9 +18,8 @@ export default async function TranslationPage({
       <h1 className="mb-1 text-2xl font-bold text-white">🌐 Translation</h1>
       <p className="mb-6 text-sm text-zinc-400">
         Auto-translate foreign messages and let members react with a flag emoji
-        to translate. DeepL is used when a key is set, otherwise Google. If the
-        bot is translating things it shouldn&apos;t, use the tester at the bottom
-        to see exactly why.
+        to translate. If the bot is translating things it shouldn&apos;t, use the
+        tester at the bottom to see exactly why.
       </p>
       <TranslationSettingsForm
         guildId={guildId}

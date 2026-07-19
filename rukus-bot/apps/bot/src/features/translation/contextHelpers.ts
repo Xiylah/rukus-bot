@@ -32,6 +32,7 @@ export async function contextTranslate(
   const result = await translateText(message.content, config, {
     target,
     force: true,
+    guildId: interaction.guildId ?? undefined,
   });
   if (!result) {
     await interaction.editReply({

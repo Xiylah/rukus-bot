@@ -159,6 +159,8 @@ const handler: EventHandler<Events.MessageCreate> = {
       roleIds: [...(message.member?.roles.cache.keys() ?? [])],
       userId: message.author.id,
       isBot: message.author.bot,
+      // Decides DeepL vs Google for this guild.
+      guildId,
     };
 
     if (ticketMeta?.translateLang) {

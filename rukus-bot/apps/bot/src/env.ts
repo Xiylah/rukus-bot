@@ -37,6 +37,20 @@ const schema = z.object({
     ),
   // Optional: enables the higher-quality DeepL engine (Google is the fallback).
   DEEPL_API_KEY: z.string().optional(),
+  /**
+   * Guilds allowed to use DeepL, comma separated. Everyone else falls back to
+   * Google, which is free and unmetered.
+   *
+   * DeepL bills per character, so on a public bot an open door would burn the
+   * operator's quota in days. This is deliberately an ENV var and not a config
+   * flag: a dashboard setting could be flipped on by the very servers it is
+   * meant to gate, whereas this can only be changed by whoever runs the bot.
+   *
+   * Empty or unset means nobody gets DeepL, which is the safe default: a new
+   * operator cannot accidentally hand out their paid quota by forgetting to set
+   * something.
+   */
+  DEEPL_ALLOWED_GUILD_IDS: z.string().optional(),
   // Optional: the dashboard's public URL. When set, ticket transcripts get a
   // hosted "Direct Link" (DASHBOARD_URL/transcript/<token>).
   DASHBOARD_URL: z.string().optional(),

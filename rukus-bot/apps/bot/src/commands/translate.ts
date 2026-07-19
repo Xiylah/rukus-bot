@@ -39,7 +39,11 @@ const command: Command = {
       return;
     }
     // force: an explicit /translate must always translate.
-    const result = await translateText(text, config, { target, force: true });
+    const result = await translateText(text, config, {
+      target,
+      force: true,
+      guildId: interaction.guildId ?? undefined,
+    });
     if (!result) {
       await interaction.editReply({
         content:

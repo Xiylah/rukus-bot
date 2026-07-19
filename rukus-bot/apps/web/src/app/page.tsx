@@ -11,7 +11,7 @@ const FEATURES: [string, string, string][] = [
   ["🎭", "Reaction roles", "Reactions, buttons or dropdowns. 8 modes: unique, verify, limit and more."],
   ["🛡️", "Moderation", "Warns, mutes, bans, timeouts. Every action is a numbered case with proof."],
   ["📜", "Logging", "Deletes, edits, joins, bans, roles, voice, invites. A channel per stream."],
-  ["📈", "Leveling", "XP, rank cards, leaderboards, and role rewards. Free, no premium tier."],
+  ["📈", "Leveling", "XP from chatting and voice, image rank cards, leaderboards, and role rewards."],
   ["⌨️", "Custom commands", "Your own commands with a real scripting language: conditions, math, embeds."],
   ["🌐", "Translation", "Auto-translate, flag reactions, and two-way translated tickets."],
   ["🎉", "Giveaways", "One-click entry, automatic draws, rerolls."],
@@ -60,7 +60,8 @@ export default async function Home() {
       </div>
 
       <p className="mt-4 text-sm text-zinc-500">
-        Free, and everything is included. Nothing is behind a paywall.
+        Add the bot and every feature is there to switch on. No setup wizard, no
+        commands to memorise.
       </p>
 
       <div className="mt-14 grid w-full grid-cols-1 gap-4 text-left sm:grid-cols-2 lg:grid-cols-3">
