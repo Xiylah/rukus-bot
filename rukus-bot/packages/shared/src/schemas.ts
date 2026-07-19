@@ -1276,7 +1276,7 @@ export const contestsConfigSchema = z.object({
    * Only this emoji counts as a vote. A single emoji keeps the result
    * unambiguous: counting every reaction turns joke emoji into votes.
    */
-  voteEmoji: z.string().min(1).max(64).default("⭐"),
+  voteEmoji: z.string().min(1).max(64).default("❤️"),
   /**
    * Ignore a reaction from the person who posted the entry. Self-votes add the
    * same point to everyone, so they carry no signal and just look unfair.
