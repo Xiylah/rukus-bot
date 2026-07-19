@@ -197,6 +197,31 @@ export function ContestsForm({
           checked={config.ignoreSelfVotes}
           onChange={(v) => set("ignoreSelfVotes", v)}
         />
+
+        <div>
+          <label className="label">Minimum time in the server to vote</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              max={43200}
+              className="input max-w-32"
+              value={config.minMemberMinutesToVote}
+              onChange={(e) =>
+                set("minMemberMinutesToVote", Number(e.target.value) || 0)
+              }
+            />
+            <span className="text-sm text-zinc-400">minutes</span>
+          </div>
+          <p className="mt-1 text-xs text-zinc-500">
+            0 lets anyone vote. 30 means a member must have been in the server
+            for half an hour before their reaction counts, which stops someone
+            inviting alt accounts to brigade a contest. Time in THIS server, not
+            account age: a cheater can bring old accounts, but cannot fake
+            having been here. Votes below the threshold are quietly not counted,
+            never called out publicly.
+          </p>
+        </div>
         <Toggle
           label="Only allow images and videos in the contest channel"
           hint="While a contest runs, delete text-only chatter posted in its channel. Off = conversation is left alone and simply not entered."
@@ -251,6 +276,13 @@ export function ContestsForm({
               options={roles}
               prefix="@"
               emptyText="Manage Server only"
+            />
+
+            <Toggle
+              label="Anonymous judging"
+              hint="Judges see entries as 'Entry #1', not who posted them, so a score reflects the entry rather than the person. The host still sees names, because someone has to be able to spot a rule breach."
+              checked={config.anonymousJudging}
+              onChange={(v) => set("anonymousJudging", v)}
             />
 
             <div>

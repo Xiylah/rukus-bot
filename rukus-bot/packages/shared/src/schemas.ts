@@ -1341,6 +1341,24 @@ export const contestsConfigSchema = z.object({
    */
   judgingEnabled: z.boolean().default(false),
   judgeRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).max(20).default([]),
+  /**
+   * Hide who posted an entry from judges until the contest ends.
+   *
+   * A judge who can see the name is scoring the person as much as the entry,
+   * and in a small server they know everyone. /contest entries shows an
+   * anonymous list to judges, and only the host sees names.
+   */
+  anonymousJudging: z.boolean().default(false),
+  /**
+   * Minimum minutes a member must have been in the server before their vote
+   * counts. 0 = anyone can vote.
+   *
+   * Server age beats account age as an anti-brigade rule: a determined cheater
+   * can bring in year-old alt accounts, but they cannot fake having been in
+   * THIS server for an hour. Votes from members below the threshold are simply
+   * not counted, rather than blocked, so nobody is publicly called out.
+   */
+  minMemberMinutesToVote: z.number().int().min(0).max(43200).default(0),
   /** How much judge scores count vs public votes, 0-100. 0 = votes only. */
   judgeWeightPercent: z.number().int().min(0).max(100).default(50),
 

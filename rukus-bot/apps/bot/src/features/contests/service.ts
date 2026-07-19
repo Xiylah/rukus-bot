@@ -333,7 +333,11 @@ export async function countVotes(
   );
   if (!reaction) return 0;
 
-  if (!config.ignoreSelfVotes) {
+  const needsMinutes = config.minMemberMinutesToVote > 0;
+
+  // The fast path only works when we do not have to inspect WHO voted. Both
+  // self-vote exclusion and the membership-age rule need the reactor list.
+  if (!config.ignoreSelfVotes && !needsMinutes) {
     // The bot pre-adds the vote emoji, so its own reaction never counts.
     return Math.max(0, reaction.count - (reaction.me ? 1 : 0));
   }
@@ -341,13 +345,52 @@ export async function countVotes(
   const users = await reaction.users.fetch().catch(() => null);
   if (!users) return Math.max(0, reaction.count - (reaction.me ? 1 : 0));
 
+  const cutoff = Date.now() - config.minMemberMinutesToVote * 60_000;
+
   let votes = 0;
   for (const user of users.values()) {
     if (user.bot) continue;
-    if (user.id === entry.userId) continue; // self-vote
+    if (config.ignoreSelfVotes && user.id === entry.userId) continue;
+
+    if (needsMinutes) {
+      // Server age, not account age: a cheater can bring old alt accounts, but
+      // cannot fake having been in THIS server since before the contest.
+      const member =
+        guild.members.cache.get(user.id) ??
+        (await guild.members.fetch(user.id).catch(() => null));
+      // Left the server, or joined too recently: their vote does not count.
+      // Silently, because publicly calling out a member's vote would be worse
+      // than the vote itself.
+      if (!member?.joinedTimestamp) continue;
+      if (member.joinedTimestamp > cutoff) continue;
+    }
+
     votes++;
   }
   return votes;
+}
+
+/** How many entries a contest has, for the cancel confirmation. */
+export async function countEntries(contestId: string): Promise<number> {
+  return prisma.contestEntry.count({ where: { contestId } }).catch(() => 0);
+}
+
+/**
+ * Abandon a contest: mark it ended with no winners and announce nothing.
+ *
+ * The entries are left in the database rather than deleted, so a host who
+ * cancels by mistake still has a record of who entered. The conditional write
+ * mirrors endContest: whoever flips `ended` first owns the outcome, so a cancel
+ * racing the sweeper cannot also announce winners.
+ */
+export async function cancelContest(contestId: string): Promise<boolean> {
+  const claimed = await prisma.contest
+    .updateMany({
+      where: { id: contestId, ended: false },
+      data: { ended: true, winnerIds: [] },
+    })
+    .catch(() => ({ count: 0 }));
+  return claimed.count > 0;
 }
 
 /**

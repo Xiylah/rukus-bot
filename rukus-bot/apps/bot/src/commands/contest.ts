@@ -4,6 +4,10 @@ import {
   MessageFlags,
   EmbedBuilder,
   ChannelType,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ComponentType,
   type ChatInputCommandInteraction,
   type TextChannel,
 } from "discord.js";
@@ -19,6 +23,8 @@ import { contestsConfig } from "../lib/configCache.js";
 import { resolvedMention } from "../lib/mentions.js";
 import {
   activeContestFor,
+  cancelContest,
+  countEntries,
   endContest,
   listEntries,
   placeLabel,
@@ -130,6 +136,11 @@ const command: Command = {
     )
     .addSubcommand((s) =>
       s.setName("end").setDescription("End the running contest now and announce winners"),
+    )
+    .addSubcommand((s) =>
+      s
+        .setName("cancel")
+        .setDescription("Abandon the running contest with no winners announced"),
     )
     .addSubcommand((s) =>
       s
@@ -411,12 +422,20 @@ const command: Command = {
         return;
       }
 
+      // Anonymous judging hides WHO posted each entry, so a score reflects the
+      // entry and not the person. The host still sees names: someone has to be
+      // able to check for a rule breach or a duplicate.
+      const hideNames = config.anonymousJudging && !isHost;
+
       const lines = await Promise.all(
-        rows.map(async ({ entry, shortId }) => {
-          const who = await resolvedMention(interaction.guild, entry.userId);
+        rows.map(async ({ entry, shortId }, i) => {
           const link = `https://discord.com/channels/${interaction.guildId}/${entry.channelId}/${entry.messageId}`;
           // The id is first and in backticks so it can be tapped and copied on
           // a phone without selecting half the line.
+          if (hideNames) {
+            return `\`${shortId}\` Entry #${i + 1} - [view](${link})`;
+          }
+          const who = await resolvedMention(interaction.guild, entry.userId);
           return `\`${shortId}\` ${who} - [entry](${link})`;
         }),
       );
@@ -475,6 +494,53 @@ const command: Command = {
             ? `Scored ${who}'s entry \`${reference.trim().toUpperCase().replace(/^#/, "")}\` **${score}**/10.`
             : `Updated your score for ${who}'s entry from **${previous}** to **${score}**/10.`,
         allowedMentions: { parse: [] },
+      });
+      return;
+    }
+
+    // ---- cancel ----
+    // Abandoning throws away every entry with nothing announced, and unlike
+    // /end there is no result to point at afterwards, so it confirms first.
+    if (sub === "cancel") {
+      const entryCount = await countEntries(contest.id);
+      const confirmId = `contest:cancel:${interaction.id}`;
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(confirmId)
+          .setLabel("Yes, cancel it")
+          .setStyle(ButtonStyle.Danger),
+      );
+      const prompt = await interaction.reply({
+        content:
+          `⚠️ Cancel **${contest.title}**? Its ${entryCount} entr${entryCount === 1 ? "y" : "ies"} ` +
+          "are discarded and no winners are announced. Confirm within 30 seconds.",
+        components: [row],
+        withResponse: true,
+        ...ephemeral,
+      });
+      const click = await prompt
+        .resource!.message!.awaitMessageComponent({
+          componentType: ComponentType.Button,
+          time: 30_000,
+          filter: (i) =>
+            i.user.id === interaction.user.id && i.customId === confirmId,
+        })
+        .catch(() => null);
+      if (!click) {
+        await interaction.editReply({
+          content: "Cancelled (no confirmation). The contest is still running.",
+          components: [],
+        });
+        return;
+      }
+      await click.deferUpdate();
+
+      const done = await cancelContest(contest.id);
+      await interaction.editReply({
+        content: done
+          ? `🗑️ **${contest.title}** was cancelled. No winners announced.`
+          : "That contest had already finished.",
+        components: [],
       });
       return;
     }
