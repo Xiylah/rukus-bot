@@ -1,5 +1,7 @@
 import {
   EmbedBuilder,
+  ChannelType,
+  type ForumChannel,
   type Guild,
   type TextChannel,
 } from "discord.js";
@@ -128,18 +130,26 @@ export function mediaUrl(
   return "";
 }
 
-/** The contest currently running in a channel, or null. */
+/**
+ * The contest currently running in a channel, or null.
+ *
+ * Takes one id or several. Callers inside a thread pass both the thread's id and
+ * its parent's, because a contest may be set on the forum/channel (covering
+ * every post inside it) or on one specific thread.
+ */
 export async function activeContestFor(
   guildId: string,
-  channelId: string,
+  channelId: string | string[],
 ): Promise<Contest | null> {
+  const ids = Array.isArray(channelId) ? channelId : [channelId];
+  if (ids.length === 0) return null;
   return prisma.contest
     .findFirst({
       where: {
         guildId,
-        // A contest can span several channels, so match if this one is in its
-        // list rather than comparing a single id.
-        channelIds: { has: channelId },
+        // A contest can span several channels, so match if any candidate is in
+        // its list rather than comparing a single id.
+        channelIds: { hasSome: ids },
         ended: false,
         endsAt: { gt: new Date() },
       },
@@ -274,7 +284,9 @@ async function announceResults(
   const channel =
     guild.channels.cache.get(targetId) ??
     (await guild.channels.fetch(targetId).catch(() => null));
-  if (!channel?.isSendable()) {
+  // A forum cannot be sent to, only posted in, so results become a new post.
+  const isForum = channel?.type === ChannelType.GuildForum;
+  if (!channel || (!isForum && !channel.isSendable())) {
     log.warn(`Contest ${contest.id}: cannot post results to ${targetId}.`);
     return;
   }
@@ -303,9 +315,22 @@ async function announceResults(
 
   // Winners are mentioned, so lock mentions to users: a template containing
   // @everyone must never be able to mass-ping.
-  await channel
-    .send({ embeds: [embed], allowedMentions: { parse: ["users"] } })
-    .catch((e) => log.warn(`Contest results post failed: ${String(e)}`));
+  const payload = {
+    embeds: [embed],
+    allowedMentions: { parse: ["users"] as const },
+  };
+  if (isForum) {
+    await (channel as ForumChannel).threads
+      .create({
+        name: `Results: ${contest.title}`.slice(0, 100),
+        message: payload,
+      })
+      .catch((e) => log.warn(`Contest results post failed: ${String(e)}`));
+  } else {
+    await channel
+      .send(payload)
+      .catch((e) => log.warn(`Contest results post failed: ${String(e)}`));
+  }
 
   if (config.dmWinners) {
     for (const p of placed) {

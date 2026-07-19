@@ -57,31 +57,61 @@ const command: Command = {
           o
             .setName("channel")
             .setDescription("Where entries are posted (defaults to here, or your saved channels)")
-            .addChannelTypes(ChannelType.GuildText),
+            .addChannelTypes(
+              ChannelType.GuildText,
+              ChannelType.GuildAnnouncement,
+              ChannelType.GuildForum,
+              ChannelType.PublicThread,
+              ChannelType.AnnouncementThread,
+            ),
         )
         .addChannelOption((o) =>
           o
             .setName("channel2")
             .setDescription("A second channel this contest also runs in")
-            .addChannelTypes(ChannelType.GuildText),
+            .addChannelTypes(
+              ChannelType.GuildText,
+              ChannelType.GuildAnnouncement,
+              ChannelType.GuildForum,
+              ChannelType.PublicThread,
+              ChannelType.AnnouncementThread,
+            ),
         )
         .addChannelOption((o) =>
           o
             .setName("channel3")
             .setDescription("A third channel this contest also runs in")
-            .addChannelTypes(ChannelType.GuildText),
+            .addChannelTypes(
+              ChannelType.GuildText,
+              ChannelType.GuildAnnouncement,
+              ChannelType.GuildForum,
+              ChannelType.PublicThread,
+              ChannelType.AnnouncementThread,
+            ),
         )
         .addChannelOption((o) =>
           o
             .setName("channel4")
             .setDescription("A fourth channel this contest also runs in")
-            .addChannelTypes(ChannelType.GuildText),
+            .addChannelTypes(
+              ChannelType.GuildText,
+              ChannelType.GuildAnnouncement,
+              ChannelType.GuildForum,
+              ChannelType.PublicThread,
+              ChannelType.AnnouncementThread,
+            ),
         )
         .addChannelOption((o) =>
           o
             .setName("channel5")
             .setDescription("A fifth channel this contest also runs in")
-            .addChannelTypes(ChannelType.GuildText),
+            .addChannelTypes(
+              ChannelType.GuildText,
+              ChannelType.GuildAnnouncement,
+              ChannelType.GuildForum,
+              ChannelType.PublicThread,
+              ChannelType.AnnouncementThread,
+            ),
         )
         .addStringOption((o) =>
           o.setName("description").setDescription("Shown on the announcement").setMaxLength(2000),
@@ -226,7 +256,29 @@ const command: Command = {
         const target =
           interaction.guild.channels.cache.get(id) ??
           (await interaction.guild.channels.fetch(id).catch(() => null));
-        if (!target?.isSendable()) {
+        if (!target) {
+          failed.push(id);
+          continue;
+        }
+
+        // A forum has no message list to send into: the announcement has to be
+        // a post (a thread) instead, and members then enter by replying in it.
+        if (target.type === ChannelType.GuildForum) {
+          const thread = await target.threads
+            .create({
+              name: title.slice(0, 100),
+              message: { embeds: [embed] },
+            })
+            .catch(() => null);
+          if (!thread) failed.push(id);
+          else if (!firstPostedId) {
+            const starter = await thread.fetchStarterMessage().catch(() => null);
+            if (starter) firstPostedId = starter.id;
+          }
+          continue;
+        }
+
+        if (!target.isSendable()) {
           failed.push(id);
           continue;
         }
@@ -255,10 +307,14 @@ const command: Command = {
     }
 
     // ---- status / end both need a running contest in this channel ----
-    const contest = await activeContestFor(
-      interaction.guildId,
+    // Run inside a thread, the contest may be set on the parent, so try both.
+    const parentId = interaction.channel?.isThread()
+      ? interaction.channel.parentId
+      : null;
+    const contest = await activeContestFor(interaction.guildId, [
       interaction.channelId,
-    );
+      ...(parentId ? [parentId] : []),
+    ]);
     if (!contest) {
       await interaction.reply({
         content: "There's no contest running in this channel.",

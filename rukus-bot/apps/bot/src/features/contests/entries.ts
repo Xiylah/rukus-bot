@@ -20,7 +20,17 @@ export async function runContestEntry(message: Message): Promise<boolean> {
     const config = await contestsConfig(message.guildId);
     if (!config.enabled) return false;
 
-    const contest = await activeContestFor(message.guildId, message.channelId);
+    // Inside a thread, message.channelId is the THREAD's id, not the channel the
+    // contest was set on. A forum post is always a thread, so without checking
+    // the parent too, forum entries and thread entries would never match. Both
+    // ids are tried so a contest can be set on the forum/channel (covering every
+    // post inside it) or on one specific thread.
+    const contest = await activeContestFor(message.guildId, [
+      message.channelId,
+      ...(message.channel.isThread() && message.channel.parentId
+        ? [message.channel.parentId]
+        : []),
+    ]);
     if (!contest) return false;
 
     const mediaOpts = {
