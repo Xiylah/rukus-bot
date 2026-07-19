@@ -1298,6 +1298,22 @@ export const contestsConfigSchema = z.object({
   defaultWinnerCount: z.number().int().min(1).max(50).default(3),
   /** Delete non-image/video chatter posted in the contest channel while it runs. */
   enforceMediaOnly: z.boolean().default(false),
+  /**
+   * Accept a pasted link as an entry, not just an uploaded file. On by default:
+   * uploading a real video needs Nitro, so for most members a YouTube, Streamable
+   * or Imgur link is the only way they can enter a video contest at all.
+   */
+  allowLinks: z.boolean().default(true),
+  /**
+   * Extra hosts to accept links from, on top of the built-in list (YouTube,
+   * Imgur, Streamable, Medal, Tenor and friends). Just the domain, e.g.
+   * "mysite.com". Any URL ending in an image or video extension is always
+   * accepted regardless of host.
+   */
+  extraMediaHosts: z
+    .array(z.string().min(3).max(120))
+    .max(50)
+    .default([]),
   /** Roles allowed to start a contest, on top of Manage Server. */
   hostRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).max(20).default([]),
   embedColor: z

@@ -7,6 +7,61 @@ import { Select, MultiSelect, type Option } from "@/components/Pickers";
 import { DiscordPreview } from "@/components/DiscordPreview";
 import { saveContestsConfig } from "./actions";
 
+/**
+ * One item per line, parsed on BLUR not on every keystroke. Binding to
+ * `list.join("\n")` and parsing per-keystroke eats the newline the instant you
+ * press Enter, so the raw text is the state while typing and only becomes a list
+ * when you leave the field.
+ */
+function LineList({
+  value,
+  onChange,
+  placeholder,
+  rows = 4,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
+  const [text, setText] = useState(value.join("\n"));
+  const [lastSeen, setLastSeen] = useState(value);
+  if (value !== lastSeen) {
+    setLastSeen(value);
+    setText(value.join("\n"));
+  }
+  return (
+    <textarea
+      className="input min-h-20 font-mono text-sm"
+      rows={rows}
+      placeholder={placeholder}
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        const parsed = [
+          ...new Set(
+            text
+              .split("\n")
+              .map((s) =>
+                s
+                  .trim()
+                  .toLowerCase()
+                  // Paste-proofing: accept a full URL and keep just the host.
+                  .replace(/^https?:\/\//, "")
+                  .replace(/^www\./, "")
+                  .split("/")[0]!,
+              )
+              .filter(Boolean),
+          ),
+        ];
+        onChange(parsed);
+        setText(parsed.join("\n"));
+        setLastSeen(parsed);
+      }}
+    />
+  );
+}
+
 export function ContestsForm({
   guildId,
   initial,
@@ -142,6 +197,32 @@ export function ContestsForm({
           checked={config.enforceMediaOnly}
           onChange={(v) => set("enforceMediaOnly", v)}
         />
+
+        <Toggle
+          label="Accept links as entries"
+          hint="Uploading a real video needs Nitro, so for most members a YouTube, Streamable or Imgur link is the only way to enter a video contest. YouTube, Imgur, Streamable, Medal, Twitch clips, Tenor, Google Drive and direct image/video URLs are recognised out of the box."
+          checked={config.allowLinks}
+          onChange={(v) => set("allowLinks", v)}
+        />
+
+        {config.allowLinks && (
+          <div>
+            <label className="label">
+              Extra link hosts ({config.extraMediaHosts.length}) - one per line
+            </label>
+            <LineList
+              value={config.extraMediaHosts}
+              onChange={(v) => set("extraMediaHosts", v)}
+              placeholder={"mysite.com\nclips.example.org"}
+              rows={4}
+            />
+            <p className="mt-1 text-xs text-zinc-500">
+              Only needed for a host that is not already recognised. Just the
+              domain, no https. Any link ending in .png, .mp4 and so on is always
+              accepted whatever the host.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ---------- Who can host ---------- */}

@@ -23,14 +23,24 @@ export async function runContestEntry(message: Message): Promise<boolean> {
     const contest = await activeContestFor(message.guildId, message.channelId);
     if (!contest) return false;
 
-    if (!hasMedia(message)) {
+    const mediaOpts = {
+      allowLinks: config.allowLinks,
+      extraHosts: config.extraMediaHosts,
+    };
+
+    if (!hasMedia(message, mediaOpts)) {
       // Chatter in the contest channel. Only remove it if the server asked for
       // a media-only channel; otherwise leave conversation alone.
       if (config.enforceMediaOnly) {
         await message.delete().catch(() => {});
         const warn = await message.channel
           .send({
-            content: `${message.author} only images and videos can be posted here while **${contest.title}** is running.`,
+            content:
+              `${message.author} only images and videos can be posted here while ` +
+              `**${contest.title}** is running.` +
+              (config.allowLinks
+                ? " You can upload a file or paste a YouTube, Streamable or Imgur link."
+                : ""),
           })
           .catch(() => null);
         if (warn) setTimeout(() => void warn.delete().catch(() => {}), 8_000);
@@ -64,7 +74,7 @@ export async function runContestEntry(message: Message): Promise<boolean> {
         channelId: message.channelId,
         messageId: message.id,
         userId: message.author.id,
-        mediaUrl: mediaUrl(message),
+        mediaUrl: mediaUrl(message, mediaOpts),
       },
     });
 

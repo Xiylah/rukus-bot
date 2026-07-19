@@ -25,26 +25,105 @@ export function placeLabel(index: number): string {
   return PLACE_LABELS[index] ?? `#${index + 1}`;
 }
 
-/** Does this message carry an image or video? */
-export function hasMedia(message: {
-  attachments: { size: number; values: () => Iterable<{ contentType: string | null; url: string }> };
-  embeds: { image?: unknown; video?: unknown; thumbnail?: unknown }[];
-}): boolean {
+/**
+ * Hosts whose links are an image or video even though the URL has no file
+ * extension. Without this a member on YouTube, Imgur or Streamable is not
+ * entered, which matters because uploading a real video needs Nitro: a link is
+ * the only way most people can enter a video contest at all.
+ */
+const MEDIA_HOSTS = [
+  // video
+  "youtube.com", "youtu.be", "streamable.com", "twitch.tv", "clips.twitch.tv",
+  "vimeo.com", "tiktok.com", "medal.tv", "outplayed.tv", "dailymotion.com",
+  // images and albums
+  "imgur.com", "i.imgur.com", "gyazo.com", "prnt.sc", "prntscr.com",
+  "lightshot.cc", "postimg.cc", "ibb.co", "imgbb.com", "flickr.com",
+  "tenor.com", "giphy.com", "gfycat.com", "redgifs.com",
+  // general file hosts people paste screenshots and clips from
+  "cdn.discordapp.com", "media.discordapp.net", "drive.google.com",
+  "dropbox.com", "onedrive.live.com", "1drv.ms",
+];
+
+/** A URL ending in an image or video file, whatever the host. */
+const MEDIA_EXTENSION =
+  /\.(png|jpe?g|gif|webp|bmp|avif|heic|svg|mp4|mov|webm|mkv|avi|m4v|gifv)(\?|#|$)/i;
+
+const URL_RE = /https?:\/\/[^\s<>()[\]]+/gi;
+
+/** Every http(s) link in the text. */
+function linksIn(content: string): string[] {
+  return content.match(URL_RE) ?? [];
+}
+
+/**
+ * Is this URL an image/video, by extension or by known host?
+ *
+ * `extraHosts` are the server's own additions, so a community can accept a host
+ * the built-in list has never heard of without waiting for a code change.
+ */
+export function isMediaLink(url: string, extraHosts: string[] = []): boolean {
+  if (MEDIA_EXTENSION.test(url)) return true;
+  try {
+    const host = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+    const all = [
+      ...MEDIA_HOSTS,
+      ...extraHosts.map((h) => h.toLowerCase().replace(/^www\./, "").trim()),
+    ];
+    return all.some((h) => h && (host === h || host.endsWith(`.${h}`)));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Does this message carry an image or video?
+ *
+ * Checks attachments, then LINKS IN THE TEXT, and only then embeds. The link
+ * check is the important one: Discord does not attach an embed until it has
+ * fetched the URL, which happens a moment AFTER the message arrives, so on
+ * messageCreate the embeds array is nearly always still empty. Relying on it
+ * alone silently rejected every pasted YouTube or Imgur entry.
+ */
+export function hasMedia(
+  message: {
+    content?: string;
+    attachments: { size: number; values: () => Iterable<{ contentType: string | null; url: string }> };
+    embeds: { image?: unknown; video?: unknown; thumbnail?: unknown }[];
+  },
+  opts: { allowLinks?: boolean; extraHosts?: string[] } = {},
+): boolean {
   for (const a of message.attachments.values()) {
     const type = a.contentType ?? "";
     if (type.startsWith("image/") || type.startsWith("video/")) return true;
   }
-  // A pasted link (imgur, tenor, a direct file) arrives as an embed instead.
+  const allowLinks = opts.allowLinks ?? true;
+  if (
+    allowLinks &&
+    linksIn(message.content ?? "").some((u) => isMediaLink(u, opts.extraHosts))
+  ) {
+    return true;
+  }
+  // Late arrival: if the embed did resolve in time, take it.
   return message.embeds.some((e) => e.image || e.video || e.thumbnail);
 }
 
 /** First media URL on a message, for keeping a record after deletion. */
-export function mediaUrl(message: {
-  attachments: { values: () => Iterable<{ contentType: string | null; url: string }> };
-}): string {
+export function mediaUrl(
+  message: {
+    content?: string;
+    attachments: { values: () => Iterable<{ contentType: string | null; url: string }> };
+  },
+  opts: { allowLinks?: boolean; extraHosts?: string[] } = {},
+): string {
   for (const a of message.attachments.values()) {
     const type = a.contentType ?? "";
     if (type.startsWith("image/") || type.startsWith("video/")) return a.url;
+  }
+  if (opts.allowLinks ?? true) {
+    return (
+      linksIn(message.content ?? "").find((u) => isMediaLink(u, opts.extraHosts)) ??
+      ""
+    );
   }
   return "";
 }
