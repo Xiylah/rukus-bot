@@ -269,6 +269,12 @@ export function ModerationForm({
       {/* ---------- Links ---------- */}
       <div className="card space-y-4">
         <div className="font-medium text-white">🔗 Link controls</div>
+        <Toggle
+          label="Block adult sites"
+          hint="Deletes links to known porn, cam and hentai sites using the bot's built-in list, so you do not have to type them out. Staff and exempt roles are unaffected. The list covers the well-known sites, not every one that exists: add any it misses to blocked domains below."
+          checked={config.blockAdultSites}
+          onChange={(v) => set("blockAdultSites", v)}
+        />
         <div>
           <label className="label">Blocked domains (one per line)</label>
           <textarea

@@ -1,5 +1,6 @@
 import type { Message } from "discord.js";
 import type { ModerationConfig } from "@rukus/shared";
+import { ADULT_DOMAINS } from "./adultDomains.js";
 
 /**
  * Anti-spam / anti-scam.
@@ -162,6 +163,7 @@ export type SpamReason =
   | "repeating the same message"
   | "scam content"
   | "blocked domain"
+  | "adult content"
   | "links not allowed"
   | "new account posting links";
 
@@ -195,6 +197,18 @@ export function checkSpam(
   for (const host of domains) {
     if (config.blockedDomains.some((p) => domainMatches(host, p))) {
       return { reason: "blocked domain", messages: self };
+    }
+  }
+
+  // --- Adult sites (built-in list, opt-in) ---
+  // Its own reason rather than reusing "blocked domain": staff reading the log
+  // should be able to tell a porn link from a scam domain without going and
+  // opening the link to find out.
+  if (config.blockAdultSites) {
+    for (const host of domains) {
+      if (ADULT_DOMAINS.some((p) => domainMatches(host, p))) {
+        return { reason: "adult content", messages: self };
+      }
     }
   }
 

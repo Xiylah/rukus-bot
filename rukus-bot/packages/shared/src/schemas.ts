@@ -466,6 +466,14 @@ export const moderationConfigSchema = z.object({
 
   /** Block ALL links from members without a role (blocks scam domains). */
   blockLinks: z.boolean().default(false),
+  /**
+   * Block links to known adult sites using the bot's built-in list.
+   *
+   * Separate from blockedDomains so a server gets the protection without
+   * hand-maintaining a list of porn domains, and so the built-in list can grow
+   * without touching anyone's settings. Both are enforced identically.
+   */
+  blockAdultSites: z.boolean().default(false),
   /** Domains always blocked, e.g. "kutwon.com". */
   blockedDomains: z.array(z.string().min(1).max(120)).max(200).default([]),
   /** Domains always allowed when blockLinks is on. */
