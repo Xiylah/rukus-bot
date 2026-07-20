@@ -70,15 +70,64 @@ const SCAM_SIGNALS: [RegExp, number][] = [
 
 const URL_RE = /https?:\/\/([^\s/]+)/gi;
 
-/** 0+ score; 4 or more means "almost certainly a scam". */
+/**
+ * Hosts that serve media, not payloads.
+ *
+ * A link to one of these is a gif or a video, so it does not make an otherwise
+ * innocent message suspicious. Without this a Tenor gif whose slug happens to
+ * read /view/crypto-bitcoin-money-gif-25340957 scored a link bonus on top of
+ * the keyword and hit the timeout threshold on its own.
+ */
+const MEDIA_HOSTS = [
+  "tenor.com",
+  "giphy.com",
+  "gfycat.com",
+  "imgur.com",
+  "youtube.com",
+  "youtu.be",
+  "twitch.tv",
+  "cdn.discordapp.com",
+  "media.discordapp.net",
+  "discordapp.com",
+  "discord.com",
+];
+
+/**
+ * 0+ score; 4 or more means "almost certainly a scam".
+ *
+ * Scores the PROSE only. URLs are stripped first, because a URL's path is not
+ * something the author wrote: a gif slug carries whatever words the uploader
+ * chose, and judging a member by them timed out someone for posting a built-in
+ * Discord gif. Domains are judged by blockedDomains, which is the precise tool
+ * for that and is not a guess.
+ */
 export function scamScore(content: string): number {
+  const prose = content.replace(/https?:\/\/\S+/gi, " ");
+
   let score = 0;
+  // Tracked separately: the link bonus needs to know a real signal fired, and
+  // the threshold needs to know how many independent categories matched.
+  let categories = 0;
   for (const [re, weight] of SCAM_SIGNALS) {
-    if (re.test(content)) score += weight;
+    if (re.test(prose)) {
+      score += weight;
+      categories++;
+    }
   }
-  // A link plus any scam signal is much more suspicious than either alone.
-  if (URL_RE.test(content) && score > 0) score += 2;
-  URL_RE.lastIndex = 0;
+
+  // A link plus scam wording is worse than either alone, but only when the
+  // wording came from the message itself and the link can actually carry a
+  // scam. Media hosts are excluded on both counts.
+  const risky = extractDomains(content).some(
+    (host) => !MEDIA_HOSTS.some((m) => domainMatches(host, m)),
+  );
+  if (risky && score > 0) score += 2;
+
+  // One keyword must never be enough on its own. "crypto" plus a link is a
+  // person sharing a news article; a real scam stacks giveaway wording, a
+  // dollar amount and an @everyone, and clears this easily.
+  if (categories < 2) return 0;
+
   return score;
 }
 

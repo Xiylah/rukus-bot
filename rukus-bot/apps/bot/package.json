@@ -7,6 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "deploy-commands": "tsx src/deploy-commands.ts",
+    "export-commands": "tsx src/export-commands.ts",
     "check-env": "tsx src/check-env.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"

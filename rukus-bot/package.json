@@ -13,6 +13,7 @@
     "bot:dev": "pnpm --filter @rukus/bot dev",
     "bot:start": "pnpm --filter @rukus/bot start",
     "bot:deploy-commands": "pnpm --filter @rukus/bot deploy-commands",
+    "bot:export-commands": "pnpm --filter @rukus/bot export-commands",
     "check-env": "pnpm --filter @rukus/bot check-env",
     "web:dev": "pnpm --filter @rukus/web dev",
     "web:build": "pnpm --filter @rukus/web build",
