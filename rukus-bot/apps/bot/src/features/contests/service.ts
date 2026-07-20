@@ -45,7 +45,10 @@ const MEDIA_HOSTS = [
   // images and albums
   "imgur.com", "i.imgur.com", "gyazo.com", "prnt.sc", "prntscr.com",
   "lightshot.cc", "postimg.cc", "ibb.co", "imgbb.com", "flickr.com",
-  "tenor.com", "giphy.com", "gfycat.com", "redgifs.com",
+  // Discord's gif picker serves Klipy (and Giphy) since the Tenor API shut
+  // down on 2026-06-30. Tenor stays for older messages that still link to it.
+  "klipy.com", "static.klipy.com", "tenor.com", "media.tenor.com",
+  "giphy.com", "media.giphy.com", "gfycat.com", "redgifs.com",
   // general file hosts people paste screenshots and clips from
   "cdn.discordapp.com", "media.discordapp.net", "drive.google.com",
   "dropbox.com", "onedrive.live.com", "1drv.ms",

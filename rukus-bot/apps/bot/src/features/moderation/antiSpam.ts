@@ -79,8 +79,15 @@ const URL_RE = /https?:\/\/([^\s/]+)/gi;
  * the keyword and hit the timeout threshold on its own.
  */
 const MEDIA_HOSTS = [
-  "tenor.com",
+  // Discord's own gif picker. Klipy is the current provider and Giphy is the
+  // other: Google shut the Tenor API down on 2026-06-30 and Discord moved off
+  // it. Tenor stays listed because years of old messages still link to it.
+  "klipy.com",
+  "static.klipy.com",
   "giphy.com",
+  "media.giphy.com",
+  "tenor.com",
+  "media.tenor.com",
   "gfycat.com",
   "imgur.com",
   "youtube.com",
