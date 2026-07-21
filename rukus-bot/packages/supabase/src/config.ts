@@ -21,6 +21,7 @@ import {
   type HighlightsConfig,
   type AfkConfig,
   type UtilityConfig,
+  type EmbedsConfig,
   type SocialAlertsConfig,
   type BirthdaysConfig,
   type InviteTrackerConfig,
@@ -203,6 +204,11 @@ export const getUtilityConfig = (guildId: string) =>
   readConfig<UtilityConfig>(guildId, "utility");
 export const setUtilityConfig = (guildId: string, config: unknown) =>
   writeConfig<UtilityConfig>(guildId, "utility", config);
+
+export const getEmbedsConfig = (guildId: string) =>
+  readConfig<EmbedsConfig>(guildId, "embeds");
+export const setEmbedsConfig = (guildId: string, config: unknown) =>
+  writeConfig<EmbedsConfig>(guildId, "embeds", config);
 
 export const getSocialAlertsConfig = (guildId: string) =>
   readConfig<SocialAlertsConfig>(guildId, "socialalerts");

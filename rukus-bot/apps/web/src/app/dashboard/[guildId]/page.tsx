@@ -16,6 +16,7 @@ import {
   getRemindersConfig,
   getHighlightsConfig,
   getUtilityConfig,
+  getEmbedsConfig,
   getSocialAlertsConfig,
   getBirthdaysConfig,
   getInviteTrackerConfig,
@@ -60,6 +61,7 @@ export default async function GuildOverview({
     reminders,
     highlights,
     utility,
+    embeds,
     social,
     birthdays,
     invites,
@@ -87,6 +89,7 @@ export default async function GuildOverview({
     getRemindersConfig(guildId),
     getHighlightsConfig(guildId),
     getUtilityConfig(guildId),
+    getEmbedsConfig(guildId),
     getSocialAlertsConfig(guildId),
     getBirthdaysConfig(guildId),
     getInviteTrackerConfig(guildId),
@@ -256,13 +259,22 @@ export default async function GuildOverview({
     // Utility, and Access lives under Admin in the sidebar.
     afk: { enabled: false, detail: "" },
     access: { enabled: false, detail: "" },
+    // Embeds is a builder, not a switch, so it reports a count via SLUG_STATE
+    // below rather than an on/off. It still needs a key here because FeatureKey
+    // is derived from the registered schemas.
+    embeds: { enabled: false, detail: "" },
   };
 
-  // Modules with no feature config of their own, keyed by slug. Neither is a
-  // switch: Cases is a view over what moderation wrote, Premium is billing.
+  // Modules with no feature config of their own, keyed by slug. None is a
+  // switch: Cases is a view over what moderation wrote, Premium is billing,
+  // and Embeds is staff posting on purpose.
   const SLUG_STATE: Record<string, ModuleState> = {
     cases: { enabled: true, detail: "Browse the moderation history" },
     premium: { enabled: false, detail: "Subscription and usage" },
+    embeds: {
+      enabled: embeds.embeds.length > 0,
+      detail: `${embeds.embeds.length} saved, ${embeds.embeds.filter((e) => e.messageId).length} live`,
+    },
   };
 
   // Feature-less modules are not modules you can count as "on".

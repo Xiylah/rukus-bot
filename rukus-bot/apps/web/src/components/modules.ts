@@ -295,6 +295,17 @@ export const MODULES: ModuleDef[] = [
     toggleable: true,
   },
   {
+    slug: "embeds",
+    feature: null,
+    icon: "📝",
+    name: "Embeds",
+    description: "Build and edit rules, info and announcement messages.",
+    category: "Utility",
+    // Not toggleable: an embed is posted by staff on purpose, so there is no
+    // background behaviour for a switch to turn off.
+    toggleable: false,
+  },
+  {
     slug: "utility",
     feature: "utility",
     icon: "🔧",

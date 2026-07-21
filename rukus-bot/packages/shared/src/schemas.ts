@@ -1169,6 +1169,123 @@ export const utilityConfigSchema = z.object({
 
 export type UtilityConfig = z.infer<typeof utilityConfigSchema>;
 
+// ---------------- Saved embeds ----------------
+
+/** One field in an embed's field grid. */
+export const embedFieldSchema = z.object({
+  name: z.string().min(1).max(256),
+  value: z.string().min(1).max(1024),
+  inline: z.boolean().default(false),
+});
+
+/**
+ * A saved, re-editable embed.
+ *
+ * Stored rather than fire-and-forget so the message can be UPDATED later: a
+ * rules or info post is written once and reworded for years, and re-posting it
+ * loses its reactions, its pin and its place in the channel. Keeping messageId
+ * lets the dashboard edit the original in place.
+ */
+export const savedEmbedSchema = z.object({
+  id: z.string().min(1),
+  /** Staff-facing name, shown only on the dashboard. */
+  name: z.string().min(1).max(100).default("Untitled embed"),
+  channelId: snowflake,
+  /**
+   * The live message, once posted. Null until the first publish, and reset to
+   * null if the message is found to be gone so the next publish reposts it.
+   */
+  messageId: snowflake,
+
+  /** Plain text above the embed. Usable on its own for a no-embed message. */
+  content: z.string().max(2000).default(""),
+
+  title: z.string().max(256).default(""),
+  titleUrl: z.string().max(500).default(""),
+  description: z.string().max(4000).default(""),
+  /** Hex without the "#", or "" for the bot's default. */
+  color: z.string().max(7).default(""),
+  authorName: z.string().max(256).default(""),
+  authorIconUrl: z.string().max(500).default(""),
+  imageUrl: z.string().max(500).default(""),
+  thumbnailUrl: z.string().max(500).default(""),
+  footerText: z.string().max(2048).default(""),
+  footerIconUrl: z.string().max(500).default(""),
+  /** Show the time the embed was last published. */
+  timestamp: z.boolean().default(false),
+  fields: z.array(embedFieldSchema).max(25).default([]),
+});
+
+export type SavedEmbed = z.infer<typeof savedEmbedSchema>;
+
+export const embedsConfigSchema = z.object({
+  embeds: z.array(savedEmbedSchema).max(50).default([]),
+});
+
+export type EmbedsConfig = z.infer<typeof embedsConfigSchema>;
+
+/**
+ * Turn a saved embed into a Discord message payload.
+ *
+ * Shared so the dashboard's publish and any future bot-side command produce a
+ * byte-identical message; an embed that changes shape depending on which side
+ * sent it is a bug waiting to be reported as "the edit broke my post".
+ */
+export function buildSavedEmbedPayload(embed: SavedEmbed): object {
+  const e: Record<string, unknown> = {};
+  if (embed.title) e.title = embed.title;
+  if (embed.titleUrl && embed.title) e.url = embed.titleUrl;
+  if (embed.description) e.description = embed.description;
+  if (embed.color) {
+    const parsed = Number.parseInt(embed.color.replace(/^#/, ""), 16);
+    if (Number.isFinite(parsed)) e.color = parsed;
+  }
+  if (embed.authorName) {
+    e.author = {
+      name: embed.authorName,
+      ...(embed.authorIconUrl ? { icon_url: embed.authorIconUrl } : {}),
+    };
+  }
+  if (embed.imageUrl) e.image = { url: embed.imageUrl };
+  if (embed.thumbnailUrl) e.thumbnail = { url: embed.thumbnailUrl };
+  if (embed.footerText) {
+    e.footer = {
+      text: embed.footerText,
+      ...(embed.footerIconUrl ? { icon_url: embed.footerIconUrl } : {}),
+    };
+  }
+  if (embed.timestamp) e.timestamp = new Date().toISOString();
+  if (embed.fields.length) {
+    e.fields = embed.fields.map((f) => ({
+      name: f.name,
+      value: f.value,
+      inline: f.inline,
+    }));
+  }
+
+  // An embed with nothing in it is rejected by Discord, so send content only.
+  const hasEmbed = Object.keys(e).length > 0;
+  return {
+    ...(embed.content ? { content: embed.content } : {}),
+    embeds: hasEmbed ? [e] : [],
+    // Never let a saved embed ping a role or @everyone: staff edit these
+    // repeatedly, and each edit would re-ping if mentions were allowed.
+    allowed_mentions: { parse: [] },
+  };
+}
+
+/** True when there is something to send: an empty message is not postable. */
+export function savedEmbedIsPostable(embed: SavedEmbed): boolean {
+  return Boolean(
+    embed.content ||
+      embed.title ||
+      embed.description ||
+      embed.imageUrl ||
+      embed.authorName ||
+      embed.fields.length,
+  );
+}
+
 // ---------------- Social alerts ----------------
 
 /** Where a feed comes from. Each type reads `source` differently. */
@@ -1543,6 +1660,7 @@ export const FEATURE_SCHEMAS = {
   highlights: highlightsConfigSchema,
   afk: afkConfigSchema,
   utility: utilityConfigSchema,
+  embeds: embedsConfigSchema,
   socialalerts: socialAlertsConfigSchema,
   birthdays: birthdaysConfigSchema,
   invitetracker: inviteTrackerConfigSchema,
