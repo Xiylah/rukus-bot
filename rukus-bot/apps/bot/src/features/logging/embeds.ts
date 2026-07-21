@@ -57,11 +57,32 @@ export function attachmentList(
   return clamp(lines.join("\n"));
 }
 
-/** "@user (tag)" plus a raw id line, the form moderators actually search by. */
+/**
+ * "@user (tag)", with no id line.
+ *
+ * The id is NOT repeated here: base() already puts it in the footer, and a log
+ * entry that states the same id twice reads as three times the information it
+ * carries. Moderators still search by id, and the footer is where it stays.
+ */
 export function userLine(actor: Actor | null | undefined): string {
   if (!actor) return "Unknown user";
   const u = asUser(actor);
-  return `<@${u.id}> (${u.tag ?? "unknown tag"})\n\`${u.id}\``;
+  return u.tag ? `<@${u.id}> (${u.tag})` : `<@${u.id}>`;
+}
+
+/**
+ * Role ids as Discord role mentions.
+ *
+ * Discord renders these in the role's own colour, which is the single biggest
+ * reason a Carl-style log scans faster than a code block: colour carries the
+ * "which role" answer before you have finished reading the name. A diff block
+ * cannot do that, and strips the role's identity down to plain grey text.
+ *
+ * Role mentions in an embed do NOT ping anyone, so this is safe even for a
+ * mentionable role.
+ */
+export function roleMentions(ids: string[]): string {
+  return clamp(ids.map((id) => `<@&${id}>`).join(" "));
 }
 
 /** Base embed with the timestamp and author block every log entry carries. */
@@ -74,9 +95,29 @@ export function base(
   if (actor) {
     const u = asUser(actor);
     embed.setAuthor({ name: u.tag ?? u.id, iconURL: u.displayAvatarURL() });
-    embed.setFooter({ text: `User ID: ${u.id}` });
+    // Just the number. "User ID: " spends a third of the footer restating what
+    // an 18-digit snowflake next to an avatar already obviously is.
+    embed.setFooter({ text: u.id });
   }
   return embed;
+}
+
+/**
+ * A compact log entry: one line of description, no field grid.
+ *
+ * Fields are a table, and a table earns its cost when there are several values
+ * to line up. Most log entries have exactly one fact ("this role was added"),
+ * and rendering that as a two-column grid with headers is what makes a log wall
+ * feel like a settings dump rather than a feed. Entries with genuinely several
+ * values (a message edit, a before/after) still use fields.
+ */
+export function compact(
+  title: string,
+  color: number,
+  actor: Actor | null | undefined,
+  description: string,
+): EmbedBuilder {
+  return base(title, color, actor).setDescription(clamp(description, 4096));
 }
 
 // ---------------- Messages ----------------

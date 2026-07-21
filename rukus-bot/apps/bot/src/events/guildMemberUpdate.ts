@@ -7,13 +7,12 @@ import {
 import type { EventHandler } from "../lib/types.js";
 import {
   LOG_COLORS,
-  base,
-  changeLine,
+  compact,
   configFor,
-  diffBlock,
   emit,
   executorText,
   findExecutor,
+  roleMentions,
   shouldLog,
   userLine,
 } from "../features/logging/index.js";
@@ -46,16 +45,39 @@ const handler: EventHandler<Events.GuildMemberUpdate> = {
           AuditLogEvent.MemberRoleUpdate,
           after.id,
         );
-        const embed = base("🎭 Roles changed", LOG_COLORS.update, after).addFields(
-          { name: "Member", value: userLine(after), inline: true },
-          { name: "Changed by", value: executorText(executor), inline: true },
-          {
-            name: "Roles",
-            value: diffBlock(
-              added.map((r) => r.name),
-              removed.map((r) => r.name),
-            ),
-          },
+
+        // Title says what happened so the entry is readable from the title
+        // alone; "Roles changed" made every add and every remove look alike.
+        const title =
+          added.size && removed.size
+            ? "🎭 Roles updated"
+            : added.size
+              ? added.size > 1
+                ? "🎭 Roles added"
+                : "🎭 Role added"
+              : removed.size > 1
+                ? "🎭 Roles removed"
+                : "🎭 Role removed";
+
+        const lines = [userLine(after)];
+        if (added.size) {
+          lines.push(`**+** ${roleMentions(added.map((r) => r.id))}`);
+        }
+        if (removed.size) {
+          lines.push(`**−** ${roleMentions(removed.map((r) => r.id))}`);
+        }
+        // Only name the actor when we actually know it. "Unknown (no audit log
+        // access)" is a whole line telling the reader nothing, and it is the
+        // normal case for self-serve reaction roles.
+        if (executor && executor.id !== after.id) {
+          lines.push(`-# by ${executorText(executor)}`);
+        }
+
+        const embed = compact(
+          title,
+          LOG_COLORS.update,
+          after,
+          lines.join("\n"),
         );
         await emit(after.guild, "memberRoleChange", embed);
       }
@@ -71,10 +93,18 @@ const handler: EventHandler<Events.GuildMemberUpdate> = {
         AuditLogEvent.MemberUpdate,
         after.id,
       );
-      const embed = base("📝 Nickname changed", LOG_COLORS.update, after).addFields(
-        { name: "Member", value: userLine(after), inline: true },
-        { name: "Changed by", value: executorText(executor), inline: true },
-        { name: "Nickname", value: changeLine(before.nickname, after.nickname) },
+      const lines = [
+        userLine(after),
+        `${before.nickname ?? "*none*"} → **${after.nickname ?? "*none*"}**`,
+      ];
+      if (executor && executor.id !== after.id) {
+        lines.push(`-# by ${executorText(executor)}`);
+      }
+      const embed = compact(
+        "📝 Nickname changed",
+        LOG_COLORS.update,
+        after,
+        lines.join("\n"),
       );
       await emit(after.guild, "memberNickChange", embed);
     }
@@ -84,9 +114,12 @@ const handler: EventHandler<Events.GuildMemberUpdate> = {
       before.avatar !== after.avatar &&
       shouldLog(config, "memberAvatarChange", scope)
     ) {
-      const embed = base("🖼️ Server avatar changed", LOG_COLORS.update, after)
-        .addFields({ name: "Member", value: userLine(after), inline: true })
-        .setThumbnail(after.displayAvatarURL());
+      const embed = compact(
+        "🖼️ Server avatar changed",
+        LOG_COLORS.update,
+        after,
+        userLine(after),
+      ).setThumbnail(after.displayAvatarURL({ size: 256 }));
       await emit(after.guild, "memberAvatarChange", embed);
     }
   },
