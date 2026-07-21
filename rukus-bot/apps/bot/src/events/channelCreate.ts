@@ -7,10 +7,11 @@ import {
 import type { EventHandler } from "../lib/types.js";
 import {
   LOG_COLORS,
-  base,
+  byLine,
+  compact,
   configFor,
   emit,
-  executorText,
+  executorOrNull,
   findExecutor,
   shouldLog,
 } from "../features/logging/index.js";
@@ -31,10 +32,15 @@ const handler: EventHandler<Events.ChannelCreate> = {
     await emit(
       channel.guild,
       "channelCreate",
-      base("📁 Channel created", LOG_COLORS.create).addFields(
-        { name: "Channel", value: `<#${channel.id}> (\`${channel.name}\`)`, inline: true },
-        { name: "Type", value: ChannelType[channel.type] ?? "Unknown", inline: true },
-        { name: "Created by", value: executorText(executor), inline: true },
+      compact(
+        "📁 Channel created",
+        LOG_COLORS.create,
+        null,
+        [
+          `<#${channel.id}> (\`${channel.name}\`)`,
+          `-# ${ChannelType[channel.type] ?? "Unknown"}`,
+          ...byLine(executorOrNull(executor)),
+        ].join("\n"),
       ),
     );
   },

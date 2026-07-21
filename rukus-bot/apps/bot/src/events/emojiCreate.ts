@@ -2,10 +2,11 @@ import { AuditLogEvent, Events, type GuildEmoji } from "discord.js";
 import type { EventHandler } from "../lib/types.js";
 import {
   LOG_COLORS,
-  base,
+  byLine,
+  compact,
   configFor,
   emit,
-  executorText,
+  executorOrNull,
   findExecutor,
   shouldLog,
 } from "../features/logging/index.js";
@@ -28,11 +29,15 @@ const handler: EventHandler<Events.GuildEmojiCreate> = {
       emoji.id,
     );
 
-    const embed = base("😀 Emoji added", LOG_COLORS.create).addFields(
-      { name: "Emoji", value: `${emoji} \`:${emoji.name}:\``, inline: true },
-      { name: "Added by", value: executorText(executor), inline: true },
-    );
-    embed.setThumbnail(emoji.imageURL());
+    const embed = compact(
+      "😀 Emoji added",
+      LOG_COLORS.create,
+      null,
+      [
+        `${emoji} \`:${emoji.name}:\``,
+        ...byLine(executorOrNull(executor)),
+      ].join("\n"),
+    ).setThumbnail(emoji.imageURL());
 
     await emit(emoji.guild, "emojiUpdate", embed);
   },

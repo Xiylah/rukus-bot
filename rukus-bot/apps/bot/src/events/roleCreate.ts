@@ -2,10 +2,11 @@ import { AuditLogEvent, Events, type Role } from "discord.js";
 import type { EventHandler } from "../lib/types.js";
 import {
   LOG_COLORS,
-  base,
+  byLine,
+  compact,
   configFor,
   emit,
-  executorText,
+  executorOrNull,
   findExecutor,
   shouldLog,
 } from "../features/logging/index.js";
@@ -22,9 +23,11 @@ const handler: EventHandler<Events.GuildRoleCreate> = {
     await emit(
       role.guild,
       "roleCreate",
-      base("🎭 Role created", LOG_COLORS.create).addFields(
-        { name: "Role", value: `<@&${role.id}> (\`${role.name}\`)`, inline: true },
-        { name: "Created by", value: executorText(executor), inline: true },
+      compact(
+        "🎭 Role created",
+        LOG_COLORS.create,
+        null,
+        [`<@&${role.id}>`, ...byLine(executorOrNull(executor))].join("\n"),
       ),
     );
   },

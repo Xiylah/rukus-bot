@@ -8,10 +8,11 @@ import {
 import type { EventHandler } from "../lib/types.js";
 import {
   LOG_COLORS,
-  base,
+  byLine,
+  compact,
   configFor,
   emit,
-  executorText,
+  executorOrNull,
   findExecutor,
   shouldLog,
 } from "../features/logging/index.js";
@@ -36,10 +37,15 @@ const handler: EventHandler<Events.ChannelDelete> = {
     await emit(
       channel.guild,
       "channelDelete",
-      base("🗑️ Channel deleted", LOG_COLORS.destroy).addFields(
-        { name: "Channel", value: `\`#${channel.name}\`\n\`${channel.id}\``, inline: true },
-        { name: "Type", value: ChannelType[channel.type] ?? "Unknown", inline: true },
-        { name: "Deleted by", value: executorText(executor), inline: true },
+      compact(
+        "🗑️ Channel deleted",
+        LOG_COLORS.destroy,
+        null,
+        [
+          `\`#${channel.name}\``,
+          `-# ${ChannelType[channel.type] ?? "Unknown"} · \`${channel.id}\``,
+          ...byLine(executorOrNull(executor)),
+        ].join("\n"),
       ),
     );
   },

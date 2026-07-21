@@ -2,7 +2,7 @@ import { Events, type VoiceState } from "discord.js";
 import type { EventHandler } from "../lib/types.js";
 import {
   LOG_COLORS,
-  base,
+  compact,
   configFor,
   emit,
   shouldLog,
@@ -40,9 +40,11 @@ const handler: EventHandler<Events.VoiceStateUpdate> = {
       await emit(
         guild,
         "voiceJoin",
-        base("🔊 Joined voice", LOG_COLORS.create, after.member).addFields(
-          { name: "Member", value: userLine(after.member), inline: true },
-          { name: "Channel", value: `<#${after.channelId}>`, inline: true },
+        compact(
+          "🔊 Joined voice",
+          LOG_COLORS.create,
+          after.member,
+          `${userLine(after.member)} joined <#${after.channelId}>`,
         ),
       );
       return;
@@ -53,9 +55,11 @@ const handler: EventHandler<Events.VoiceStateUpdate> = {
       await emit(
         guild,
         "voiceLeave",
-        base("🔇 Left voice", LOG_COLORS.destroy, before.member).addFields(
-          { name: "Member", value: userLine(before.member), inline: true },
-          { name: "Channel", value: `<#${before.channelId}>`, inline: true },
+        compact(
+          "🔇 Left voice",
+          LOG_COLORS.destroy,
+          before.member,
+          `${userLine(before.member)} left <#${before.channelId}>`,
         ),
       );
       return;
@@ -66,10 +70,11 @@ const handler: EventHandler<Events.VoiceStateUpdate> = {
       await emit(
         guild,
         "voiceMove",
-        base("↔️ Moved voice channel", LOG_COLORS.update, after.member).addFields(
-          { name: "Member", value: userLine(after.member), inline: true },
-          { name: "From", value: `<#${before.channelId}>`, inline: true },
-          { name: "To", value: `<#${after.channelId}>`, inline: true },
+        compact(
+          "↔️ Moved voice channel",
+          LOG_COLORS.update,
+          after.member,
+          `${userLine(after.member)}\n<#${before.channelId}> → <#${after.channelId}>`,
         ),
       );
     }

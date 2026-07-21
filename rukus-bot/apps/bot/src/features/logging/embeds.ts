@@ -103,6 +103,18 @@ export function base(
 }
 
 /**
+ * A subtle "by @mod" attribution line, or nothing when we do not know.
+ *
+ * Nothing, deliberately: "Unknown (no audit log access)" is a whole line that
+ * tells the reader less than silence does, and it is the normal state for
+ * anything self-serve or where the bot lacks ViewAuditLog. Callers append the
+ * result and it disappears cleanly when empty.
+ */
+export function byLine(text: string | null, verb = "by"): string[] {
+  return text ? [`-# ${verb} ${text}`] : [];
+}
+
+/**
  * A compact log entry: one line of description, no field grid.
  *
  * Fields are a table, and a table earns its cost when there are several values
@@ -126,12 +138,18 @@ export function messageDeleteEmbed(
   message: Message | PartialMessage,
   executor: string | null,
 ): EmbedBuilder {
-  const embed = base("🗑️ Message deleted", LOG_COLORS.destroy, message.author)
-    .addFields(
-      { name: "Author", value: userLine(message.author), inline: true },
-      { name: "Channel", value: `<#${message.channelId}>`, inline: true },
-      { name: "Content", value: bodyOf(message) },
-    );
+  // Who and where read as a sentence rather than a two-column table: a delete
+  // has one fact worth a heading (the content), and burying it under a grid of
+  // labels is what made these entries several times the size of the message.
+  const embed = compact(
+    "🗑️ Message deleted",
+    LOG_COLORS.destroy,
+    message.author,
+    [
+      `${userLine(message.author)} in <#${message.channelId}>`,
+      ...byLine(executor, "deleted by"),
+    ].join("\n"),
+  ).addFields({ name: "Content", value: bodyOf(message) });
 
   const files = attachmentList(message.attachments);
   if (files) {
@@ -139,7 +157,16 @@ export function messageDeleteEmbed(
     // moderator what was posted, which is usually the question being asked.
     embed.addFields({ name: "Attachments", value: files });
   }
-  if (executor) embed.addFields({ name: "Deleted by", value: executor, inline: true });
+
+  // Message id in the footer rather than a field: it is a lookup key, not
+  // something anyone reads, and base() already put the author id there.
+  if (message.id) {
+    embed.setFooter({
+      text: message.author
+        ? `User ${message.author.id} · Message ${message.id}`
+        : `Message ${message.id}`,
+    });
+  }
 
   return embed;
 }
@@ -148,17 +175,30 @@ export function messageEditEmbed(
   before: Message | PartialMessage,
   after: Message | PartialMessage,
 ): EmbedBuilder {
-  return base("✏️ Message edited", LOG_COLORS.update, after.author).addFields(
-    { name: "Author", value: userLine(after.author), inline: true },
-    { name: "Channel", value: `<#${after.channelId}>`, inline: true },
-    {
-      name: "Jump",
-      value: after.url ? `[Go to message](${after.url})` : "Unavailable",
-      inline: true,
-    },
+  // Before/after keeps its fields: two bodies to compare is exactly what a
+  // field grid is for. The who/where/jump row above them is not.
+  const embed = compact(
+    "✏️ Message edited",
+    LOG_COLORS.update,
+    after.author,
+    [
+      `${userLine(after.author)} in <#${after.channelId}>`,
+      ...(after.url ? [`-# [jump to message](${after.url})`] : []),
+    ].join("\n"),
+  ).addFields(
     { name: "Before", value: bodyOf(before) },
     { name: "After", value: bodyOf(after) },
   );
+
+  if (after.id) {
+    embed.setFooter({
+      text: after.author
+        ? `User ${after.author.id} · Message ${after.id}`
+        : `Message ${after.id}`,
+    });
+  }
+
+  return embed;
 }
 
 export function bulkDeleteEmbed(

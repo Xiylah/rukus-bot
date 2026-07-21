@@ -2,10 +2,11 @@ import { AuditLogEvent, Events, type GuildBan } from "discord.js";
 import type { EventHandler } from "../lib/types.js";
 import {
   LOG_COLORS,
-  base,
+  byLine,
+  compact,
   configFor,
   emit,
-  executorText,
+  executorOrNull,
   findExecutor,
   shouldLog,
   userLine,
@@ -24,9 +25,11 @@ const handler: EventHandler<Events.GuildBanRemove> = {
       ban.user.id,
     );
 
-    const embed = base("🕊️ Member unbanned", LOG_COLORS.create, ban.user).addFields(
-      { name: "Member", value: userLine(ban.user), inline: true },
-      { name: "Unbanned by", value: executorText(executor), inline: true },
+    const embed = compact(
+      "🕊️ Member unbanned",
+      LOG_COLORS.create,
+      ban.user,
+      [userLine(ban.user), ...byLine(executorOrNull(executor))].join("\n"),
     );
 
     await emit(ban.guild, "memberUnban", embed);

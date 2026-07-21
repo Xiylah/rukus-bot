@@ -2,10 +2,11 @@ import { AuditLogEvent, Events, type GuildBan } from "discord.js";
 import type { EventHandler } from "../lib/types.js";
 import {
   LOG_COLORS,
-  base,
+  byLine,
+  compact,
   configFor,
   emit,
-  executorText,
+  executorOrNull,
   findExecutor,
   shouldLog,
   userLine,
@@ -25,10 +26,15 @@ const handler: EventHandler<Events.GuildBanAdd> = {
     const reason =
       ban.reason ?? (await ban.fetch().then((b) => b.reason).catch(() => null));
 
-    const embed = base("🔨 Member banned", LOG_COLORS.destroy, ban.user).addFields(
-      { name: "Member", value: userLine(ban.user), inline: true },
-      { name: "Banned by", value: executorText(executor), inline: true },
-      { name: "Reason", value: reason || "No reason provided" },
+    const embed = compact(
+      "🔨 Member banned",
+      LOG_COLORS.destroy,
+      ban.user,
+      [
+        userLine(ban.user),
+        `**Reason:** ${reason || "*none given*"}`,
+        ...byLine(executorOrNull(executor)),
+      ].join("\n"),
     );
 
     await emit(ban.guild, "memberBan", embed);

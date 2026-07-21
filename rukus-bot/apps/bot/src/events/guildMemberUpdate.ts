@@ -114,11 +114,23 @@ const handler: EventHandler<Events.GuildMemberUpdate> = {
       before.avatar !== after.avatar &&
       shouldLog(config, "memberAvatarChange", scope)
     ) {
+      // Link the old one rather than only showing the new: an embed has a
+      // single thumbnail, and "it changed to this" is not much use to a mod
+      // without "from this". before.avatar is the hash, so the URL is built by
+      // hand; a null hash means they had the account default, which has no
+      // per-guild URL worth linking.
+      const oldUrl = before.avatar
+        ? `https://cdn.discordapp.com/guilds/${after.guild.id}/users/${after.id}/avatars/${before.avatar}.png?size=256`
+        : null;
+
       const embed = compact(
         "🖼️ Server avatar changed",
         LOG_COLORS.update,
         after,
-        userLine(after),
+        [
+          userLine(after),
+          ...(oldUrl ? [`-# [previous avatar](${oldUrl})`] : []),
+        ].join("\n"),
       ).setThumbnail(after.displayAvatarURL({ size: 256 }));
       await emit(after.guild, "memberAvatarChange", embed);
     }

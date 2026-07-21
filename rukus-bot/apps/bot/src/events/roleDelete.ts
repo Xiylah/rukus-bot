@@ -2,10 +2,11 @@ import { AuditLogEvent, Events, type Role } from "discord.js";
 import type { EventHandler } from "../lib/types.js";
 import {
   LOG_COLORS,
-  base,
+  byLine,
+  compact,
   configFor,
   emit,
-  executorText,
+  executorOrNull,
   findExecutor,
   shouldLog,
 } from "../features/logging/index.js";
@@ -22,10 +23,15 @@ const handler: EventHandler<Events.GuildRoleDelete> = {
     await emit(
       role.guild,
       "roleDelete",
-      base("🗑️ Role deleted", LOG_COLORS.destroy).addFields(
-        { name: "Role", value: `\`@${role.name}\`\n\`${role.id}\``, inline: true },
-        { name: "Members who had it", value: String(role.members.size), inline: true },
-        { name: "Deleted by", value: executorText(executor), inline: true },
+      compact(
+        "🗑️ Role deleted",
+        LOG_COLORS.destroy,
+        null,
+        [
+          `\`@${role.name}\``,
+          `-# ${role.members.size} member(s) had it · \`${role.id}\``,
+          ...byLine(executorOrNull(executor)),
+        ].join("\n"),
       ),
     );
   },

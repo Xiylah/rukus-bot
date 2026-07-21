@@ -206,4 +206,16 @@ export function executorText(user: LogUser | null): string {
   return user.tag ? `<@${user.id}> (${user.tag})` : `<@${user.id}>`;
 }
 
+/**
+ * Like executorText, but null when unknown rather than a fallback string.
+ *
+ * Compact entries append attribution as an optional trailing line, so they need
+ * to distinguish "we know who" from "we do not" and omit the line entirely.
+ * Field-based entries keep executorText, where a named field with nothing in it
+ * would look broken.
+ */
+export function executorOrNull(user: LogUser | null): string | null {
+  return user ? executorText(user) : null;
+}
+
 export { AuditLogEvent };
