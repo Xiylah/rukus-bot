@@ -97,6 +97,46 @@ export async function getPastContests(
   return (data ?? []).map((r) => toContest(r as RawContest));
 }
 
+/**
+ * Delete a finished contest and its entries.
+ *
+ * Only ended contests: deleting a running one would leave members posting into
+ * a contest the bot has forgotten, with their entries silently going nowhere.
+ * Ending it first is the deliberate step that makes the delete safe.
+ *
+ * Entries go first. If the contest row went first and the entry delete then
+ * failed, the entries would be orphaned with no contest left to find them by.
+ */
+export async function deletePastContest(
+  guildId: string,
+  contestId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const sb = getSupabase();
+
+  const entries = await sb
+    .from("ContestEntry")
+    .delete()
+    .eq("guildId", guildId)
+    .eq("contestId", contestId);
+  if (entries.error) return { ok: false, error: entries.error.message };
+
+  // eq("ended", true) is the guard, not a filter: a delete that races a still
+  // running contest matches nothing rather than removing it.
+  const { data, error } = await sb
+    .from("Contest")
+    .delete()
+    .eq("guildId", guildId)
+    .eq("id", contestId)
+    .eq("ended", true)
+    .select("id");
+
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) {
+    return { ok: false, error: "That contest is still running, or is already gone." };
+  }
+  return { ok: true };
+}
+
 /** Every entry of one contest, most-voted first. */
 export async function getContestEntries(
   guildId: string,

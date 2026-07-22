@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { disqualifyEntry } from "./actions";
+import { disqualifyEntry, removePastContest } from "./actions";
 
 /**
  * The running contest's entries as a grid of thumbnails.
@@ -115,8 +115,30 @@ export function EntryGallery({
   pastContests: PastContest[];
 }) {
   const [entries, setEntries] = useState(initialEntries);
+  const [past, setPast] = useState(pastContests);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  function onDeletePast(contest: PastContest) {
+    if (
+      !confirm(
+        `Delete "${contest.title}" from the results history?\n\n` +
+          "Its entries are removed too. The announcement stays in Discord.",
+      )
+    ) {
+      return;
+    }
+    setMsg(null);
+    startTransition(async () => {
+      const res = await removePastContest(guildId, contest.id);
+      if (res.ok) {
+        setPast((list) => list.filter((c) => c.id !== contest.id));
+        setMsg({ ok: true, text: `Deleted "${contest.title}".` });
+      } else {
+        setMsg({ ok: false, text: res.error });
+      }
+    });
+  }
 
   function onDisqualify(entry: GalleryEntry) {
     if (
@@ -192,11 +214,11 @@ export function EntryGallery({
         )}
       </div>
 
-      {pastContests.length > 0 && (
+      {past.length > 0 && (
         <div className="card space-y-3">
           <div className="font-medium text-white">Past contests</div>
           <div className="space-y-2">
-            {pastContests.map((c) => (
+            {past.map((c) => (
               <div
                 key={c.id}
                 className="flex flex-wrap items-baseline justify-between gap-2 rounded-md border border-edge bg-panel px-3 py-2"
@@ -207,14 +229,24 @@ export function EntryGallery({
                     Ended {new Date(c.endsAt).toLocaleDateString()}
                   </div>
                 </div>
-                <div className="text-xs text-zinc-400">
-                  {c.winners.length > 0
-                    ? c.winners.map((w, i) => (
-                        <span key={w.userId} className="ml-1">
-                          {["🥇", "🥈", "🥉"][i] ?? `#${i + 1}`} {w.userName}
-                        </span>
-                      ))
-                    : "No winners"}
+                <div className="flex items-center gap-3">
+                  <div className="text-xs text-zinc-400">
+                    {c.winners.length > 0
+                      ? c.winners.map((w, i) => (
+                          <span key={w.userId} className="ml-1">
+                            {["🥇", "🥈", "🥉"][i] ?? `#${i + 1}`} {w.userName}
+                          </span>
+                        ))
+                      : "No winners"}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-ghost flex-none text-xs text-red-400"
+                    disabled={pending}
+                    onClick={() => onDeletePast(c)}
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}

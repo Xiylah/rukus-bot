@@ -1,7 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { setContestsConfig, deleteContestEntry } from "@rukus/supabase";
+import {
+  setContestsConfig,
+  deleteContestEntry,
+  deletePastContest,
+} from "@rukus/supabase";
 import { contestsConfigSchema } from "@rukus/shared";
 import { requireGuildAccess } from "@/lib/guard";
 
@@ -46,6 +50,26 @@ export async function disqualifyEntry(
   const result = await deleteContestEntry(guildId, entryId);
   if (!result.ok) {
     return { ok: false, error: `Could not disqualify: ${result.error}` };
+  }
+  revalidatePath(`/dashboard/${guildId}/contests`);
+  return { ok: true };
+}
+
+/**
+ * Remove a finished contest from the results history, along with its entries.
+ *
+ * The announcement message in Discord is left alone: it is part of the channel's
+ * history and members may have replied to it, so taking it down is a separate
+ * decision from tidying the dashboard.
+ */
+export async function removePastContest(
+  guildId: string,
+  contestId: string,
+): Promise<ActionResult> {
+  await requireGuildAccess(guildId);
+  const result = await deletePastContest(guildId, contestId);
+  if (!result.ok) {
+    return { ok: false, error: `Could not delete: ${result.error}` };
   }
   revalidatePath(`/dashboard/${guildId}/contests`);
   return { ok: true };

@@ -213,10 +213,13 @@ const command: Command = {
 
     // ---- start ----
     if (sub === "start") {
-      const durationMs = parseDuration(
+      // SECONDS, not ms: the shared parseDuration returns seconds, unlike the
+      // giveaway-local one of the same name that returns milliseconds. Treating
+      // this as ms made "2h" end the contest 7.2 seconds later.
+      const durationSec = parseDuration(
         interaction.options.getString("duration", true),
       );
-      if (durationMs === null) {
+      if (durationSec === null) {
         await interaction.reply({
           content:
             "I couldn't read that duration. Use something like `2h`, `3d`, or `1w`.",
@@ -257,7 +260,7 @@ const command: Command = {
       const description = interaction.options.getString("description") ?? "";
       const winnerCount =
         interaction.options.getInteger("winners") ?? config.defaultWinnerCount;
-      const endsAt = new Date(Date.now() + durationMs);
+      const endsAt = new Date(Date.now() + durationSec * 1000);
 
       await interaction.deferReply(ephemeral);
 
@@ -356,7 +359,7 @@ const command: Command = {
       await interaction.editReply({
         content:
           `Started **${title}** in ${channelIds.map((id) => `<#${id}>`).join(", ")}, ` +
-          `ending ${formatDuration(Math.round(durationMs / 1000))} from now. Top ${winnerCount} win.` +
+          `ending ${formatDuration(durationSec)} from now. Top ${winnerCount} win.` +
           (failed.length
             ? `\nI couldn't post the announcement in ${failed
                 .map((id) => `<#${id}>`)
