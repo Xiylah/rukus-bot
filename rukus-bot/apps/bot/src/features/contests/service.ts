@@ -379,6 +379,78 @@ export async function countEntries(contestId: string): Promise<number> {
 }
 
 /**
+ * Remove the entry for a deleted message, if one exists.
+ *
+ * Called when a message is deleted anywhere in the guild, so the overwhelmingly
+ * common case is a message that was never a contest entry: this must be one
+ * cheap indexed lookup that finds nothing and returns, not real work.
+ *
+ * Only entries of a STILL-RUNNING contest are removed. Once a contest has
+ * ended its winnerIds are fixed on the row and the entry list is the historical
+ * record of who took part; deleting a post afterwards must not quietly rewrite
+ * who was in it. The join to Contest enforces that in one statement, so there
+ * is no read-then-write race with the sweeper ending the contest.
+ *
+ * Returns the deleted entry's contest title when something was removed, so the
+ * caller can log it; null otherwise.
+ */
+export async function removeEntryForMessage(
+  guildId: string,
+  messageId: string,
+): Promise<string | null> {
+  try {
+    const entry = await prisma.contestEntry.findFirst({
+      where: {
+        guildId,
+        messageId,
+        contest: { ended: false, endsAt: { gt: new Date() } },
+      },
+      select: { id: true, contest: { select: { title: true } } },
+    });
+    if (!entry) return null;
+
+    // Delete by primary key: the row we just found. deleteMany, not delete, so
+    // a message deleted twice in quick succession (edit-then-delete races) is a
+    // no-op the second time rather than a throw on a missing row.
+    await prisma.contestEntry.deleteMany({ where: { id: entry.id } });
+    return entry.contest?.title ?? "a contest";
+  } catch {
+    // A message delete must never be blocked by a contest bookkeeping error.
+    return null;
+  }
+}
+
+/**
+ * Remove entries for a batch of deleted messages (a channel purge).
+ *
+ * Same running-contest-only rule as removeEntryForMessage, done in one query
+ * over the whole batch. Returns how many entries were removed, for logging.
+ */
+export async function removeEntriesForMessages(
+  guildId: string,
+  messageIds: string[],
+): Promise<number> {
+  if (messageIds.length === 0) return 0;
+  try {
+    const entries = await prisma.contestEntry.findMany({
+      where: {
+        guildId,
+        messageId: { in: messageIds },
+        contest: { ended: false, endsAt: { gt: new Date() } },
+      },
+      select: { id: true },
+    });
+    if (entries.length === 0) return 0;
+    const result = await prisma.contestEntry.deleteMany({
+      where: { id: { in: entries.map((e) => e.id) } },
+    });
+    return result.count;
+  } catch {
+    return 0;
+  }
+}
+
+/**
  * Abandon a contest: mark it ended with no winners and announce nothing.
  *
  * The entries are left in the database rather than deleted, so a host who

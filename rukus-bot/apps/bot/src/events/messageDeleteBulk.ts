@@ -16,6 +16,8 @@ import {
   findExecutor,
   shouldLog,
 } from "../features/logging/index.js";
+import { removeEntriesForMessages } from "../features/contests/service.js";
+import { log } from "../lib/logger.js";
 
 const handler: EventHandler<Events.MessageBulkDelete> = {
   name: Events.MessageBulkDelete,
@@ -25,6 +27,13 @@ const handler: EventHandler<Events.MessageBulkDelete> = {
   ) => {
     const guild = channel.guild;
     if (!guild) return;
+
+    // Drop any contest entries caught in the purge, whether or not this guild
+    // logs bulk deletes.
+    const removed = await removeEntriesForMessages(guild.id, [...messages.keys()]);
+    if (removed > 0) {
+      log.info(`Contest: removed ${removed} entr(y/ies) caught in a bulk delete.`);
+    }
 
     const config = await configFor(guild);
     if (!config) return;
