@@ -80,6 +80,30 @@ export async function getRunningContest(
   return toContest(data[0] as RawContest);
 }
 
+/**
+ * Every contest currently running in this guild, newest first.
+ *
+ * A guild can run many at once, one per forum or channel, so the dashboard has
+ * to show all of them; the singular getRunningContest above only ever returned
+ * the newest, which hid every other live contest and all of its entries.
+ */
+export async function getRunningContests(
+  guildId: string,
+  limit = 50,
+): Promise<ContestRow[]> {
+  const { data, error } = await getSupabase()
+    .from("Contest")
+    .select(CONTEST_COLUMNS)
+    .eq("guildId", guildId)
+    .eq("ended", false)
+    .gt("endsAt", new Date().toISOString())
+    .order("createdAt", { ascending: false })
+    .limit(limit);
+
+  if (error) return [];
+  return (data ?? []).map((r) => toContest(r as RawContest));
+}
+
 /** Finished contests, newest first, for the results history. */
 export async function getPastContests(
   guildId: string,

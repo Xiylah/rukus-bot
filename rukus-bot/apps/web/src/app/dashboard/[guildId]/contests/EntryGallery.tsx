@@ -19,6 +19,13 @@ export interface GalleryEntry {
   messageLink: string;
 }
 
+export interface RunningContest {
+  id: string;
+  title: string;
+  endsAt: string;
+  entries: GalleryEntry[];
+}
+
 export interface PastContest {
   id: string;
   title: string;
@@ -103,21 +110,19 @@ function EntryCard({
 
 export function EntryGallery({
   guildId,
-  contestTitle,
-  contestEndsAt,
-  initialEntries,
+  runningContests,
   pastContests,
 }: {
   guildId: string;
-  contestTitle: string | null;
-  contestEndsAt: string | null;
-  initialEntries: GalleryEntry[];
+  runningContests: RunningContest[];
   pastContests: PastContest[];
 }) {
-  const [entries, setEntries] = useState(initialEntries);
+  const [running, setRunning] = useState(runningContests);
   const [past, setPast] = useState(pastContests);
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const totalEntries = running.reduce((n, c) => n + c.entries.length, 0);
 
   function onDeletePast(contest: PastContest) {
     if (
@@ -154,7 +159,12 @@ export function EntryGallery({
       if (res.ok) {
         // Drop it locally too: revalidatePath refreshes the server data, but the
         // card should disappear the instant they click, not a round-trip later.
-        setEntries((list) => list.filter((e) => e.id !== entry.id));
+        setRunning((list) =>
+          list.map((c) => ({
+            ...c,
+            entries: c.entries.filter((e) => e.id !== entry.id),
+          })),
+        );
         setMsg({ ok: true, text: `Disqualified ${entry.userName}'s entry.` });
       } else {
         setMsg({ ok: false, text: res.error });
@@ -164,55 +174,68 @@ export function EntryGallery({
 
   return (
     <div className="space-y-5">
-      <div className="card space-y-4">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <div className="font-medium text-white">
-            {contestTitle ? `Running: ${contestTitle}` : "Entries"}
-          </div>
-          {contestEndsAt && (
-            <span className="text-xs text-zinc-400">
-              Ends {new Date(contestEndsAt).toLocaleString()}
-            </span>
-          )}
-        </div>
-
-        {!contestTitle ? (
+      {running.length === 0 ? (
+        <div className="card">
           <p className="text-sm text-zinc-400">
             No contest is running right now. Start one with{" "}
             <code className="rounded bg-panel px-1">/contest start</code>, or
             turn on a recurring schedule below.
           </p>
-        ) : entries.length === 0 ? (
-          <p className="text-sm text-zinc-400">
-            Nobody has entered yet. Members enter by posting an image or video in
-            the contest channel.
-          </p>
-        ) : (
-          <>
-            <p className="text-sm text-zinc-400">
-              {entries.length} entr{entries.length === 1 ? "y" : "ies"}. Vote
-              counts are the snapshot from the last time the bot counted, so a
-              running contest shows 0 until it ends.
-            </p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {entries.map((entry) => (
-                <EntryCard
-                  key={entry.id}
-                  entry={entry}
-                  onDisqualify={onDisqualify}
-                  pending={pending}
-                />
-              ))}
+        </div>
+      ) : (
+        <div className="card space-y-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div className="font-medium text-white">
+              {running.length} contest{running.length === 1 ? "" : "s"} running
             </div>
-          </>
-        )}
+            <span className="text-xs text-zinc-400">
+              {totalEntries} entr{totalEntries === 1 ? "y" : "ies"} in total.
+              Vote counts are the last snapshot, so a running contest shows 0
+              until it ends.
+            </span>
+          </div>
 
-        {msg && (
-          <span className={msg.ok ? "text-green-400" : "text-red-400"}>
-            {msg.text}
-          </span>
-        )}
-      </div>
+          {running.map((contest) => (
+            <div
+              key={contest.id}
+              className="space-y-3 rounded-lg border border-edge p-3"
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div className="font-medium text-white">{contest.title}</div>
+                <span className="text-xs text-zinc-400">
+                  {contest.entries.length} entr
+                  {contest.entries.length === 1 ? "y" : "ies"} · ends{" "}
+                  {new Date(contest.endsAt).toLocaleString()}
+                </span>
+              </div>
+
+              {contest.entries.length === 0 ? (
+                <p className="text-sm text-zinc-500">
+                  No entries yet. Members enter by posting an image or video in
+                  the contest channel.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {contest.entries.map((entry) => (
+                    <EntryCard
+                      key={entry.id}
+                      entry={entry}
+                      onDisqualify={onDisqualify}
+                      pending={pending}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {msg && (
+            <span className={msg.ok ? "text-green-400" : "text-red-400"}>
+              {msg.text}
+            </span>
+          )}
+        </div>
+      )}
 
       {past.length > 0 && (
         <div className="card space-y-3">

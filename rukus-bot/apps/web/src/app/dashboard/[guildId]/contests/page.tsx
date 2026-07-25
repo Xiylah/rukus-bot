@@ -1,6 +1,6 @@
 import {
   getContestsConfig,
-  getRunningContest,
+  getRunningContests,
   getPastContests,
   getContestEntries,
 } from "@rukus/supabase";
@@ -11,6 +11,7 @@ import { ContestsForm } from "./ContestsForm";
 import {
   EntryGallery,
   type GalleryEntry,
+  type RunningContest,
   type PastContest,
 } from "./EntryGallery";
 
@@ -25,28 +26,45 @@ export default async function ContestsPage({
   const [config, options, running, past] = await Promise.all([
     getContestsConfig(guildId),
     loadGuildOptions(guildId),
-    getRunningContest(guildId),
+    getRunningContests(guildId),
     getPastContests(guildId),
   ]);
 
-  const entryRows = running
-    ? await getContestEntries(guildId, running.id)
-    : [];
+  // Entries for every running contest, fetched in parallel and kept grouped by
+  // contest so the gallery can show one section per contest instead of one
+  // merged pile that hides which forum each entry came from.
+  const entryRowsByContest = await Promise.all(
+    running.map((c) => getContestEntries(guildId, c.id)),
+  );
 
-  // One batched member fetch names every entrant and past winner, no per-row
-  // lookup.
+  // One batched member fetch names every entrant across every contest, plus the
+  // past winners, so there is a single lookup rather than one per row.
   const names = await resolveMemberNames(guildId, [
-    ...entryRows.map((e) => e.userId),
+    ...entryRowsByContest.flat().map((e) => e.userId),
     ...past.flatMap((c) => c.winnerIds),
   ]);
 
-  const entries: GalleryEntry[] = entryRows.map((e) => ({
+  const toEntry = (e: {
+    id: string;
+    userId: string;
+    mediaUrl: string;
+    votes: number;
+    channelId: string;
+    messageId: string;
+  }): GalleryEntry => ({
     id: e.id,
     userId: e.userId,
     userName: names.get(e.userId) ?? e.userId,
     mediaUrl: e.mediaUrl,
     votes: e.votes,
     messageLink: `https://discord.com/channels/${guildId}/${e.channelId}/${e.messageId}`,
+  });
+
+  const runningContests: RunningContest[] = running.map((c, i) => ({
+    id: c.id,
+    title: c.title,
+    endsAt: c.endsAt,
+    entries: (entryRowsByContest[i] ?? []).map(toEntry),
   }));
 
   const pastContests: PastContest[] = past.map((c) => ({
@@ -72,9 +90,7 @@ export default async function ContestsPage({
       <div className="mb-5">
         <EntryGallery
           guildId={guildId}
-          contestTitle={running?.title ?? null}
-          contestEndsAt={running?.endsAt ?? null}
-          initialEntries={entries}
+          runningContests={runningContests}
           pastContests={pastContests}
         />
       </div>
