@@ -79,6 +79,13 @@ const handler: EventHandler<Events.InteractionCreate> = {
           return void (await tickets.handleDelete(interaction));
         if (customId.startsWith(CID.formOpen))
           return void (await forms.handleOpenButton(interaction));
+        // Confirm prefixes MUST be tested before their base prefixes:
+        // "frm:approveok" starts with "frm:approve", so the base check would
+        // otherwise swallow the confirm click and re-open the prompt forever.
+        if (customId.startsWith(CID.formApproveConfirm))
+          return void (await forms.handleApproveConfirm(interaction));
+        if (customId.startsWith(CID.formDenyConfirm))
+          return void (await forms.handleDenyConfirm(interaction));
         if (customId.startsWith(CID.formApprove))
           return void (await forms.handleApprove(interaction));
         if (customId.startsWith(CID.formDeny))

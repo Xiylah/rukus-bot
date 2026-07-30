@@ -40,6 +40,10 @@ export const CID = {
   formModal: "frm:modal",
   formApprove: "frm:approve",
   formDeny: "frm:deny",
+  // Second-step confirm buttons, shown in an ephemeral prompt so a stray click
+  // on Approve/Deny above cannot resolve an application on its own.
+  formApproveConfirm: "frm:approveok",
+  formDenyConfirm: "frm:denyok",
 } as const;
 
 /** Discord platform limits we must respect when building UIs. */

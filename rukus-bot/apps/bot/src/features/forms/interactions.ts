@@ -1,4 +1,7 @@
 import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   ChannelType,
   EmbedBuilder,
   MessageFlags,
@@ -6,7 +9,7 @@ import {
   type ButtonInteraction,
   type ModalSubmitInteraction,
 } from "discord.js";
-import { COLORS } from "@rukus/shared";
+import { COLORS, CID } from "@rukus/shared";
 import { formsConfig } from "../../lib/configCache.js";
 import { log } from "../../lib/logger.js";
 import {
@@ -100,14 +103,76 @@ export async function handleModalSubmit(interaction: ModalSubmitInteraction) {
   });
 }
 
-/** Staff approved a submission. */
+/**
+ * Staff clicked Approve/Deny on the review card.
+ *
+ * These no longer resolve the submission. They open a private "are you sure?"
+ * prompt, and only its button resolves. The review buttons sit right next to
+ * each other on a card a moderator scrolls past dozens of times, so a stray
+ * click used to approve or deny an application outright, DM the applicant and
+ * grant a role, with no undo. The confirm step makes it a deliberate two-click
+ * action, the same pattern ticket-close and server-lockdown already use.
+ */
 export async function handleApprove(interaction: ButtonInteraction) {
+  await promptConfirm(interaction, "APPROVED");
+}
+
+export async function handleDeny(interaction: ButtonInteraction) {
+  await promptConfirm(interaction, "DENIED");
+}
+
+/** Confirm button clicked in the ephemeral prompt → actually resolve. */
+export async function handleApproveConfirm(interaction: ButtonInteraction) {
   await resolveAndUpdate(interaction, "APPROVED");
 }
 
-/** Staff denied a submission. */
-export async function handleDeny(interaction: ButtonInteraction) {
+export async function handleDenyConfirm(interaction: ButtonInteraction) {
   await resolveAndUpdate(interaction, "DENIED");
+}
+
+async function promptConfirm(
+  interaction: ButtonInteraction,
+  status: "APPROVED" | "DENIED",
+) {
+  if (!interaction.inCachedGuild()) return;
+  const submissionId = idFromCustomId(interaction.customId);
+
+  // Check state up front so we do not prompt to confirm something already
+  // decided (e.g. another mod resolved it a second ago).
+  const submission = await getSubmission(submissionId);
+  if (!submission) {
+    await interaction.reply({ content: "Submission not found.", ...ephemeral });
+    return;
+  }
+  if (submission.status !== "PENDING") {
+    await interaction.reply({
+      content: `Already ${submission.status.toLowerCase()} — nothing to confirm.`,
+      ...ephemeral,
+    });
+    return;
+  }
+
+  const approving = status === "APPROVED";
+  const confirmCid =
+    `${approving ? CID.formApproveConfirm : CID.formDenyConfirm}:${submissionId}`;
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(confirmCid)
+      .setLabel(approving ? "Yes, approve" : "Yes, deny")
+      .setStyle(approving ? ButtonStyle.Success : ButtonStyle.Danger)
+      .setEmoji(approving ? "✅" : "❌"),
+  );
+
+  await interaction.reply({
+    content:
+      `${approving ? "Approve" : "Deny"} **${submission.formName}** from ` +
+      `<@${submission.userId}>?` +
+      (approving
+        ? "\nThis grants any approval role and DMs the applicant."
+        : "\nThis DMs the applicant that they were denied."),
+    components: [row],
+    ...ephemeral,
+  });
 }
 
 async function resolveAndUpdate(
@@ -118,13 +183,18 @@ async function resolveAndUpdate(
   const submissionId = idFromCustomId(interaction.customId);
   const submission = await getSubmission(submissionId);
   if (!submission) {
-    await interaction.reply({ content: "Submission not found.", ...ephemeral });
+    await interaction.update({
+      content: "Submission not found.",
+      components: [],
+    });
     return;
   }
   if (submission.status !== "PENDING") {
-    await interaction.reply({
-      content: `Already ${submission.status.toLowerCase()}.`,
-      ...ephemeral,
+    // Someone resolved it between the prompt and the confirm click. Swallow it
+    // rather than double-resolving: the first verdict stands.
+    await interaction.update({
+      content: `Already ${submission.status.toLowerCase()} by someone else.`,
+      components: [],
     });
     return;
   }
@@ -149,16 +219,37 @@ async function resolveAndUpdate(
     }
   }
 
-  // Update the review card in place: recolor, strip buttons, add verdict.
-  const original = interaction.message.embeds[0];
-  const updated = EmbedBuilder.from(original ?? {})
-    .setColor(status === "APPROVED" ? COLORS.success : COLORS.danger)
-    .addFields({
-      name: status === "APPROVED" ? "✅ Approved" : "❌ Denied",
-      value: `by <@${interaction.user.id}>`,
-    });
+  // Update the review CARD in place: recolor, strip its buttons, add the
+  // verdict. The confirm click came from the ephemeral prompt, not the card, so
+  // edit the card by its stored id rather than interaction.message (which is
+  // now the prompt). Both live in the same channel, so interaction.channel is
+  // the review channel.
+  const reviewMessage =
+    submission.reviewMessageId && interaction.channel?.isTextBased()
+      ? await interaction.channel.messages
+          .fetch(submission.reviewMessageId)
+          .catch(() => null)
+      : null;
 
-  await interaction.update({ embeds: [updated], components: [] });
+  if (reviewMessage) {
+    const original = reviewMessage.embeds[0];
+    const updated = EmbedBuilder.from(original ?? {})
+      .setColor(status === "APPROVED" ? COLORS.success : COLORS.danger)
+      .addFields({
+        name: status === "APPROVED" ? "✅ Approved" : "❌ Denied",
+        value: `by <@${interaction.user.id}>`,
+      });
+    await reviewMessage.edit({ embeds: [updated], components: [] }).catch(() => {});
+  }
+
+  // Replace the ephemeral prompt with the outcome, clearing its confirm button.
+  await interaction.update({
+    content:
+      status === "APPROVED"
+        ? `✅ Approved **${submission.formName}** from <@${submission.userId}>.`
+        : `❌ Denied **${submission.formName}** from <@${submission.userId}>.`,
+    components: [],
+  });
 
   // DM the applicant the result, unless the server turned result DMs off.
   const cfg = await formsConfig(interaction.guildId);
