@@ -1693,6 +1693,32 @@
     "type": 1
   },
   {
+    "options": [
+      {
+        "type": 3,
+        "name": "message",
+        "description": "What the bot should say. Use \\n for a line break.",
+        "required": true,
+        "max_length": 2000
+      },
+      {
+        "channel_types": [
+          0,
+          5
+        ],
+        "name": "channel",
+        "description": "Where to post it (defaults to here)",
+        "required": false,
+        "type": 7
+      }
+    ],
+    "name": "say",
+    "description": "Make the bot say a plain message",
+    "default_member_permissions": "8192",
+    "dm_permission": false,
+    "type": 1
+  },
+  {
     "options": [],
     "name": "serverinfo",
     "description": "Show information about this server",
