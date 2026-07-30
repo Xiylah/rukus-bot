@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { requireManageableGuilds } from "@/lib/guard";
-import { guildIconUrl } from "@/lib/discord";
+import { guildIconUrl, isBotInGuild } from "@/lib/discord";
 import { SignOutButton } from "@/components/SignOutButton";
-
-const BOT_GUILD_ID = process.env.DISCORD_GUILD_ID;
 
 export default async function DashboardHome() {
   const { guilds } = await requireManageableGuilds();
 
-  // For the single-guild build, only the configured guild is actually wired to
-  // the bot. We still list every manageable guild but flag which one is active.
+  // The bot is public and multi-guild, so "active" means the bot is actually in
+  // that server, not that it matches one configured env var. Checked in
+  // parallel; each is a cheap, briefly-cached Discord call.
+  const presence = await Promise.all(guilds.map((g) => isBotInGuild(g.id)));
+  const activeById = new Map(guilds.map((g, i) => [g.id, presence[i]!]));
+
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
       <div className="mb-8 flex items-center justify-between">
@@ -26,7 +28,7 @@ export default async function DashboardHome() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {guilds.map((g) => {
             const icon = guildIconUrl(g);
-            const active = g.id === BOT_GUILD_ID;
+            const active = activeById.get(g.id) ?? false;
             return (
               <Link
                 key={g.id}

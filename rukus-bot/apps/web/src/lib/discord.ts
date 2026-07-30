@@ -142,6 +142,29 @@ export function guildIconUrl(guild: DiscordGuild, size = 64): string | null {
  * bot's token. Returns [] if the bot isn't in the guild or the user isn't a
  * member. This is a plain REST call - edge-compatible (no bot process needed).
  */
+/**
+ * Whether the BOT is a member of a guild.
+ *
+ * GET /guilds/{id} with the bot token returns 200 only when the bot is in that
+ * guild, and 403/404 otherwise, so this is the authoritative "is the bot here?"
+ * check. The dashboard needs it because a user can manage a server the bot has
+ * not joined, and that server cannot be configured. Cached briefly: the answer
+ * changes only when the bot is added or removed.
+ */
+export async function isBotInGuild(guildId: string): Promise<boolean> {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) return false;
+  try {
+    const res = await fetch(`${DISCORD_API}/guilds/${guildId}`, {
+      headers: { Authorization: `Bot ${token}` },
+      next: { revalidate: 30 },
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function fetchMemberRoleIds(
   guildId: string,
   userId: string,
