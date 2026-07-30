@@ -15,7 +15,12 @@ const command: Command = {
   data: new SlashCommandBuilder()
     .setName("mute")
     .setDescription("Give a member the muted role (recorded as a case)")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+    // ManageRoles, not ModerateMembers: /mute adds a role, so the mod needs the
+    // permission to manage roles. ModerateMembers is the native-timeout
+    // permission (that is /timeout) and grants nothing over roles, so a mod
+    // with only it would see /mute yet have it fail. /timeout keeps
+    // ModerateMembers because it genuinely times out rather than adding a role.
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
     .setDMPermission(false)
     .addUserOption((o) =>
       o.setName("user").setDescription("Who to mute").setRequired(true),

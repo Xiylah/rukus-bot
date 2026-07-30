@@ -14,7 +14,9 @@ const command: Command = {
   data: new SlashCommandBuilder()
     .setName("unmute")
     .setDescription("Remove the muted role from a member")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+    // ManageRoles to match /mute: unmute removes the muted role, a ManageRoles
+    // action, not the native-timeout permission ModerateMembers.
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
     .setDMPermission(false)
     .addUserOption((o) =>
       o.setName("user").setDescription("Who to unmute").setRequired(true),

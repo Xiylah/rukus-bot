@@ -72,7 +72,12 @@ const command: Command = {
   data: new SlashCommandBuilder()
     .setName("lockdown")
     .setDescription("Stop @everyone posting in a channel (or the whole server)")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
+    // ManageRoles, not ManageChannels: a lockdown edits @everyone's
+    // SendMessages permission overwrite, and Discord classes editing a
+    // channel's permission overwrites as a ManageRoles action. It never
+    // creates, deletes or renames the channel, so ManageChannels is a wider
+    // permission than the command actually uses.
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
     .setDMPermission(false)
     .addSubcommand((s) =>
       s
@@ -193,7 +198,7 @@ const command: Command = {
         content:
           targets.length === 0
             ? "Nothing lockable there."
-            : "Already locked, or I'm missing **Manage Channels** there.",
+            : "Already locked, or I'm missing **Manage Roles** there.",
       });
       return;
     }

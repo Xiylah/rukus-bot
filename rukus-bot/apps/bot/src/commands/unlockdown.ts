@@ -15,7 +15,9 @@ const command: Command = {
   data: new SlashCommandBuilder()
     .setName("unlockdown")
     .setDescription("Reopen a locked channel (or every locked channel)")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
+    // ManageRoles to match /lockdown: reopening edits the same @everyone
+    // SendMessages overwrite, which Discord classes as a ManageRoles action.
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
     .setDMPermission(false)
     .addChannelOption((o) =>
       o
