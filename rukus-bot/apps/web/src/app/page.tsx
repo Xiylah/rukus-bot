@@ -25,10 +25,15 @@ export default async function Home() {
   const session = await auth();
 
   const clientId = process.env.DISCORD_CLIENT_ID;
-  // Administrator: the bot creates channels, manages roles, and moderates. Server
-  // owners can always trim this down on the invite screen.
+  // The exact set the bot's features use, NOT Administrator. top.gg rejects
+  // bots that require Administrator, and asking for it is bad practice anyway:
+  // server owners should be able to see precisely what they are granting.
+  // Bitfield covers channel + role management (tickets, tempvoice, lockdown,
+  // autoroles), moderation (kick/ban/timeout), and messaging (embed links,
+  // reactions, threads, history). Recompute if a feature needs a new one.
+  const INVITE_PERMISSIONS = "1409170140246";
   const invite = clientId
-    ? `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot%20applications.commands`
+    ? `https://discord.com/oauth2/authorize?client_id=${clientId}&permissions=${INVITE_PERMISSIONS}&scope=bot%20applications.commands`
     : null;
 
   return (
