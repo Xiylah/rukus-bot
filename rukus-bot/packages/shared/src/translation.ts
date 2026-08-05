@@ -51,6 +51,7 @@ export interface GateConfig {
   autoTranslate: boolean;
   targetLang: string;
   minLength: number;
+  minLengthUnspaced: number;
   minWords: number;
   skipSlang: boolean;
   slangWords: string[];
@@ -222,10 +223,17 @@ export function shouldTranslate(
   }
 
   // ---- Length + slang ----
-  if (core.length < config.minLength) {
+  // Unspaced scripts (Japanese/Chinese/Korean/Thai) get their own, lower
+  // minimum: a whole sentence in them is only a few characters, so judging them
+  // by the Latin minLength refused valid text like "こんにちは" (5 chars).
+  const unspaced = isUnspacedScript(core);
+  const effectiveMin = unspaced ? config.minLengthUnspaced : config.minLength;
+  if (core.length < effectiveMin) {
     return no(
       "too-short",
-      `Only ${core.length} characters, and the minimum is ${config.minLength}.`,
+      unspaced
+        ? `Only ${core.length} characters, and the minimum for this script is ${effectiveMin}.`
+        : `Only ${core.length} characters, and the minimum is ${effectiveMin}.`,
     );
   }
 
@@ -236,11 +244,13 @@ export function shouldTranslate(
       return no("slang-only", "Every word is on the slang list.");
     }
     // Re-apply the length gate to what's left, so "lol ok" style messages that
-    // are mostly slang don't sneak past on their leftovers.
-    if (remaining.join(" ").length < config.minLength) {
+    // are mostly slang don't sneak past on their leftovers. Uses the same
+    // script-aware minimum as above, or a short CJK message surviving the slang
+    // filter would still be refused here by the Latin minimum.
+    if (remaining.join(" ").length < effectiveMin) {
       return no(
         "slang-only",
-        `Only "${remaining.join(" ")}" is left after removing slang, which is under the ${config.minLength} character minimum.`,
+        `Only "${remaining.join(" ")}" is left after removing slang, which is under the ${effectiveMin} character minimum.`,
       );
     }
   }

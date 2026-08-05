@@ -259,6 +259,16 @@ export const translationConfigSchema = z.object({
   minLength: z.number().int().min(1).max(500).default(12),
 
   /**
+   * The same minimum, but for scripts that do not space their words: Japanese,
+   * Chinese, Korean, Thai. A full sentence in these is often 4-8 characters
+   * ("こんにちは" is 5), so the Latin minLength of 12 silently refuses perfectly
+   * valid text. Each character carries a whole syllable or word, so the bar
+   * belongs far lower. Kept separate from minLength so lowering it for CJK does
+   * not also let short English slang through.
+   */
+  minLengthUnspaced: z.number().int().min(1).max(500).default(2),
+
+  /**
    * How many words of 3+ letters a message needs before we trust ANY language
    * detection of it. Character length is not enough: "gm jakey poo" clears a
    * 12-character minimum but is a name and two abbreviations, and detectors

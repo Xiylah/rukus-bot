@@ -227,6 +227,25 @@ export function TranslationSettingsForm({
           </div>
 
           <div>
+            <label className="label">Minimum length (CJK / Thai)</label>
+            <input
+              type="number"
+              min={1}
+              max={500}
+              className="input max-w-32"
+              value={config.minLengthUnspaced}
+              onChange={(e) =>
+                set("minLengthUnspaced", Number(e.target.value) || 1)
+              }
+            />
+            <p className="mt-1 text-xs text-zinc-500">
+              A separate, lower minimum for Japanese, Chinese, Korean and Thai. A
+              whole sentence in these is only a few characters (&quot;こんにちは&quot;
+              is 5), so the minimum above would wrongly skip them.
+            </p>
+          </div>
+
+          <div>
             <label className="label">Minimum real words</label>
             <input
               type="number"
