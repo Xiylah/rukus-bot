@@ -31,7 +31,8 @@ export function Select({
   placeholder = "None",
   prefix = "",
 }: {
-  label: string;
+  /** Omit to render no label row (e.g. in a repeated grid where one header serves all rows). */
+  label?: string;
   hint?: string;
   value: string | undefined;
   onChange: (v: string | undefined) => void;
@@ -45,7 +46,7 @@ export function Select({
 
   return (
     <div>
-      <label className="label">{label}</label>
+      {label && <label className="label">{label}</label>}
       <select
         className="input"
         value={value ?? ""}

@@ -79,6 +79,23 @@ export const ticketConfigSchema = z.object({
     .default("Thanks for opening a ticket! Staff will be with you shortly."),
   /** Max simultaneously-open tickets per user (0 = unlimited). */
   maxOpenPerUser: z.number().int().min(0).max(50).default(1),
+  /**
+   * Per-role overrides of maxOpenPerUser, so staff can open more (or unlimited)
+   * tickets than regular members. A member with any of these roles uses the
+   * most generous limit among them (0 = unlimited beats any number), so giving
+   * admins a limit of 0 lets them open tickets without bound while everyone
+   * else stays capped. Empty = the single maxOpenPerUser applies to everyone.
+   */
+  roleOpenLimits: z
+    .array(
+      z.object({
+        roleId: z.string().regex(/^\d{17,20}$/),
+        /** 0 = unlimited for this role. */
+        maxOpen: z.number().int().min(0).max(50),
+      }),
+    )
+    .max(25)
+    .default([]),
   /** Where the live panel message lives, so the dashboard can update it
    *  in place instead of posting duplicates. Set by the publish action. */
   panelChannelId: snowflake,

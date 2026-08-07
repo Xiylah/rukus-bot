@@ -18,6 +18,7 @@ import {
 import {
   COLORS,
   CID,
+  effectiveOpenLimit,
   type TicketConfig,
   type TicketType,
   type Form,
@@ -52,18 +53,26 @@ function typeById(config: TicketConfig, typeId: string | undefined): TicketType 
   return types.find((t) => t.id === typeId) ?? types[0]!;
 }
 
-/** Returns an error string if the user may not open a ticket, else null. */
+/**
+ * Returns an error string if the user may not open a ticket, else null.
+ *
+ * The open-ticket cap is resolved from the member's roles: staff roles can be
+ * given a higher limit (or unlimited) on the dashboard, so an admin is not held
+ * to the same cap as a regular member.
+ */
 async function openBlockReason(
   guildId: string,
   userId: string,
+  roleIds: readonly string[],
   config: TicketConfig,
 ): Promise<string | null> {
   if (!config.enabled) {
     return "The ticket system isn't enabled on this server yet.";
   }
-  if (config.maxOpenPerUser > 0) {
+  const limit = effectiveOpenLimit(config, roleIds);
+  if (limit !== null) {
     const open = await countOpenForUser(guildId, userId);
-    if (open >= config.maxOpenPerUser) {
+    if (open >= limit) {
       return `You already have ${open} open ticket(s). Please use those first.`;
     }
   }
@@ -179,6 +188,7 @@ async function openTicket(
   const blocked = await openBlockReason(
     interaction.guildId,
     interaction.user.id,
+    interaction.member.roles.cache.map((r) => r.id),
     config,
   );
   if (blocked) {
@@ -225,6 +235,7 @@ export async function handleTicketModal(interaction: ModalSubmitInteraction) {
   const blocked = await openBlockReason(
     interaction.guildId,
     interaction.user.id,
+    interaction.member.roles.cache.map((r) => r.id),
     config,
   );
   if (blocked) {

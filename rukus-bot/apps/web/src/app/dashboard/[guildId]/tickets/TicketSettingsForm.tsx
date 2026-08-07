@@ -155,8 +155,82 @@ export function TicketSettingsForm({
             value={config.maxOpenPerUser}
             onChange={(e) => update("maxOpenPerUser", Number(e.target.value) || 0)}
           />
-          <p className="mt-1 text-xs text-zinc-500">0 = unlimited.</p>
+          <p className="mt-1 text-xs text-zinc-500">
+            0 = unlimited. Applies to everyone without a role override below.
+          </p>
         </div>
+
+        <div>
+          <div className="flex items-center justify-between">
+            <label className="label mb-0">Per-role limits (optional)</label>
+            <button
+              type="button"
+              className="btn-ghost"
+              disabled={config.roleOpenLimits.length >= 25}
+              onClick={() =>
+                update("roleOpenLimits", [
+                  ...config.roleOpenLimits,
+                  { roleId: "", maxOpen: 0 },
+                ])
+              }
+            >
+              + Add role limit
+            </button>
+          </div>
+          <p className="mb-2 mt-1 text-xs text-zinc-500">
+            Give a role its own open-ticket cap. A member with several of these
+            gets the most generous one, and 0 means unlimited, so set your admin
+            and mod roles to 0 to let them open tickets without limit.
+          </p>
+          <div className="space-y-2">
+            {config.roleOpenLimits.map((row, i) => (
+              <div key={i} className="flex items-end gap-2">
+                <div className="min-w-0 flex-1">
+                  <Select
+                    label={i === 0 ? "Role" : undefined}
+                    value={row.roleId || undefined}
+                    onChange={(v) => {
+                      const next = [...config.roleOpenLimits];
+                      next[i] = { ...row, roleId: v ?? "" };
+                      update("roleOpenLimits", next);
+                    }}
+                    options={roles}
+                    prefix="@"
+                    placeholder="Pick a role"
+                  />
+                </div>
+                <div className="w-24">
+                  {i === 0 && <label className="label">Max</label>}
+                  <input
+                    type="number"
+                    min={0}
+                    max={50}
+                    className="input"
+                    value={row.maxOpen}
+                    onChange={(e) => {
+                      const next = [...config.roleOpenLimits];
+                      next[i] = { ...row, maxOpen: Number(e.target.value) || 0 };
+                      update("roleOpenLimits", next);
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="btn-ghost flex-none text-red-400"
+                  onClick={() =>
+                    update(
+                      "roleOpenLimits",
+                      config.roleOpenLimits.filter((_, j) => j !== i),
+                    )
+                  }
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <Toggle
           label="Auto-close inactive tickets"
           hint="A warning is posted first (about 12h before), and any message resets the clock. Staff can exempt a ticket with /ticket autoclose."

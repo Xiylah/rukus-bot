@@ -46,6 +46,31 @@ export function resolveTypes(config: TicketConfig): TicketType[] {
   ];
 }
 
+/**
+ * The open-ticket limit that applies to a member, given their role ids.
+ *
+ * Returns null for "no limit" (0 anywhere means unlimited), or a number cap.
+ * A member with several override roles gets the MOST generous of them, so a mod
+ * who is also an admin is never held to the stricter cap. When no override role
+ * matches, the base maxOpenPerUser applies (and 0 there is also unlimited).
+ *
+ * Pure so the dashboard can preview it and so it is unit-testable.
+ */
+export function effectiveOpenLimit(
+  config: TicketConfig,
+  roleIds: readonly string[],
+): number | null {
+  const overrides = config.roleOpenLimits.filter((o) => roleIds.includes(o.roleId));
+
+  if (overrides.length > 0) {
+    // 0 = unlimited, which is the most generous, so it wins outright.
+    if (overrides.some((o) => o.maxOpen === 0)) return null;
+    return Math.max(...overrides.map((o) => o.maxOpen));
+  }
+
+  return config.maxOpenPerUser === 0 ? null : config.maxOpenPerUser;
+}
+
 /** Emoji object for the API, or undefined when the string can't be one. */
 function apiEmoji(emoji: string | undefined): { name: string } | undefined {
   const e = emoji?.trim();
