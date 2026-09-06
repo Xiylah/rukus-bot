@@ -714,7 +714,7 @@
     ],
     "name": "form",
     "description": "Manage the forms / applications system",
-    "default_member_permissions": "32",
+    "default_member_permissions": "8192",
     "dm_permission": false,
     "type": 1
   },
@@ -1530,7 +1530,7 @@
     ],
     "name": "reactionroles",
     "description": "Post and inspect self-role panels",
-    "default_member_permissions": "32",
+    "default_member_permissions": "8192",
     "dm_permission": false,
     "type": 1
   },
@@ -2617,7 +2617,7 @@
     ],
     "name": "verification",
     "description": "Post and inspect the verification gate",
-    "default_member_permissions": "32",
+    "default_member_permissions": "8192",
     "dm_permission": false,
     "type": 1
   },

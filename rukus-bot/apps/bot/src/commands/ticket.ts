@@ -9,7 +9,7 @@ import {
 } from "discord.js";
 import { getTicketConfig, setTicketConfig } from "@rukus/db";
 import { ticketConfig, invalidate } from "../lib/configCache.js";
-import { canManageGuild, hasAnyRole } from "../lib/perms.js";
+import { canManageGuild, canPostPanel, hasAnyRole } from "../lib/perms.js";
 import { panelMessage } from "../features/tickets/ui.js";
 import {
   closeTicketFlow,
@@ -272,7 +272,20 @@ const command: Command = {
     }
 
     // ---- Admin subcommands (panel / setup) ----
-    if (!canManageGuild(member)) {
+    //
+    // Split on purpose: /ticket panel only posts an already-configured panel
+    // into a channel, which is a Manage Messages action, while /ticket setup
+    // writes server configuration and keeps Manage Server. Requiring Manage
+    // Server to send one message asks for authority the command never uses.
+    if (sub === "panel") {
+      if (!canPostPanel(member)) {
+        await interaction.reply({
+          content: "You need **Manage Messages** to post the ticket panel.",
+          ...ephemeral,
+        });
+        return;
+      }
+    } else if (!canManageGuild(member)) {
       await interaction.reply({
         content: "You need **Manage Server** to configure tickets.",
         ...ephemeral,

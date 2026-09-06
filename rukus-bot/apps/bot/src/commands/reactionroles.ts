@@ -9,7 +9,7 @@ import {
 import { getReactionRolesConfig, setReactionRolesConfig } from "@rukus/db";
 import { MODE_HELP } from "@rukus/shared";
 import { invalidate } from "../lib/configCache.js";
-import { canManageGuild } from "../lib/perms.js";
+import { canPostPanel } from "../lib/perms.js";
 import { findPanel, publishPanel } from "../features/reactionroles/panel.js";
 import type { Command } from "../lib/types.js";
 
@@ -22,7 +22,10 @@ const command: Command = {
     // Every subcommand here is staff-only. Without this the command still
     // refuses non-staff, but Discord shows it to everyone, so members see a
     // command they can only ever be told off for using.
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    // ManageMessages, not ManageGuild: this command only posts or lists panels, and
+    // Discord HIDES a command from anyone lacking the declared permission, so
+    // declaring more than it uses locks out staff who legitimately can run it.
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
     .setDMPermission(false)
     .addSubcommand((s) =>
       s
@@ -42,9 +45,12 @@ const command: Command = {
   execute: async (interaction: ChatInputCommandInteraction) => {
     if (!interaction.inCachedGuild()) return;
     const member = interaction.member as GuildMember;
-    if (!canManageGuild(member)) {
+    // Manage Messages, not Manage Server: these subcommands only publish an
+    // already-configured panel or read back its state. The panel is BUILT on
+    // the dashboard, which gates on Manage Server itself.
+    if (!canPostPanel(member)) {
       await interaction.reply({
-        content: "You need **Manage Server** to use self-role panels.",
+        content: "You need **Manage Messages** to post or list self-role panels.",
         ...ephemeral,
       });
       return;

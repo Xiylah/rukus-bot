@@ -9,7 +9,7 @@ import {
 } from "discord.js";
 import { getFormsConfig } from "@rukus/db";
 import { panelForms, buildFormPanelPayload } from "@rukus/shared";
-import { canManageGuild } from "../lib/perms.js";
+import { canPostPanel } from "../lib/perms.js";
 import { formPanelMessage } from "../features/forms/ui.js";
 import type { Command } from "../lib/types.js";
 
@@ -19,7 +19,10 @@ const command: Command = {
   data: new SlashCommandBuilder()
     .setName("form")
     .setDescription("Manage the forms / applications system")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    // ManageMessages, not ManageGuild: this command only posts or lists panels, and
+    // Discord HIDES a command from anyone lacking the declared permission, so
+    // declaring more than it uses locks out staff who legitimately can run it.
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
     .setDMPermission(false)
     .addSubcommand((s) =>
       s
@@ -45,9 +48,12 @@ const command: Command = {
 
   execute: async (interaction: ChatInputCommandInteraction) => {
     if (!interaction.inCachedGuild()) return;
-    if (!canManageGuild(interaction.member as GuildMember)) {
+    // Manage Messages, not Manage Server: both subcommands only post a panel
+    // or list what is already configured. Forms themselves are built on the
+    // dashboard, which has its own Manage Server gate.
+    if (!canPostPanel(interaction.member as GuildMember)) {
       await interaction.reply({
-        content: "You need **Manage Server** to manage forms.",
+        content: "You need **Manage Messages** to post or list form panels.",
         ...ephemeral,
       });
       return;

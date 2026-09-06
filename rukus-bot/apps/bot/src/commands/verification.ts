@@ -8,7 +8,7 @@ import {
 } from "discord.js";
 import { getVerificationConfig, setVerificationConfig } from "@rukus/db";
 import { invalidate } from "../lib/configCache.js";
-import { canManageGuild } from "../lib/perms.js";
+import { canPostPanel } from "../lib/perms.js";
 import { asTextChannel, publishVerifyPanel } from "../features/verification/panel.js";
 import { checkRoleGrantable } from "../features/verification/service.js";
 import type { Command } from "../lib/types.js";
@@ -19,7 +19,10 @@ const command: Command = {
   data: new SlashCommandBuilder()
     .setName("verification")
     .setDescription("Post and inspect the verification gate")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    // ManageMessages, not ManageGuild: this command only posts or inspects the panel, and
+    // Discord HIDES a command from anyone lacking the declared permission, so
+    // declaring more than it uses locks out staff who legitimately can run it.
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
     .setDMPermission(false)
     .addSubcommand((s) =>
       s
@@ -33,9 +36,12 @@ const command: Command = {
   execute: async (interaction: ChatInputCommandInteraction) => {
     if (!interaction.inCachedGuild()) return;
     const member = interaction.member as GuildMember;
-    if (!canManageGuild(member)) {
+    // Manage Messages, not Manage Server: these subcommands only publish an
+    // already-configured panel or read back its state. The panel is BUILT on
+    // the dashboard, which gates on Manage Server itself.
+    if (!canPostPanel(member)) {
       await interaction.reply({
-        content: "You need **Manage Server** to use verification.",
+        content: "You need **Manage Messages** to post or inspect the verification panel.",
         ...ephemeral,
       });
       return;
