@@ -488,6 +488,17 @@ export const moderationConfigSchema = z.object({
     .default("timeout"),
   /** Timeout length in minutes when spamPunishment is "timeout". */
   spamTimeoutMin: z.number().int().min(1).max(40320).default(60),
+  /**
+   * Only DELETE for a duplicate/cross-post hit, never punish; scam content,
+   * blocked domains and the rest still get spamPunishment.
+   *
+   * Repeating yourself across channels is not the same offence as running a
+   * scam, and treating them identically is how a member who warned three
+   * channels about a scam got timed out while the scam itself stayed up.
+   * Defaults ON: the false positives here are ordinary members, and a delete
+   * already stops the noise.
+   */
+  duplicatesDeleteOnly: z.boolean().default(true),
   /** Delete every copy the spammer posted, not just the triggering one. */
   purgeAllCopies: z.boolean().default(true),
 

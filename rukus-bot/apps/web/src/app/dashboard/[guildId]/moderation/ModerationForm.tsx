@@ -247,6 +247,13 @@ export function ModerationForm({
             </div>
 
             <Toggle
+              label="Only delete for repeat/cross-posting"
+              hint="Repeating the same message in several channels just gets the copies removed, with no timeout, kick or ban. Real scam content, blocked domains and the rest are still punished normally. Keep this on: a member warning three channels about a scam is not the same offence as running one."
+              checked={config.duplicatesDeleteOnly}
+              onChange={(v) => set("duplicatesDeleteOnly", v)}
+            />
+
+            <Toggle
               label="Delete every copy they posted"
               hint="Not just the message that tripped the filter, but all the ones already sitting in your other channels."
               checked={config.purgeAllCopies}

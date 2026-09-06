@@ -38,6 +38,25 @@ export function fingerprint(content: string): string {
     .slice(0, 200);
 }
 
+/**
+ * A fingerprint of what a message ATTACHED, for messages with no text.
+ *
+ * Uses filename + byte size per attachment, not the CDN url: Discord signs
+ * attachment urls per message, so the same image reposted has a different url
+ * every time and would never match itself. Name and size do match, which is
+ * exactly what a scammer re-uploading the same screenshots across channels
+ * produces. Sorted so attachment order cannot dodge it.
+ *
+ * Returns "" when there is nothing attached, so callers can treat it as absent.
+ */
+export function attachmentFingerprint(message: Message<true>): string {
+  const parts = [...message.attachments.values()]
+    .map((a) => `${(a.name ?? "file").toLowerCase()}:${a.size ?? 0}`)
+    .sort();
+  if (parts.length === 0) return "";
+  return `att ${parts.join(" ")}`.slice(0, 200);
+}
+
 function sweep(now: number, windowMs: number) {
   if (now - lastSweep < 60_000) return;
   lastSweep = now;
@@ -182,8 +201,15 @@ export function checkSpam(
   config: ModerationConfig,
 ): SpamHit | null {
   if (!config.antiSpamEnabled) return null;
-  const content = message.content?.trim();
-  if (!content) return null;
+
+  // An image-only message is NOT nothing. A scam posted as a wall of
+  // screenshots (casino payouts, fake withdrawals) carries no text at all, and
+  // returning early here made the blast invisible to every check below,
+  // including cross-post detection. Fall back to a fingerprint of what was
+  // attached so the same images spammed across channels still register.
+  const content = message.content?.trim() ?? "";
+  const attachmentKey = attachmentFingerprint(message);
+  if (!content && !attachmentKey) return null;
 
   const now = Date.now();
   const windowMs = config.crossPostWindowSec * 1000;
@@ -235,8 +261,13 @@ export function checkSpam(
   }
 
   // --- Cross-post / duplicate detection ---
-  const fp = fingerprint(content);
-  // Ignore very short text: "lol" in five channels isn't a scam blast.
+  // With no text, the attachments ARE the message, so they are what gets
+  // fingerprinted. This is what catches an image-only scam blasted across
+  // channels, which used to be invisible.
+  const fp = content ? fingerprint(content) : attachmentKey;
+  // Ignore very short text: "lol" in five channels isn't a scam blast. An
+  // attachment fingerprint always clears this, which is intended: reposting the
+  // same file into several channels is the signal, however short its name.
   if (fp.length >= 12) {
     const key = `${message.guildId}:${message.author.id}:${fp}`;
     const posts = (recent.get(key) ?? []).filter((p) => now - p.at < windowMs);

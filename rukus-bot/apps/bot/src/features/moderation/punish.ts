@@ -43,10 +43,23 @@ export async function enforceSpam(
   clearUser(guild.id, author.id);
 
   // 2. Punish the account.
+  //
+  // A duplicate/cross-post hit is deliberately treated as lesser than real
+  // scam content: repeating yourself in three channels is something ordinary
+  // members do (warning others about a scam, asking in the wrong place), and
+  // punishing it the same as running the scam is how the wrong person gets
+  // timed out. The messages are still removed either way.
+  const isDuplicateOnly =
+    hit.reason === "cross-posting the same message" ||
+    hit.reason === "repeating the same message";
+  const punish = !(isDuplicateOnly && config.duplicatesDeleteOnly);
+
   const member = await guild.members.fetch(author.id).catch(() => null);
   let action = "deleted their messages";
   try {
-    if (config.spamPunishment === "timeout" && member?.moderatable) {
+    if (!punish) {
+      // Nothing further: the delete above is the whole response.
+    } else if (config.spamPunishment === "timeout" && member?.moderatable) {
       await member.timeout(
         config.spamTimeoutMin * 60_000,
         `Anti-spam: ${hit.reason}`,
