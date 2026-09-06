@@ -3,6 +3,7 @@ import type { EventHandler } from "../lib/types.js";
 import { log } from "../lib/logger.js";
 import { welcomeConfig } from "../lib/configCache.js";
 import { renderTemplate } from "../features/welcome/template.js";
+import { welcomeMessagePayload } from "../features/welcome/embed.js";
 import { logMemberJoin } from "../features/logging/members.js";
 import { applyAutoRoles } from "../features/autoroles/autoroles.js";
 import { trackJoin } from "../features/invites/tracker.js";
@@ -68,12 +69,7 @@ const handler: EventHandler<Events.GuildMemberAdd> = {
     if (config.channelId) {
       const channel = member.guild.channels.cache.get(config.channelId);
       if (channel?.isSendable()) {
-        await channel
-          .send({
-            content: renderTemplate(config.message, member),
-            allowedMentions: { users: [member.id] },
-          })
-          .catch(() => {});
+        await channel.send(welcomeMessagePayload(config, member)).catch(() => {});
       }
     }
 

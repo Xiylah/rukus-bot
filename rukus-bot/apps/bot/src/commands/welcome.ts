@@ -8,7 +8,7 @@ import {
 } from "discord.js";
 import { getWelcomeConfig, setWelcomeConfig } from "@rukus/db";
 import { invalidate } from "../lib/configCache.js";
-import { renderTemplate } from "../features/welcome/template.js";
+import { welcomeMessagePayload } from "../features/welcome/embed.js";
 import type { Command } from "../lib/types.js";
 
 const ephemeral = { flags: MessageFlags.Ephemeral as const };
@@ -74,10 +74,14 @@ const command: Command = {
     }
 
     if (sub === "test") {
-      await interaction.reply({
-        content: renderTemplate(config.message, interaction.member as GuildMember),
-        ...ephemeral,
-      });
+      // Built by the SAME function the join handler uses, so the preview cannot
+      // drift from what members actually see (it used to render plain text even
+      // when the server had switched the welcome to an embed).
+      const preview = welcomeMessagePayload(
+        config,
+        interaction.member as GuildMember,
+      );
+      await interaction.reply({ ...preview, ...ephemeral });
       return;
     }
 

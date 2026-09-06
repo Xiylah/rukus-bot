@@ -712,6 +712,38 @@ export const welcomeConfigSchema = z.object({
     .string()
     .max(2000)
     .default("Welcome to {server}! Check out the rules channel to get started."),
+  /**
+   * Send the welcome as an EMBED rather than plain text.
+   *
+   * Off by default so existing servers keep the message they already have.
+   * When on, `message` becomes the embed description and the fields below
+   * decorate it. Every one is optional, so a server uses as much or as little
+   * of the embed as it wants.
+   */
+  embedEnabled: z.boolean().default(false),
+  /** Embed title. Supports the same placeholders as the message. */
+  embedTitle: z.string().max(256).default("Welcome!"),
+  /** Hex without the "#". Empty = the bot default. */
+  embedColor: z.string().max(7).default("5865F2"),
+  /**
+   * Small image top-right. "avatar" is what most welcome bots show, since the
+   * new member is who the message is about; "server" shows the server icon.
+   */
+  embedThumbnail: z.enum(["none", "avatar", "server"]).default("avatar"),
+  /** Large image across the bottom (a banner). Direct image URL. */
+  embedImageUrl: z.string().max(500).default(""),
+  /** Footer line under the embed. Placeholders work here too. */
+  embedFooter: z.string().max(2048).default(""),
+  /** Show the join time under the embed, the way most welcome bots do. */
+  embedTimestamp: z.boolean().default(true),
+  /**
+   * Ping the member in plain text ABOVE the embed.
+   *
+   * An embed cannot ping: a mention inside one renders but never notifies. So
+   * a server that wants the new member actually pinged needs a line outside it.
+   */
+  embedPingContent: z.string().max(2000).default(""),
+
   /** Roles granted automatically on join. */
   joinRoleIds: z.array(z.string().regex(/^\d{17,20}$/)).default([]),
   /** Leave messages. */
