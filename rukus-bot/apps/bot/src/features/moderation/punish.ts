@@ -52,7 +52,13 @@ export async function enforceSpam(
   const isDuplicateOnly =
     hit.reason === "cross-posting the same message" ||
     hit.reason === "repeating the same message";
-  const punish = !(isDuplicateOnly && config.duplicatesDeleteOnly);
+  // An image-scam hit comes from OCR, which can misread, so by default it only
+  // removes the post and alerts the mods: a person confirms before anyone is
+  // punished. Servers that trust it can opt in to the full punishment.
+  const isImageScamReview =
+    hit.reason === "scam images" && config.imageScamAction === "delete";
+  const punish =
+    !(isDuplicateOnly && config.duplicatesDeleteOnly) && !isImageScamReview;
 
   const member = await guild.members.fetch(author.id).catch(() => null);
   let action = "deleted their messages";
@@ -131,6 +137,12 @@ export async function enforceSpam(
               inline: true,
             },
             { name: "Content", value: `\`\`\`${content || "(empty)"}\`\`\`` },
+            ...(hit.evidence
+              ? [{ name: "Why", value: hit.evidence.slice(0, 1024) }]
+              : []),
+            ...(isImageScamReview
+              ? [{ name: "Review needed", value: "Post removed only, nobody was punished. These usually come from a compromised member account: check it and act if needed." }]
+              : []),
           )
           .setFooter({
             text: "If this was a mistake, adjust Anti-spam on the dashboard.",

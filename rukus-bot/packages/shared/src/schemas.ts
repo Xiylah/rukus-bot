@@ -499,6 +499,25 @@ export const moderationConfigSchema = z.object({
    * already stops the noise.
    */
   duplicatesDeleteOnly: z.boolean().default(true),
+  /**
+   * Read the text inside posted images (OCR) to catch scams posted as a
+   * gallery of screenshots, which carry no typed text for anything else to
+   * catch. Off by default: it is the heaviest check the bot runs.
+   */
+  scanImagesForScams: z.boolean().default(false),
+  /**
+   * Only scan posts with at least this many images. These scams are almost
+   * always a gallery of 3-4 screenshots, while a normal member usually posts
+   * one, so 2 skips most ordinary posts and keeps the OCR load low.
+   */
+  imageScanMinImages: z.number().int().min(1).max(10).default(2),
+  /**
+   * What an image-scam hit does. "delete" removes the post and alerts the mods
+   * without punishing anyone, so a person reviews it before any timeout; this
+   * is the default because OCR can misread. "punish" also applies
+   * spamPunishment, for servers that trust it.
+   */
+  imageScamAction: z.enum(["delete", "punish"]).default("delete"),
   /** Delete every copy the spammer posted, not just the triggering one. */
   purgeAllCopies: z.boolean().default(true),
 

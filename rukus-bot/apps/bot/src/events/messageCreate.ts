@@ -10,6 +10,7 @@ import {
 } from "../lib/configCache.js";
 import { checkFilters, logFiltered } from "../features/moderation/autoMod.js";
 import { checkSpam } from "../features/moderation/antiSpam.js";
+import { scanImages, shouldScan } from "../features/moderation/imageScan.js";
 import { enforceSpam } from "../features/moderation/punish.js";
 import { translateText } from "../features/translation/translate.js";
 import { translationEmbed } from "../features/translation/ui.js";
@@ -95,6 +96,15 @@ const handler: EventHandler<Events.MessageCreate> = {
         if (spam) {
           await enforceSpam(message, mod, spam);
           return;
+        }
+
+        // Scams posted as a gallery of screenshots have no text for the checks
+        // above to read. OCR them in the background: it takes a moment, and the
+        // rest of this message's handling should not wait on it.
+        if (shouldScan(message, mod)) {
+          void scanImages(message).then((hit) =>
+            hit ? enforceSpam(message, mod, hit) : undefined,
+          );
         }
       }
 

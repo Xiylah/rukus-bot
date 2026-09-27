@@ -30,3 +30,6 @@ Thumbs.db
 
 # transcripts written at runtime
 apps/bot/transcripts/
+
+# tesseract OCR language data (downloaded at runtime)
+*.traineddata

@@ -206,6 +206,55 @@ export function ModerationForm({
               onChange={(v) => set("scamHeuristics", v)}
             />
 
+            <Toggle
+              label="Scan images for scams"
+              hint="Reads the text inside posted screenshots to catch scams posted as a gallery of images (fake MrBeast casino, 'Withdrawal Success', rakeback and promo-code pages), which have no typed text for anything else to catch. Forwarded messages are never scanned, so members forwarding a scam to report it are safe."
+              checked={config.scanImagesForScams}
+              onChange={(v) => set("scanImagesForScams", v)}
+            />
+            {config.scanImagesForScams && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="label">Only scan posts with at least</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    className="input"
+                    value={config.imageScanMinImages}
+                    onChange={(e) =>
+                      set("imageScanMinImages", Number(e.target.value) || 2)
+                    }
+                  />
+                  <p className="mt-1 text-xs text-zinc-500">
+                    images. These scams are a gallery of 3-4 screenshots; 2
+                    skips most normal single-image posts.
+                  </p>
+                </div>
+                <div>
+                  <label className="label">When an image scam is found</label>
+                  <select
+                    className="input"
+                    value={config.imageScamAction}
+                    onChange={(e) =>
+                      set(
+                        "imageScamAction",
+                        e.target.value as ModerationConfig["imageScamAction"],
+                      )
+                    }
+                  >
+                    <option value="delete">Delete it and alert mods (no punishment)</option>
+                    <option value="punish">Delete it and punish the poster</option>
+                  </select>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Delete-only is safest: a mod reviews before anyone is
+                    punished. The poster is usually a real member whose account
+                    was hacked.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="label">What to do with the spammer</label>

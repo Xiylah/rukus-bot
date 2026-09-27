@@ -181,6 +181,7 @@ export type SpamReason =
   | "cross-posting the same message"
   | "repeating the same message"
   | "scam content"
+  | "scam images"
   | "blocked domain"
   | "adult content"
   | "links not allowed"
@@ -190,6 +191,8 @@ export interface SpamHit {
   reason: SpamReason;
   /** Every message of theirs we should delete (includes the current one). */
   messages: { channelId: string; messageId: string }[];
+  /** Why it was flagged, shown in the mod log (e.g. what OCR read). */
+  evidence?: string;
 }
 
 /**
