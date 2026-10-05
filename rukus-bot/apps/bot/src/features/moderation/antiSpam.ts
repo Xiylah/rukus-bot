@@ -150,6 +150,18 @@ export function scamScore(content: string): number {
   );
   if (risky && score > 0) score += 2;
 
+  // A scam has to send people SOMEWHERE: a link to click, a "DM me", or a mass
+  // ping. Without a destination it cannot do any harm, whatever words it uses.
+  // Long ordinary messages collect stray keywords ("free time", "limited
+  // playtime", "income bonus"), and that is how a player describing his
+  // progress was banned as a scam. Requiring a destination ends that class of
+  // false positive outright; real scams always carry one.
+  const destination =
+    risky ||
+    /\b(dm|message|msg|text|add|contact)\s+me\b/i.test(prose) ||
+    /@everyone|@here/i.test(prose);
+  if (!destination) return 0;
+
   // One keyword must never be enough on its own. "crypto" plus a link is a
   // person sharing a news article; a real scam stacks giveaway wording, a
   // dollar amount and an @everyone, and clears this easily.
