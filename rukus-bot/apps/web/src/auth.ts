@@ -31,6 +31,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Discord({
       clientId: process.env.DISCORD_CLIENT_ID,
       clientSecret: process.env.DISCORD_CLIENT_SECRET,
+      // Discord now returns an `iss` parameter on the OAuth callback (RFC 9207).
+      // Auth.js checks it against the provider's issuer, and with none set it
+      // falls back to a placeholder ("https://authjs.dev"), so every login failed
+      // with 'unexpected "iss" response parameter value'. This is Discord's own
+      // published issuer (discord.com/.well-known/openid-configuration). The
+      // token and userinfo URLs are already defined, so no discovery runs.
+      issuer: "https://discord.com",
       authorization:
         "https://discord.com/api/oauth2/authorize?scope=identify+guilds",
     }),
