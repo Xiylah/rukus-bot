@@ -101,3 +101,49 @@ export async function birthdaysOn(
 
   return rows.filter((r) => isBirthdayToday(r, today)).map(redact);
 }
+
+/**
+ * Claim today's announcement for each member, returning only those claimed NOW.
+ *
+ * The claim is a conditional update ("set the year, but only if it is not
+ * already this year"), so it is atomic per member: whichever sweep gets there
+ * first owns the announcement, and every later sweep, whether a second pass,
+ * an overlapping pass, or a freshly restarted bot, sees the row already
+ * claimed and posts nothing. This replaces an in-memory set that every deploy
+ * wiped, which re-announced one member after each of twelve redeploys.
+ */
+export async function claimBirthdayAnnouncements(
+  guildId: string,
+  userIds: string[],
+  year: number,
+): Promise<string[]> {
+  const claimed: string[] = [];
+  for (const userId of userIds) {
+    const res = await prisma.birthday.updateMany({
+      where: {
+        guildId,
+        userId,
+        OR: [{ lastAnnouncedYear: null }, { lastAnnouncedYear: { not: year } }],
+      },
+      data: { lastAnnouncedYear: year },
+    });
+    if (res.count > 0) claimed.push(userId);
+  }
+  return claimed;
+}
+
+/**
+ * Give back claims whose announcement failed to send, so the next sweep retries
+ * them instead of the birthday silently never being announced.
+ */
+export async function releaseBirthdayAnnouncements(
+  guildId: string,
+  userIds: string[],
+  year: number,
+): Promise<void> {
+  if (userIds.length === 0) return;
+  await prisma.birthday.updateMany({
+    where: { guildId, userId: { in: userIds }, lastAnnouncedYear: year },
+    data: { lastAnnouncedYear: null },
+  });
+}

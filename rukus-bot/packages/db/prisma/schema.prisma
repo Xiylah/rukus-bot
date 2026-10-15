@@ -401,6 +401,11 @@ model Birthday {
   month     Int
   year      Int?
   createdAt DateTime @default(now())
+  /// The guild-local year this birthday was last announced. Persisted so a
+  /// restart or redeploy cannot announce the same birthday twice: an
+  /// in-memory "already announced" set is wiped by every deploy, and that is
+  /// how one member was wished happy birthday twelve times in one afternoon.
+  lastAnnouncedYear Int?
 
   @@unique([guildId, userId])
   /// The daily sweep's query: everyone whose birthday is today.

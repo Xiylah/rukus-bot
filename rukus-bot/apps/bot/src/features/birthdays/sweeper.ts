@@ -1,8 +1,12 @@
 import type { Client, Guild, Role } from "discord.js";
 import { birthdaysConfig } from "../../lib/configCache.js";
 import { log } from "../../lib/logger.js";
-import { localNow, type LocalDay } from "./dates.js";
-import { birthdaysOn } from "./service.js";
+import { localNow } from "./dates.js";
+import {
+  birthdaysOn,
+  claimBirthdayAnnouncements,
+  releaseBirthdayAnnouncements,
+} from "./service.js";
 
 /**
  * Announces birthdays once a day, per guild, at the guild's own local hour.
@@ -23,18 +27,6 @@ import { birthdaysOn } from "./service.js";
 
 const SWEEP_INTERVAL_MS = 5 * 60_000;
 
-/**
- * Guilds already announced today, keyed `guildId:YYYY-M-D` of the guild's OWN
- * local day. Purely an in-process guard against announcing twice inside one
- * five-minute window; if the bot restarts mid-day a guild could be announced a
- * second time, so we ALSO check the role before posting (see announce()), which
- * is the restart-safe half of the check.
- */
-const announced = new Set<string>();
-
-function dayKey(guildId: string, today: LocalDay): string {
-  return `${guildId}:${today.year}-${today.month}-${today.day}`;
-}
 
 /** Fill the announcement template. Never exposes an age: we do not read `year`. */
 function renderMessage(
@@ -105,26 +97,40 @@ async function sweepGuild(guild: Guild): Promise<void> {
   if (role) await syncRole(guild, role, celebrantIds);
 
   if (today.hour < config.announceHour) return;
-
-  const key = dayKey(guild.id, today);
-  if (announced.has(key)) return;
-  announced.add(key);
-  // The set is keyed by day, so yesterday's entries are dead weight. Guilds are
-  // swept together, so a plain size cap is enough to keep it from growing.
-  if (announced.size > 10_000) announced.clear();
-
   if (celebrants.length === 0) return;
   if (!config.channelId) return;
 
   const channel = guild.channels.cache.get(config.channelId);
   if (!channel?.isSendable()) return;
 
-  await channel
+  // "Already announced" lives in the DATABASE, per member, per local year. It
+  // used to be an in-memory set, which every restart wiped: each redeploy made
+  // the bot believe it had not announced yet, so one member was wished happy
+  // birthday after every one of twelve deploys in an afternoon. Claiming is
+  // atomic, so a restart, a second pass or an overlapping pass cannot post
+  // twice. Claimed only once we know we can post, so a missing channel never
+  // burns the claim.
+  const toAnnounce = await claimBirthdayAnnouncements(
+    guild.id,
+    [...celebrantIds],
+    today.year,
+  );
+  if (toAnnounce.length === 0) return;
+
+  const sent = await channel
     .send({
-      content: renderMessage(config.message, guild, [...celebrantIds]).slice(0, 2000),
-      allowedMentions: { users: [...celebrantIds].slice(0, 100) },
+      content: renderMessage(config.message, guild, toAnnounce).slice(0, 2000),
+      allowedMentions: { users: toAnnounce.slice(0, 100) },
     })
-    .catch((e) => log.warn(`Birthday announcement failed in ${guild.id}: ${String(e)}`));
+    .then(() => true)
+    .catch((e) => {
+      log.warn(`Birthday announcement failed in ${guild.id}: ${String(e)}`);
+      return false;
+    });
+
+  // A failed send gives the claim back, so the next sweep retries rather than
+  // the birthday silently never being announced.
+  if (!sent) await releaseBirthdayAnnouncements(guild.id, toAnnounce, today.year);
 }
 
 /** One pass over every guild the bot serves. */
