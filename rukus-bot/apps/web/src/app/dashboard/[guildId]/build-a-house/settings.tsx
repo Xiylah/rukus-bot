@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import type { BuildAHouseConfig } from "@rukus/shared";
 import { Select, type Option } from "@/components/Pickers";
-import { publishSubmissionPanel, saveLeaderboardSettings, refreshLeaderboardNow } from "./actions";
+import { publishSubmissionPanel, saveLeaderboardSettings, refreshLeaderboardNow, resetEveryoneSubmissionLimit } from "./actions";
 
 export function LeaderboardSettings({ guildId, initial, channels }: {
   guildId: string; initial: BuildAHouseConfig; channels: Option[];
@@ -50,6 +50,16 @@ export function LeaderboardSettings({ guildId, initial, channels }: {
       });
     }}>Refresh leaderboard now</button>
     <p className="text-sm text-zinc-400">Save the leaderboard channel first. Refresh all four top-10 embeds using players’ latest submitted cards, without waiting for Sunday. This does not change their 24-hour submission limit.</p>
+    <button className="btn-primary" disabled={pending} onClick={() => {
+      setStatus("");
+      startTransition(async () => {
+        try {
+          const result = await resetEveryoneSubmissionLimit(guildId);
+          setStatus(result.ok ? "Submission limits reset for everyone. Players can submit a fresh card now; their next successful submission starts a new 24-hour limit." : result.error ?? "Couldn't reset limits.");
+        } catch { setStatus("Couldn't reset submission limits. Please try again."); }
+      });
+    }}>Reset submission limits for everyone</button>
+    <p className="text-sm text-zinc-400">Testing control: clears everyone’s current 24-hour wait. Saved leaderboard stats and account links stay intact. Each player must capture a fresh card; their next successful update starts the normal 24-hour limit again.</p>
     <p role="status" className="text-sm text-zinc-300">{status}</p>
   </div>;
 }

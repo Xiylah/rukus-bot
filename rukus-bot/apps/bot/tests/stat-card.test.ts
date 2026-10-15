@@ -66,3 +66,18 @@ test("daily updates use the last successful server submission, with an exact rol
   const savedAfterFirstUpdate = { submittedAt: new Date(now + STAT_CARD_UPDATE_INTERVAL_MS) };
   assert.throws(() => validateSubmissionCooldown(savedAfterFirstUpdate, now + STAT_CARD_UPDATE_INTERVAL_MS + 1000), /once every 24 hours/);
 });
+
+
+test("a global reset releases existing daily limits, while the next successful update starts a new limit", () => {
+  const card = decodeStatCard(fixture, now);
+  const resetAt = now + 1000;
+  const previous = { ...card, capturedAt: new Date(now - 1000), submittedAt: new Date(now) };
+  assert.throws(() => validateCardUpdate(previous, card, resetAt), /24 hours/);
+  assert.doesNotThrow(() => validateCardUpdate(previous, card, resetAt, resetAt));
+  assert.throws(() => validateCardUpdate({ ...previous, cardId: "another" }, card, resetAt, resetAt), /another card identity/);
+  assert.throws(() => validateCardUpdate({ ...previous, capturedAt: card.capturedAt }, card, resetAt, resetAt), /already submitted/);
+  const justSaved = { submittedAt: new Date(resetAt) };
+  assert.throws(() => validateSubmissionCooldown(justSaved, resetAt, resetAt), /24 hours/);
+  assert.throws(() => validateSubmissionCooldown({ submittedAt: new Date(resetAt + 1) }, resetAt + 2, resetAt), /24 hours/);
+  assert.doesNotThrow(() => validateSubmissionCooldown(justSaved, resetAt + STAT_CARD_UPDATE_INTERVAL_MS, resetAt));
+});
