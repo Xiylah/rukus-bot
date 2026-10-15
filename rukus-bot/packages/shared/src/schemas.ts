@@ -1728,7 +1728,7 @@ export type ShopConfig = z.infer<typeof shopConfigSchema>;
 
 /** Map a feature key to its schema so callers can validate generically. */
 export const BUILD_A_HOUSE_GUILD_ID = "700382994946588814";
-export const buildAHouseConfigSchema = z.object({ submissionChannelId: snowflake });
+export const buildAHouseConfigSchema = z.object({ submissionChannelId: snowflake, leaderboardChannelId: snowflake, panelChannelId: snowflake, panelMessageId: snowflake });
 export type BuildAHouseConfig = z.infer<typeof buildAHouseConfigSchema>;
 
 export const FEATURE_SCHEMAS = {

@@ -9,3 +9,5 @@ export * from "./duration.js";
 export * from "./leveling.js";
 export * from "./contestScoring.js";
 export * from "./premium.js";
+
+export * from "./buildAHouse.js";

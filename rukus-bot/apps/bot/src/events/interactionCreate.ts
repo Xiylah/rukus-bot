@@ -1,5 +1,6 @@
+import { handleStatCardButton, handleStatCardModal } from "../features/build-a-house/interactions.js";
 import { Events, MessageFlags, type Interaction } from "discord.js";
-import { CID } from "@rukus/shared";
+import { BAH_SUBMIT_ID, BAH_UPLOAD_ID, CID } from "@rukus/shared";
 import type { BotClient, EventHandler } from "../lib/types.js";
 import { log } from "../lib/logger.js";
 import * as tickets from "../features/tickets/interactions.js";
@@ -50,6 +51,7 @@ const handler: EventHandler<Events.InteractionCreate> = {
         "customId" in interaction ? (interaction.customId as string) : "";
 
       if (interaction.isButton()) {
+        if (customId === BAH_SUBMIT_ID) return void (await handleStatCardButton(interaction));
         // Rating buttons live in DMs, so this must come before any handler
         // that assumes guild context.
         if (customId.startsWith(CID.ticketRate))
@@ -101,6 +103,7 @@ const handler: EventHandler<Events.InteractionCreate> = {
       }
 
       if (interaction.isModalSubmit()) {
+        if (customId === BAH_UPLOAD_ID) return void (await handleStatCardModal(interaction));
         if (customId.startsWith(CID.ticketModal))
           return void (await tickets.handleTicketModal(interaction));
         if (customId.startsWith(CID.formModal))

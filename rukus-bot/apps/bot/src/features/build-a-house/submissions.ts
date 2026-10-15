@@ -43,22 +43,22 @@ async function download(attachment: Attachment): Promise<Buffer> {
 
 
 
-async function saveCard(message: Message<true>, card: StatCard): Promise<void> {
+async function saveCard(actor: { userId: string; displayName: string }, card: StatCard): Promise<void> {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       await prisma.$transaction(async (tx) => {
         const owner = await tx.buildAHouseStats.findUnique({ where: { guildId_cardId: { guildId: BUILD_A_HOUSE_GUILD_ID, cardId: card.cardId } } });
-        if (owner && owner.userId !== message.author.id) throw new CardError("This card is already linked to another Discord account.");
-        const where = { guildId_userId: { guildId: BUILD_A_HOUSE_GUILD_ID, userId: message.author.id } };
+        if (owner && owner.userId !== actor.userId) throw new CardError("This card is already linked to another Discord account.");
+        const where = { guildId_userId: { guildId: BUILD_A_HOUSE_GUILD_ID, userId: actor.userId } };
         const previous = await tx.buildAHouseStats.findUnique({ where });
         validateCardUpdate(previous, card);
         const data = {
           cardId: card.cardId, collection: card.collection, homeValue: card.homeValue,
           playtimeSeconds: card.playtimeSeconds, goldBalance: card.goldBalance,
-          fortniteDisplayName: card.displayName ?? message.member?.displayName.slice(0, 64) ?? message.author.username,
+          fortniteDisplayName: card.displayName ?? actor.displayName.slice(0, 64),
           capturedAt: card.capturedAt, submittedAt: new Date(),
         };
-        await tx.buildAHouseStats.upsert({ where, create: { guildId: BUILD_A_HOUSE_GUILD_ID, userId: message.author.id, ...data }, update: data });
+        await tx.buildAHouseStats.upsert({ where, create: { guildId: BUILD_A_HOUSE_GUILD_ID, userId: actor.userId, ...data }, update: data });
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
       return;
     } catch (error) {
@@ -66,6 +66,34 @@ async function saveCard(message: Message<true>, card: StatCard): Promise<void> {
       throw error;
     }
   }
+}
+
+export async function submitStatCard(input: {
+  userId: string; displayName: string; channelId: string; attachment: Attachment;
+  reply: (content: string) => Promise<unknown>; ensureSource?: () => Promise<unknown>;
+}): Promise<void> {
+  if (pending >= 4 || (cooldowns.get(input.userId) ?? 0) > Date.now()) {
+    await input.reply("Please wait a moment before submitting another card."); return;
+  }
+  for (const [id, until] of cooldowns) if (until < Date.now()) cooldowns.delete(id);
+  cooldowns.set(input.userId, Date.now() + 15000);
+  pending++;
+  const job = queue.then(async () => {
+    try {
+      const bytes = await download(input.attachment);
+      const card = decodeStatCard(await recognizeStatCard(bytes));
+      const config = await getBuildAHouseConfig(BUILD_A_HOUSE_GUILD_ID);
+      if (config.submissionChannelId !== input.channelId) throw new CardError("The submission channel changed. Please use the new channel.");
+      await input.ensureSource?.();
+      await saveCard(input, card);
+      await input.reply(`Your Build A House stats are saved!\nCollection: ${card.collection}\nHome value: ${formatLeaderboardValue("homeValue", card.homeValue)}\nPlaytime: ${formatLeaderboardValue("playtimeSeconds", card.playtimeSeconds)}\nGold balance: ${formatLeaderboardValue("goldBalance", card.goldBalance)}\nUse /leaderboard to see the rankings.`);
+    } catch (error) {
+      log.warn("Build A House stat-card processing failed", error);
+      await input.reply(error instanceof CardError ? error.message.slice(0, 600) : "Couldn't save the card right now. Please try again later.").catch(() => {});
+    } finally { pending--; }
+  });
+  queue = job.catch((error) => log.error("Build A House upload queue failed", error));
+  await job;
 }
 
 export async function handleStatCardUpload(message: Message<true>): Promise<boolean> {
@@ -76,41 +104,14 @@ export async function handleStatCardUpload(message: Message<true>): Promise<bool
       configUntil = Date.now() + 5000;
     }
     if (!configuredChannel || message.channelId !== configuredChannel) return false;
-    if (message.attachments.size !== 1) {
-      await message.reply({ content: "Upload one stat-card image at a time.", allowedMentions: { parse: [], repliedUser: false } });
-      return true;
-    }
-    if (pending >= 4 || (cooldowns.get(message.author.id) ?? 0) > Date.now()) {
-      await message.reply({ content: "Please wait a moment before submitting another card.", allowedMentions: { parse: [], repliedUser: false } });
-      return true;
-    }
-    const attachment = message.attachments.first()!;
-    for (const [id, until] of cooldowns) if (until < Date.now()) cooldowns.delete(id);
-    cooldowns.set(message.author.id, Date.now() + 15000);
-    pending++;
-    const job = queue.then(async () => {
-      try {
-        const bytes = await download(attachment);
-        const card = decodeStatCard(await recognizeStatCard(bytes));
-        const stillConfigured = await getBuildAHouseConfig(BUILD_A_HOUSE_GUILD_ID);
-        if (stillConfigured.submissionChannelId !== message.channelId) throw new CardError("The submission channel changed. Please upload in the new channel.");
-        await message.channel.messages.fetch(message.id);
-        await saveCard(message, card);
-        await message.reply({
-          content: `Your Build A House stats are saved!\nCollection: ${card.collection}\nHome value: ${formatLeaderboardValue("homeValue", card.homeValue)}\nPlaytime: ${formatLeaderboardValue("playtimeSeconds", card.playtimeSeconds)}\nGold balance: ${formatLeaderboardValue("goldBalance", card.goldBalance)}\nUse /leaderboard to see the rankings.`,
-          allowedMentions: { parse: [], repliedUser: false },
-        });
-      } catch (error) {
-        log.warn("Build A House stat-card processing failed", error);
-        const safeError = error instanceof CardError
-          ? error.message : "Couldn't save the card right now. Please try again later.";
-        await message.reply({ content: safeError.slice(0, 600), allowedMentions: { parse: [], repliedUser: false } }).catch(() => {});
-      } finally { pending--; }
-    });
-    queue = job.catch((error) => log.error("Build A House upload queue failed", error));
+    const reply = (content: string) => message.reply({ content, allowedMentions: { parse: [], repliedUser: false } });
+    if (message.attachments.size !== 1) { await reply("Upload one stat-card image at a time."); return true; }
+    void submitStatCard({ userId: message.author.id, displayName: message.member?.displayName ?? message.author.username,
+      channelId: message.channelId, attachment: message.attachments.first()!, reply,
+      ensureSource: () => message.channel.messages.fetch(message.id),
+    }).catch((error) => log.warn("Build A House submission failed", error));
     return true;
   } catch (error) {
-    log.warn("Build A House upload configuration failed", error);
-    return false;
+    log.warn("Build A House upload configuration failed", error); return false;
   }
 }

@@ -47,3 +47,24 @@ pnpm -r typecheck
 pnpm --filter @rukus/bot exec tsx --test tests/build-a-house.test.ts tests/stat-card.test.ts
 TEST_CARD_OCR=1 pnpm --filter @rukus/bot exec tsx --test tests/stat-card-ocr.test.ts
 ```
+## Grouped card format (BAH2)
+
+New cards display the username alone, centered, with the data shown as three
+rows of five four-character groups. This is reversible base-32 encoding with a
+position-dependent symbol shift, not secure encryption or a digital signature.
+The alphabet is `23456789ABCDEFGHJKLMNPQRSTUVWXYZ` (no 0, 1, I, or O).
+The eight field widths are `[6,6,4,13,7,13,7,4]`, for identity A, identity B,
+collection, home value, playtime, saved gold balance, timestamp, and checksum.
+Digits use most-significant-first order; the symbol at global position `p` is
+`alphabet[(digit + p*7 + 11) % 32]`. The 60 symbols are grouped into rows A/B/C.
+The existing numerical checksum still detects damaged OCR reads.
+
+The bot accepts both BAH1 and BAH2 cards. Deploy the decoder update before
+publishing the matching island card update. The BAH2 username is read from the
+line above the version marker; unreadable names retain the Discord display-name
+fallback. Account ownership remains unverified.
+## Submission panel and Sunday top 10
+
+In this server's dashboard, choose separate **Stat-card submission** and **Weekly top-10 leaderboard** channels, then save. Press **Publish submission panel** to post the green Submit Stat Card button; subsequent publishes edit the same panel. The button opens Discord's native modal with one required image upload, and results are private. Direct image uploads still work. Both paths share image limits, queue, cooldowns, ownership checks and decoder.
+
+The weekly channel receives one message with four category embeds (Collection, Home value, Playtime, Gold balance), ten players each, using latest submitted totals. It initially publishes within a minute and edits that message every Sunday at midnight America/Chicago, with DST handled automatically. Totals do not reset. A persistent week/message record survives restarts and catches up on the next boot. A Postgres advisory lock prevents overlapping bot instances from publishing simultaneously. Deleted weekly messages are recreated on the next due refresh. Clear the channel setting to pause future updates. Bot needs View Channel, Send Messages, Embed Links and Read Message History. No Discord messages were posted during development.

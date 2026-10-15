@@ -14,9 +14,63 @@ export function cardChecksum(values: readonly bigint[]): bigint {
   return values.reduce((check, value) => (check * 131n + value % 1000003n) % 1000003n, 17n);
 }
 
+const CARD_SYMBOLS = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+const CARD_WIDTHS = [6, 6, 4, 13, 7, 13, 7, 4] as const;
+
+export function encodeGroupedCard(values: readonly bigint[]): string {
+  if (values.length !== CARD_WIDTHS.length) throw new CardError("Invalid card fields");
+  let offset = 0;
+  let raw = "";
+  for (const [index, value] of values.entries()) {
+    const width = CARD_WIDTHS[index]!;
+    if (value < 0n || value >= 32n ** BigInt(width)) throw new CardError("Card field is too large");
+    let remaining = value;
+    let word = "";
+    for (let place = width - 1; place >= 0; place--) {
+      const digit = Number(remaining % 32n);
+      word = CARD_SYMBOLS[(digit + (offset + place) * 7 + 11) % 32]! + word;
+      remaining /= 32n;
+    }
+    raw += word;
+    offset += width;
+  }
+  return ["BAH2", ...["A", "B", "C"].map((label, row) => `${label} ${Array.from({ length: 5 }, (_, group) => raw.slice(row * 20 + group * 4, row * 20 + group * 4 + 4)).join(" ")}`)].join("\n");
+}
+
+function decodeGroupedCard(lines: string[], now: number): StatCard {
+  const headers = lines.flatMap((line, index) => /^BAH2$/i.test(line) ? [index] : []);
+  if (headers.length !== 1 || lines.some((line) => /^BAH1$/i.test(line))) throw new CardError("Upload one whole stat card at a time.");
+  let raw = "";
+  for (const label of ["A", "B", "C"]) {
+    const matches = lines.flatMap((line) => {
+      const match = line.match(new RegExp(`^${label}\\s+([2-9A-HJ-NP-Z ]+)$`, "i"));
+      return match ? [match[1]!.replace(/ /g, "").toUpperCase()] : [];
+    });
+    if (matches.length !== 1 || matches[0]!.length !== 20) throw new CardError(`Couldn't read code row ${label}. Please upload a clearer screenshot.`);
+    raw += matches[0];
+  }
+  let offset = 0;
+  const values = CARD_WIDTHS.map((width) => {
+    let value = 0n;
+    for (let place = 0; place < width; place++) {
+      const position = offset + place;
+      const symbol = CARD_SYMBOLS.indexOf(raw[position]!);
+      const digit = (symbol - (position * 7 + 11) % 32 + 32) % 32;
+      value = value * 32n + BigInt(digit);
+    }
+    offset += width;
+    return value;
+  });
+  const [idA, idB, collection, home, playtime, gold, stamp, check] = values;
+  const possibleName = lines.slice(0, headers[0]).filter(Boolean).at(-1);
+  const name = possibleName && !/BUILD A HOUSE|LEADERBOARD/i.test(possibleName) ? `PLAYER ${possibleName}\n` : "";
+  return decodeStatCard(`${name}BAH1\nID ${idA} ${idB}\nCOLLECTION ${collection}\nHOME ${home}\nPLAYTIME ${playtime}\nGOLD ${gold}\nSTAMP ${stamp}\nCHECK ${check}`, now);
+}
+
 export function decodeStatCard(text: string, now = Date.now()): StatCard {
   const normalized = text.replace(/\r/g, "");
   const lines = normalized.split("\n").map((line) => line.trim());
+  if (lines.some((line) => /^BAH2$/i.test(line))) return decodeGroupedCard(lines, now);
   if (lines.filter((line) => /^BAH1$/i.test(line)).length !== 1) {
     throw new CardError("Couldn't find one Build A House card. Upload a clear screenshot of the whole card.");
   }

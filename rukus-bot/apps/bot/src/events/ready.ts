@@ -1,3 +1,4 @@
+import { startBuildAHouseWeekly } from "../features/build-a-house/weekly.js";
 import { Events, Routes, type Client } from "discord.js";
 import { env } from "../env.js";
 import type { BotClient, EventHandler } from "../lib/types.js";
@@ -46,6 +47,7 @@ const handler: EventHandler<Events.ClientReady> = {
     startVoiceEarnSweeper(client);
     startShopSweeper(client);
     startBirthdaySweeper(client);
+    startBuildAHouseWeekly(client);
 
     // Invite tracking is a diff against a snapshot, so the snapshot has to exist
     // before the first join. Not awaited: a slow fetch across many guilds must
