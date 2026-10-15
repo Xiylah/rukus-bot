@@ -1,4 +1,4 @@
-import { EmbedBuilder, escapeMarkdown, type Client } from "discord.js";
+import { EmbedBuilder, type Client } from "discord.js";
 import { prisma, Prisma } from "@rukus/db";
 import { BUILD_A_HOUSE_GUILD_ID, buildAHouseConfigSchema, leaderboardWeek } from "@rukus/shared";
 import { leaderboardMetrics, formatLeaderboardValue, type LeaderboardMetric } from "./settings.js";
@@ -8,7 +8,7 @@ export function weeklyEmbed(metric: LeaderboardMetric, rows: { fortniteDisplayNa
   return new EmbedBuilder().setTitle(`Build A House Leaderboard • ${leaderboardMetrics[metric]}`)
     .setColor(0x81947a).setTimestamp(now)
     .setDescription(rows.length ? rows.map((row, index) =>
-      `**${index + 1}.** ${escapeMarkdown(row.fortniteDisplayName.replace(/[\r\n]/g, " ").slice(0, 32))} — **${formatLeaderboardValue(metric, row[metric])}**`
+      `**${index + 1}.** <@${row.userId}> — **${formatLeaderboardValue(metric, row[metric])}**`
     ).join("\n") : "No stat cards submitted yet.")
     .setFooter({ text: "Top 10 • Latest submitted stats • Refreshes Sunday, midnight America/Chicago" });
 }

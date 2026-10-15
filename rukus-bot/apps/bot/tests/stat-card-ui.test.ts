@@ -31,7 +31,7 @@ test("Sunday schedule respects Chicago midnight, DST and year boundaries", () =>
 });
 
 test("four top-ten embeds stay within Discord limits and preserve large gold values", () => {
-  const rows = Array.from({ length: 10 }, (_, index) => ({ userId: String(index), fortniteDisplayName: "*".repeat(64),
+  const rows = Array.from({ length: 10 }, (_, index) => ({ userId: String(700382994946588814n + BigInt(index)), fortniteDisplayName: "*".repeat(64),
     collection: 999999, homeValue: 9223372036854775807n, playtimeSeconds: 9223372036854775807n, goldBalance: 9223372036854775807n }));
   const embeds = (Object.keys(leaderboardMetrics) as LeaderboardMetric[]).map((metric) => weeklyEmbed(metric, rows, new Date()).toJSON());
   assert.equal(embeds.length, 4);
@@ -39,6 +39,8 @@ test("four top-ten embeds stay within Discord limits and preserve large gold val
   for (const embed of embeds) {
     assert.equal(embed.description!.split("\n").length, 10);
     assert.ok(embed.description!.length <= 4096);
+    for (const row of rows) assert.ok(embed.description!.includes(`<@${row.userId}>`));
+    assert.ok(!embed.description!.includes(rows[0]!.fortniteDisplayName));
     total += embed.title!.length + embed.description!.length + embed.footer!.text.length;
   }
   assert.ok(total <= 6000);
@@ -71,11 +73,11 @@ test("weekly and manual refreshes edit the same message, survive restarts and re
     } },
   };
   const channel = { id: channelId, guildId: "700382994946588814", isSendable: () => true,
-    send: async (payload: any) => { sends++; assert.equal(payload.embeds.length, 4); return { id: "message" }; },
+    send: async (payload: any) => { assert.deepEqual(payload.allowedMentions, { parse: [] }); sends++; assert.equal(payload.embeds.length, 4); return { id: "message" }; },
     messages: { fetch: async () => {
       if (denied) throw { code: 50013 };
       if (deleted) throw { code: 10008 };
-      return { id: "message", edit: async () => { edits++; } };
+      return { id: "message", edit: async (payload: any) => { assert.deepEqual(payload.allowedMentions, { parse: [] }); edits++; } };
     } },
   };
   const client = { channels: { fetch: async () => channel } } as any;
