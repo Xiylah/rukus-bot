@@ -80,3 +80,7 @@ Each Discord player can successfully submit or update their stats once every 24 
 ## Manual leaderboard refresh
 
 After saving the weekly leaderboard channel, press **Refresh leaderboard now** on the Build A House dashboard. An authorized dashboard user can queue an immediate refresh of the same four top-10 embeds from the latest saved player submissions. The online bot processes the request within a minute; queued requests survive restarts, and failures are retried. This does not submit new cards, reset stats, bypass the daily player submission limit, or change the Sunday schedule. Requests for an old channel are ignored after the channel changes. The bot acknowledges a request only after successfully posting/editing the message and saving its state. Deploy both bot and dashboard; no migration is needed.
+
+## Reset all submission limits for testing
+
+The dashboard's **Reset submission limits for everyone** button immediately releases all current 24-hour waits in this server. It writes a persistent reset timestamp in FeatureConfig; no saved stats, capture/submission history, or account links are changed. Both upload paths read it before OCR and again inside the save transaction. Each player's next successful submission starts the normal 24-hour wait again, including when its timestamp equals the reset boundary. Fresh-card, ownership, checksum and playtime checks remain, as does the short anti-spam cooldown. The button uses the existing server-side dashboard authorization and server restriction. Deploy bot and dashboard; no migration is needed.

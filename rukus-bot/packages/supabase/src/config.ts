@@ -117,6 +117,16 @@ export async function requestBuildAHouseLeaderboardRefresh(guildId: string, chan
   if (error) throw new Error(`Leaderboard refresh request failed: ${error.message}`);
 }
 
+export async function resetBuildAHouseSubmissionLimits(guildId: string): Promise<void> {
+  if (guildId !== BUILD_A_HOUSE_GUILD_ID) throw new Error("Build A House is unavailable in this server");
+  const now = new Date().toISOString();
+  const { error } = await getSupabase().from(TABLE).upsert({
+    id: newId(), guildId, feature: "buildahouse-submission-reset",
+    config: { resetAt: now }, updatedAt: now,
+  }, { onConflict: "guildId,feature" });
+  if (error) throw new Error(`Submission limit reset failed: ${error.message}`);
+}
+
 export const getTicketConfig = (guildId: string) =>
   readConfig<TicketConfig>(guildId, "tickets");
 export const setTicketConfig = (guildId: string, config: unknown) =>

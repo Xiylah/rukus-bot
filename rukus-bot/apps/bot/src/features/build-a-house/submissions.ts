@@ -43,6 +43,15 @@ export async function downloadStatCardImage(attachment: Attachment): Promise<Buf
 
 
 
+export async function submissionResetAt(db: Pick<Prisma.TransactionClient, "featureConfig"> = prisma): Promise<number> {
+  const row = await db.featureConfig.findUnique({ where: { guildId_feature: {
+    guildId: BUILD_A_HOUSE_GUILD_ID, feature: "buildahouse-submission-reset",
+  } } });
+  const resetAt = (row?.config as { resetAt?: unknown } | null)?.resetAt;
+  const timestamp = typeof resetAt === "string" ? Date.parse(resetAt) : NaN;
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
 async function saveCard(actor: { userId: string; displayName: string }, card: StatCard): Promise<void> {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -51,12 +60,13 @@ async function saveCard(actor: { userId: string; displayName: string }, card: St
         if (owner && owner.userId !== actor.userId) throw new CardError("This card is already linked to another Discord account.");
         const where = { guildId_userId: { guildId: BUILD_A_HOUSE_GUILD_ID, userId: actor.userId } };
         const previous = await tx.buildAHouseStats.findUnique({ where });
-        validateCardUpdate(previous, card);
+        const resetAt = await submissionResetAt(tx);
+        validateCardUpdate(previous, card, Date.now(), resetAt);
         const data = {
           cardId: card.cardId, collection: card.collection, homeValue: card.homeValue,
           playtimeSeconds: card.playtimeSeconds, goldBalance: card.goldBalance,
           fortniteDisplayName: card.displayName ?? actor.displayName.slice(0, 64),
-          capturedAt: card.capturedAt, submittedAt: new Date(),
+          capturedAt: card.capturedAt, submittedAt: new Date(Math.max(Date.now(), resetAt)),
         };
         await tx.buildAHouseStats.upsert({ where, create: { guildId: BUILD_A_HOUSE_GUILD_ID, userId: actor.userId, ...data }, update: data });
       }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
@@ -84,7 +94,7 @@ export async function submitStatCard(input: {
         where: { guildId_userId: { guildId: BUILD_A_HOUSE_GUILD_ID, userId: input.userId } },
         select: { submittedAt: true },
       });
-      validateSubmissionCooldown(previous);
+      validateSubmissionCooldown(previous, Date.now(), await submissionResetAt());
       const bytes = await downloadStatCardImage(input.attachment);
       const card = decodeStatCard(await recognizeStatCard(bytes));
       const config = await getBuildAHouseConfig(BUILD_A_HOUSE_GUILD_ID);
