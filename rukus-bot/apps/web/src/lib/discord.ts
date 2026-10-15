@@ -289,20 +289,22 @@ export async function editChannelMessage(
   messageId: string,
   payload: object,
 ): Promise<boolean> {
+  return (await editChannelMessageStatus(channelId, messageId, payload)).ok;
+}
+
+export async function editChannelMessageStatus(
+  channelId: string, messageId: string, payload: object,
+): Promise<{ ok: boolean; missing: boolean }> {
   const token = process.env.DISCORD_BOT_TOKEN;
-  if (!token) return false;
-  const res = await fetch(
-    `${DISCORD_API}/channels/${channelId}/messages/${messageId}`,
-    {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bot ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    },
-  );
-  return res.ok;
+  if (!token) return { ok: false, missing: false };
+  const res = await fetch(`${DISCORD_API}/channels/${channelId}/messages/${messageId}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (res.ok) return { ok: true, missing: false };
+  const error = await res.json().catch(() => null) as { code?: number } | null;
+  return { ok: false, missing: res.status === 404 && error?.code === 10008 };
 }
 
 export interface DiscordMember {

@@ -1,9 +1,24 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cardChecksum, decodeStatCard, validateCardUpdate } from "../src/features/build-a-house/card.js";
+import { cardChecksum, decodeStatCard, encodeGroupedCard, validateCardUpdate } from "../src/features/build-a-house/card.js";
 
 const fixture = "PLAYER ExamplePlayer\nBAH1\nID 112345678 923456789\nCOLLECTION 402\nHOME 9007199254740993\nPLAYTIME 3661\nGOLD 50\nSTAMP 1792087200\nCHECK 61889";
 const now = 1792087200 * 1000;
+
+const grouped = "BAH2\nA GXXJ TWJE SZTF Z8T8 V4KJ\nB RY7E MU3A JQX6 DPDF 9GPW\nC 5CKS Z8FP F5YX T5CE NQHB";
+
+test("grouped codes match the fixed-width Verse encoding and preserve the centered username", () => {
+  assert.equal(encodeGroupedCard([112345678n, 923456789n, 402n, 9007199254740993n, 3661n, 50n, 1792087200n, 61889n]), grouped);
+  const card = decodeStatCard(`BUILD A HOUSE LEADERBOARD\nExamplePlayer\n${grouped}`, now);
+  assert.deepEqual(card, decodeStatCard(fixture, now));
+});
+
+test("incomplete, duplicate and damaged grouped code rows are rejected", () => {
+  assert.throws(() => decodeStatCard(grouped.replace("NQHB", "NQHC"), now));
+  assert.throws(() => decodeStatCard(grouped.replace("NQHB", "NQH"), now), /row C/);
+  assert.throws(() => decodeStatCard(grouped + "\n" + grouped, now), /one whole/);
+  assert.throws(() => encodeGroupedCard([1n]), /Invalid/);
+});
 
 test("Verse payload checksum and full integer gold values decode", () => {
   assert.equal(cardChecksum([112345678n, 923456789n, 402n, 9007199254740993n, 3661n, 50n, 1792087200n]), 61889n);

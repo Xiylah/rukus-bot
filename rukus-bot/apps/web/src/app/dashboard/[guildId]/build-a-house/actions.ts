@@ -1,28 +1,50 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { BUILD_A_HOUSE_GUILD_ID, buildAHouseConfigSchema } from "@rukus/shared";
-import { setBuildAHouseConfig } from "@rukus/supabase";
+import { BUILD_A_HOUSE_GUILD_ID, buildAHouseConfigSchema, buildAHouseSubmissionPanel } from "@rukus/shared";
+import { getBuildAHouseConfig, setBuildAHouseConfig } from "@rukus/supabase";
 import { requireGuildAccess } from "@/lib/guard";
 import { loadGuildOptions } from "@/lib/guildOptions";
+import { editChannelMessageStatus, postChannelMessage } from "@/lib/discord";
 
 export async function saveLeaderboardSettings(guildId: string, payload: unknown) {
   await requireGuildAccess(guildId);
   if (guildId !== BUILD_A_HOUSE_GUILD_ID) return { ok: false, error: "This feature is not available for this server." };
   const parsed = buildAHouseConfigSchema.safeParse(payload);
-  if (!parsed.success) return { ok: false, error: "Choose a valid submission channel." };
-  if (parsed.data.submissionChannelId) {
-    const { channels } = await loadGuildOptions(guildId);
-    if (!channels.some((channel) => channel.id === parsed.data.submissionChannelId)) {
-      return { ok: false, error: "Choose a text channel in this server." };
-    }
+  if (!parsed.success) return { ok: false, error: "Choose valid channels." };
+  const { submissionChannelId, leaderboardChannelId } = parsed.data;
+  if (submissionChannelId && submissionChannelId === leaderboardChannelId) return { ok: false, error: "Choose separate submission and leaderboard channels." };
+  const { channels } = await loadGuildOptions(guildId);
+  for (const id of [submissionChannelId, leaderboardChannelId]) {
+    if (id && !channels.some((channel) => channel.id === id)) return { ok: false, error: "Choose text channels in this server." };
   }
   try {
-    await setBuildAHouseConfig(guildId, parsed.data);
-  } catch {
-    return { ok: false, error: "Couldn't save the channel. Please try again." };
-  }
+    const current = await getBuildAHouseConfig(guildId);
+    await setBuildAHouseConfig(guildId, { ...current, submissionChannelId, leaderboardChannelId });
+  } catch { return { ok: false, error: "Couldn't save the channels. Please try again." }; }
   revalidatePath(`/dashboard/${guildId}/build-a-house`);
   revalidatePath(`/dashboard/${guildId}`);
   return { ok: true };
+}
+
+export async function publishSubmissionPanel(guildId: string) {
+  await requireGuildAccess(guildId);
+  if (guildId !== BUILD_A_HOUSE_GUILD_ID) return { ok: false, error: "This feature is not available for this server." };
+  try {
+    const current = await getBuildAHouseConfig(guildId);
+    const channelId = current.submissionChannelId;
+    const { channels } = await loadGuildOptions(guildId);
+    if (!channelId || !channels.some((channel) => channel.id === channelId)) return { ok: false, error: "Save a submission channel first." };
+    const payload = buildAHouseSubmissionPanel();
+    if (current.panelChannelId === channelId && current.panelMessageId) {
+      const edited = await editChannelMessageStatus(channelId, current.panelMessageId, payload);
+      if (edited.ok) return { ok: true };
+      if (!edited.missing) return { ok: false, error: "Couldn't update the existing panel. Check bot permissions." };
+    }
+    const posted = await postChannelMessage(channelId, payload);
+    if (!posted.ok) return posted;
+    await setBuildAHouseConfig(guildId, { ...current, panelChannelId: channelId, panelMessageId: posted.messageId });
+    revalidatePath(`/dashboard/${guildId}/build-a-house`);
+    return { ok: true };
+  } catch { return { ok: false, error: "Couldn't publish the submission panel. Please try again." }; }
 }
