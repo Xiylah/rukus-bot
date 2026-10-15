@@ -121,14 +121,21 @@ export function validateSubmissionCooldown(previous: { submittedAt: Date } | nul
   }
 }
 
+export function canReplaceLinkedCard(previous: { cardId: string | null; submittedAt: Date } | null, request: unknown, now = Date.now()): boolean {
+  if (!previous?.cardId || !request || typeof request !== "object") return false;
+  const grant = request as { previousCardId?: unknown; previousSubmittedAt?: unknown; expiresAt?: unknown };
+  return grant.previousCardId === previous.cardId && grant.previousSubmittedAt === previous.submittedAt.toISOString()
+    && typeof grant.expiresAt === "string" && Date.parse(grant.expiresAt) > now;
+}
+
 export function validateCardUpdate(previous: {
   cardId: string | null; capturedAt: Date | null; playtimeSeconds: bigint; goldBalance: bigint; submittedAt: Date;
-} | null, card: StatCard, now = Date.now(), resetAt = 0): void {
+} | null, card: StatCard, now = Date.now(), resetAt = 0, approvedRelink = false): void {
   if (!previous) return;
-  if (previous.cardId && previous.cardId !== card.cardId) throw new CardError("Your Discord account is already linked to another card identity. Contact a moderator.");
-  validateSubmissionCooldown(previous, now, resetAt);
+  if (previous.cardId && previous.cardId !== card.cardId && !approvedRelink) throw new CardError("Your Discord account is already linked to another card identity. Contact a moderator.");
+  if (!approvedRelink) validateSubmissionCooldown(previous, now, resetAt);
   if (previous.capturedAt && previous.capturedAt >= card.capturedAt) throw new CardError("You've already submitted this card or a newer one. Open a fresh card to update your stats.");
-  if (card.playtimeSeconds < previous.playtimeSeconds) {
+  if (!approvedRelink && card.playtimeSeconds < previous.playtimeSeconds) {
     throw new CardError("Playtime went backwards. Please open a fresh card or contact a moderator.");
   }
 }

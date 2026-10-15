@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cardChecksum, decodeStatCard, encodeGroupedCard, validateCardUpdate, validateSubmissionCooldown, STAT_CARD_UPDATE_INTERVAL_MS } from "../src/features/build-a-house/card.js";
+import { cardChecksum, decodeStatCard, encodeGroupedCard, validateCardUpdate, validateSubmissionCooldown, STAT_CARD_UPDATE_INTERVAL_MS, canReplaceLinkedCard } from "../src/features/build-a-house/card.js";
 
 const fixture = "PLAYER ExamplePlayer\nBAH1\nID 112345678 923456789\nCOLLECTION 402\nHOME 9007199254740993\nPLAYTIME 3661\nGOLD 50\nSTAMP 1792087200\nCHECK 61889";
 const now = 1792087200 * 1000;
@@ -80,4 +80,23 @@ test("a global reset releases existing daily limits, while the next successful u
   assert.throws(() => validateSubmissionCooldown(justSaved, resetAt, resetAt), /24 hours/);
   assert.throws(() => validateSubmissionCooldown({ submittedAt: new Date(resetAt + 1) }, resetAt + 2, resetAt), /24 hours/);
   assert.doesNotThrow(() => validateSubmissionCooldown(justSaved, resetAt + STAT_CARD_UPDATE_INTERVAL_MS, resetAt));
+});
+
+
+test("authorized card replacement is bound to one saved entry, expires, and permits a new playtime baseline", () => {
+  const card = decodeStatCard(fixture, now);
+  const previous = { ...card, cardId: "old-playtest-card", capturedAt: new Date(now - 1000), submittedAt: new Date(now - 1000), playtimeSeconds: 99999n };
+  const grant = { previousCardId: previous.cardId, previousSubmittedAt: previous.submittedAt.toISOString(), expiresAt: new Date(now + 900000).toISOString() };
+  assert.equal(canReplaceLinkedCard(previous, grant, now), true);
+  assert.equal(canReplaceLinkedCard(previous, grant, now + 900000), false);
+  assert.equal(canReplaceLinkedCard(previous, { ...grant, expiresAt: "invalid" }, now), false);
+  assert.equal(canReplaceLinkedCard(previous, null, now), false);
+  assert.equal(canReplaceLinkedCard({ ...previous, cardId: "other" }, grant, now), false);
+  assert.equal(canReplaceLinkedCard({ ...previous, submittedAt: new Date(now) }, grant, now), false);
+  assert.doesNotThrow(() => validateCardUpdate(previous, card, now, 0, true));
+  assert.throws(() => validateCardUpdate(previous, card, now), /another card identity/);
+  assert.throws(() => validateCardUpdate({ ...previous, capturedAt: card.capturedAt }, card, now, 0, true), /already submitted/);
+  const replaced = { ...card, submittedAt: new Date(now) };
+  assert.equal(canReplaceLinkedCard(replaced, grant, now), false);
+  assert.throws(() => validateCardUpdate(replaced, { ...card, capturedAt: new Date(now + 1000) }, now + 1000), /24 hours/);
 });
