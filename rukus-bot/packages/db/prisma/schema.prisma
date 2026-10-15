@@ -22,7 +22,8 @@ model BuildAHouseStats {
   fortniteDisplayName String @db.VarChar(64)
   collection         Int
   homeValue          BigInt
-  playtimeSeconds    BigInt
+  playtimeSeconds    BigInt @default(0)
+  houseLikes         BigInt?
   goldBalance   BigInt
   submittedAt        DateTime
 
@@ -31,6 +32,7 @@ model BuildAHouseStats {
   @@index([guildId, collection(sort: Desc), userId])
   @@index([guildId, homeValue(sort: Desc), userId])
   @@index([guildId, playtimeSeconds(sort: Desc), userId])
+  @@index([guildId, houseLikes(sort: Desc), userId])
   @@index([guildId, goldBalance(sort: Desc), userId])
   @@schema("rukus")
 }

@@ -9,7 +9,7 @@ export function isBuildAHouseGuild(guildId: string | null): boolean {
 export const leaderboardMetrics = {
   collection: "Collection",
   homeValue: "Home value",
-  playtimeSeconds: "Playtime",
+  houseLikes: "House likes",
   goldBalance: "Gold balance",
 } as const;
 
@@ -21,10 +21,7 @@ export function isLeaderboardMetric(value: string): value is LeaderboardMetric {
 
 export function formatLeaderboardValue(metric: LeaderboardMetric, value: bigint | number): string {
   const integer = BigInt(value);
-  if (metric === "playtimeSeconds") {
-    return `${integer / 3600n}h ${(integer % 3600n) / 60n}m`;
-  }
   const formatted = integer.toLocaleString("en-US");
   return metric === "homeValue" || metric === "goldBalance"
-    ? `$${formatted}` : `${formatted} collected`;
+    ? `$${formatted}` : metric === "houseLikes" ? `${formatted} likes` : `${formatted} collected`;
 }

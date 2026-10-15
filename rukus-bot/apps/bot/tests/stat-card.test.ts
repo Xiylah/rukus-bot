@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { cardChecksum, decodeStatCard, encodeGroupedCard, validateCardUpdate, validateSubmissionCooldown, STAT_CARD_UPDATE_INTERVAL_MS, canReplaceLinkedCard } from "../src/features/build-a-house/card.js";
 
-const fixture = "PLAYER ExamplePlayer\nBAH1\nID 112345678 923456789\nCOLLECTION 402\nHOME 9007199254740993\nPLAYTIME 3661\nGOLD 50\nSTAMP 1792087200\nCHECK 61889";
+const fixture = "PLAYER ExamplePlayer\nBAH3DATA\nID 112345678 923456789\nCOLLECTION 402\nHOME 9007199254740993\nLIKES 3661\nGOLD 50\nSTAMP 1792087200\nCHECK 61889";
 const now = 1792087200 * 1000;
 
-const grouped = "BAH2\nA GXXJ TWJE SZTF Z8T8 V4KJ\nB RY7E MU3A JQX6 DPDF 9GPW\nC 5CKS Z8FP F5YX T5CE NQHB";
+const grouped = "BAH3\nA GXXJ TWJE SZTF Z8T8 V4KJ\nB RY7E MU3A JQX6 DPDF 9GPW\nC 5CKS Z8FP F5YX T5CE NQHB";
 
 test("grouped codes match the fixed-width Verse encoding and preserve the centered username", () => {
   assert.equal(encodeGroupedCard([112345678n, 923456789n, 402n, 9007199254740993n, 3661n, 50n, 1792087200n, 61889n]), grouped);
@@ -38,13 +38,12 @@ test("damaged, duplicated, expired, future, negative and oversized cards are rej
   assert.throws(() => decodeStatCard(fixture.replace("GOLD 50", "GOLD 99999999999999999999"), now), /too large/);
 });
 
-test("fresh cards can reduce gold and home value but cannot swap identity or roll back playtime", () => {
+test("fresh cards can reduce gold and home value without swapping identity", () => {
   const card = decodeStatCard(fixture, now);
   const previous = { ...card, submittedAt: new Date(now - STAT_CARD_UPDATE_INTERVAL_MS), goldBalance: 1000n, homeValue: 9999999999999999n, capturedAt: new Date(now - 1000) };
   assert.doesNotThrow(() => validateCardUpdate(previous, card, now));
   assert.throws(() => validateCardUpdate({ ...previous, cardId: "another" }, card, now), /another card identity/);
   assert.throws(() => validateCardUpdate({ ...previous, capturedAt: card.capturedAt }, card, now), /already submitted/);
-  assert.throws(() => validateCardUpdate({ ...previous, playtimeSeconds: 99999n }, card, now), /Playtime/);
 });
 
 
@@ -83,9 +82,9 @@ test("a global reset releases existing daily limits, while the next successful u
 });
 
 
-test("authorized card replacement is bound to one saved entry, expires, and permits a new playtime baseline", () => {
+test("authorized card replacement is bound to one saved entry, expires, and permits a new likes baseline", () => {
   const card = decodeStatCard(fixture, now);
-  const previous = { ...card, cardId: "old-playtest-card", capturedAt: new Date(now - 1000), submittedAt: new Date(now - 1000), playtimeSeconds: 99999n };
+  const previous = { ...card, cardId: "old-playtest-card", capturedAt: new Date(now - 1000), submittedAt: new Date(now - 1000), houseLikes: 99999n };
   const grant = { previousCardId: previous.cardId, previousSubmittedAt: previous.submittedAt.toISOString(), expiresAt: new Date(now + 900000).toISOString() };
   assert.equal(canReplaceLinkedCard(previous, grant, now), true);
   assert.equal(canReplaceLinkedCard(previous, grant, now + 900000), false);
@@ -99,4 +98,21 @@ test("authorized card replacement is bound to one saved entry, expires, and perm
   const replaced = { ...card, submittedAt: new Date(now) };
   assert.equal(canReplaceLinkedCard(replaced, grant, now), false);
   assert.throws(() => validateCardUpdate(replaced, { ...card, capturedAt: new Date(now + 1000) }, now + 1000), /24 hours/);
+});
+
+
+test("old playtime cards cannot be interpreted as house likes", () => {
+  assert.throws(() => decodeStatCard(grouped.replace("BAH3", "BAH2"), now), /old playtime card/);
+  assert.throws(() => decodeStatCard(fixture.replace("BAH3DATA", "BAH1"), now), /old playtime card/);
+  const card = decodeStatCard(grouped, now);
+  assert.equal(card.houseLikes, 3661n);
+});
+
+
+test("zero house likes are valid and likes can decrease without a playtime rollback check", () => {
+  const values = [112345678n, 923456789n, 402n, 1800000n, 0n, 450000n, 1792087200n];
+  const card = decodeStatCard(encodeGroupedCard([...values, cardChecksum(values)]), now);
+  assert.equal(card.houseLikes, 0n);
+  const previous = { ...card, houseLikes: 500n, capturedAt: new Date(now - 1000), submittedAt: new Date(now - STAT_CARD_UPDATE_INTERVAL_MS) };
+  assert.doesNotThrow(() => validateCardUpdate(previous, card, now));
 });

@@ -32,7 +32,7 @@ test("Sunday schedule respects Chicago midnight, DST and year boundaries", () =>
 
 test("four top-ten embeds stay within Discord limits and preserve large gold values", () => {
   const rows = Array.from({ length: 10 }, (_, index) => ({ userId: String(700382994946588814n + BigInt(index)), fortniteDisplayName: "*".repeat(64),
-    collection: 999999, homeValue: 9223372036854775807n, playtimeSeconds: 9223372036854775807n, goldBalance: 9223372036854775807n }));
+    collection: 999999, homeValue: 9223372036854775807n, houseLikes: 9223372036854775807n, goldBalance: 9223372036854775807n }));
   const embeds = (Object.keys(leaderboardMetrics) as LeaderboardMetric[]).map((metric) => weeklyEmbed(metric, rows, new Date()).toJSON());
   assert.equal(embeds.length, 4);
   let total = 0;
@@ -68,6 +68,7 @@ test("weekly and manual refreshes edit the same message, survive restarts and re
     },
     buildAHouseStats: { findMany: async (args: any) => {
       reads++; assert.equal(args.take, 10);
+      if (args.orderBy[0].houseLikes) assert.deepEqual(args.where.houseLikes, { not: null });
       assert.deepEqual(args.orderBy[1], { userId: "asc" });
       return [];
     } },

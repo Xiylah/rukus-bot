@@ -25,11 +25,12 @@ const PER_PAGE = 10;
 
 async function render(metric: LeaderboardMetric, requestedPage: number) {
   const result = await prisma.$transaction(async (tx) => {
-    const total = await tx.buildAHouseStats.count({ where: { guildId: BUILD_A_HOUSE_GUILD_ID } });
+    const where = { guildId: BUILD_A_HOUSE_GUILD_ID, ...(metric === "houseLikes" ? { houseLikes: { not: null } } : {}) };
+    const total = await tx.buildAHouseStats.count({ where });
     const pages = Math.max(1, Math.ceil(total / PER_PAGE));
     const page = Math.min(Math.max(1, requestedPage), pages);
     const rows = await tx.buildAHouseStats.findMany({
-      where: { guildId: BUILD_A_HOUSE_GUILD_ID },
+      where,
       orderBy: [{ [metric]: "desc" }, { userId: "asc" }],
       skip: (page - 1) * PER_PAGE,
       take: PER_PAGE,
@@ -41,7 +42,7 @@ async function render(metric: LeaderboardMetric, requestedPage: number) {
     ? result.rows.map((row, index) => {
       const name = escapeMarkdown(row.fortniteDisplayName.replace(/[\r\n]/g, " ").slice(0, 64));
       const when = Math.floor(row.submittedAt.getTime() / 1000);
-      return `**${(result.page - 1) * PER_PAGE + index + 1}.** ${name} — **${formatLeaderboardValue(metric, row[metric])}**\n<@${row.userId}> · Submitted <t:${when}:R>`;
+      return `**${(result.page - 1) * PER_PAGE + index + 1}.** ${name} — **${formatLeaderboardValue(metric, row[metric] ?? 0)}**\n<@${row.userId}> · Submitted <t:${when}:R>`;
     }).join("\n\n")
     : "No submitted Build A House stats yet.";
 

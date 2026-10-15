@@ -7,7 +7,7 @@ import { recognizeStatCard, stopStatCardReader } from "../src/features/build-a-h
 test("a rendered stat card passes through the actual image reader and decoder", { skip: !process.env.TEST_CARD_OCR, timeout: 60000 }, async () => {
   const stamp = BigInt(Math.floor(Date.now() / 1000));
   const values = [112345678n, 923456789n, 402n, 1800000n, 3661n, 450000n, stamp];
-  const lines = ["BUILD A HOUSE LEADERBOARD", "PLAYER ExamplePlayer", "BAH1", "ID 112345678 923456789", "COLLECTION 402", "HOME 1800000", "PLAYTIME 3661", "GOLD 450000", `STAMP ${stamp}`, `CHECK ${cardChecksum(values)}`];
+  const lines = ["BUILD A HOUSE LEADERBOARD", "PLAYER ExamplePlayer", "BAH3DATA", "ID 112345678 923456789", "COLLECTION 402", "HOME 1800000", "LIKES 3661", "GOLD 450000", `STAMP ${stamp}`, `CHECK ${cardChecksum(values)}`];
   const canvas = createCanvas(1000, 650);
   const context = canvas.getContext("2d");
   context.fillStyle = "#f5f5e5";

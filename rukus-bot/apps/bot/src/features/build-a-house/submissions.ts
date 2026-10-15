@@ -73,7 +73,7 @@ async function saveCard(actor: { userId: string; displayName: string }, card: St
         validateCardUpdate(previous, card, Date.now(), resetAt, approvedRelink);
         const data = {
           cardId: card.cardId, collection: card.collection, homeValue: card.homeValue,
-          playtimeSeconds: card.playtimeSeconds, goldBalance: card.goldBalance,
+          houseLikes: card.houseLikes, goldBalance: card.goldBalance,
           fortniteDisplayName: card.displayName ?? actor.displayName.slice(0, 64),
           capturedAt: card.capturedAt, submittedAt: new Date(Math.max(Date.now(), resetAt)),
         };
@@ -111,7 +111,7 @@ export async function submitStatCard(input: {
       if (config.submissionChannelId !== input.channelId) throw new CardError("The submission channel changed. Please use the new channel.");
       await input.ensureSource?.();
       await saveCard(input, card);
-      await input.reply(`Your Build A House stats are saved!\nCollection: ${card.collection}\nHome value: ${formatLeaderboardValue("homeValue", card.homeValue)}\nPlaytime: ${formatLeaderboardValue("playtimeSeconds", card.playtimeSeconds)}\nGold balance: ${formatLeaderboardValue("goldBalance", card.goldBalance)}\nUse /leaderboard to see the rankings. You can update your stats again in 24 hours.`);
+      await input.reply(`Your Build A House stats are saved!\nCollection: ${card.collection}\nHome value: ${formatLeaderboardValue("homeValue", card.homeValue)}\nHouse likes: ${formatLeaderboardValue("houseLikes", card.houseLikes)}\nGold balance: ${formatLeaderboardValue("goldBalance", card.goldBalance)}\nUse /leaderboard to see the rankings. You can update your stats again in 24 hours.`);
     } catch (error) {
       log.warn("Build A House stat-card processing failed", error);
       await input.reply(error instanceof CardError ? error.message.slice(0, 600) : "Couldn't save the card right now. Please try again later.").catch(() => {});
