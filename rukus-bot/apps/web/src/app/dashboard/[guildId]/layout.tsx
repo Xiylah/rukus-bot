@@ -24,7 +24,7 @@ export default async function GuildLayout({
     },
     ...MODULE_CATEGORIES.map((category): NavGroup => ({
       title: category,
-      items: MODULES.filter((m) => m.category === category).map((m) => ({
+      items: MODULES.filter((m) => m.category === category && (!m.guildId || m.guildId === guildId)).map((m) => ({
         href: `/dashboard/${guildId}/${m.slug}`,
         label: m.name,
         icon: m.icon,

@@ -1,5 +1,6 @@
 import {
   FEATURE_SCHEMAS,
+  type BuildAHouseConfig,
   type TicketConfig,
   type FormsConfig,
   type TranslationConfig,
@@ -99,6 +100,11 @@ async function writeConfig<T>(
   if (error) throw new Error(`Supabase write failed: ${error.message}`);
   return parsed as T;
 }
+
+export const getBuildAHouseConfig = (guildId: string) =>
+  readConfig<BuildAHouseConfig>(guildId, "buildahouse");
+export const setBuildAHouseConfig = (guildId: string, config: unknown) =>
+  writeConfig<BuildAHouseConfig>(guildId, "buildahouse", config);
 
 export const getTicketConfig = (guildId: string) =>
   readConfig<TicketConfig>(guildId, "tickets");

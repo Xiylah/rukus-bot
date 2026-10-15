@@ -28,6 +28,7 @@ export const MODULE_CATEGORIES: ModuleCategory[] = [
 ];
 
 export interface ModuleDef {
+  guildId?: string;
   /** URL segment under /dashboard/[guildId]/. */
   slug: string;
   /** FEATURE_SCHEMAS key, or null for pages that are not a config feature. */
@@ -49,6 +50,16 @@ export interface ModuleDef {
 }
 
 export const MODULES: ModuleDef[] = [
+  {
+    slug: "build-a-house",
+    feature: "buildahouse",
+    guildId: "700382994946588814",
+    icon: "🏠",
+    name: "Build A House Leaderboard",
+    description: "Choose where players upload their stat cards.",
+    category: "Community",
+    toggleable: false,
+  },
   // ---- Support ----
   {
     slug: "tickets",
