@@ -22,6 +22,7 @@ import { runAfk } from "../features/afk/afk.js";
 import { handleMessageXp } from "../features/leveling/xp.js";
 import { handleMessageEarn } from "../features/economy/earn.js";
 import { runContestEntry } from "../features/contests/entries.js";
+import { handleStatCardUpload } from "../features/build-a-house/submissions.js";
 
 /** Post a translation, honouring the guild's output settings. */
 async function postTranslation(
@@ -83,6 +84,7 @@ const handler: EventHandler<Events.MessageCreate> = {
         if (!hasAttachment && !hasEmbedImage) {
           await message.delete().catch(() => {});
         }
+        if (hasAttachment) await handleStatCardUpload(message);
         return; // nothing else runs in the image-only channel
       }
 
@@ -126,6 +128,7 @@ const handler: EventHandler<Events.MessageCreate> = {
     // --- Leveling XP ---
     // Above the returns below: an image post or a one-word "gg" is still a real
     // message and earns XP. It only has to survive moderation to count.
+    if (await handleStatCardUpload(message)) return;
     await handleMessageXp(message);
 
     // --- Economy earning ---

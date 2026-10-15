@@ -14,7 +14,7 @@ export function LeaderboardSettings({ guildId, initial, channels }: {
   return <div className="card space-y-5">
     <Select label="Stat-card submission channel" value={channel} onChange={setChannel}
       options={channels} prefix="#" placeholder="No channel selected" />
-    <p className="text-sm text-zinc-400">Stat-card uploads are being developed. Saving a channel does not enable screenshot processing yet.</p>
+    <p className="text-sm text-zinc-400">Players open their stat card in-game and upload one PNG or JPEG here. Use a dedicated text channel. Leave this empty to disable submissions.</p>
     <button className="btn-primary" disabled={pending} onClick={() => {
       setStatus("");
       startTransition(async () => {
