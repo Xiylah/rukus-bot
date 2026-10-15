@@ -42,8 +42,8 @@ function decodeGroupedCard(lines: string[], now: number): StatCard {
   if (headers.length !== 1 || lines.some((line) => /^BAH1$/i.test(line))) throw new CardError("Upload one whole stat card at a time.");
   let raw = "";
   for (const label of ["A", "B", "C"]) {
-    const matches = lines.flatMap((line) => {
-      const match = line.match(new RegExp(`^${label}\\s+([2-9A-HJ-NP-Z ]+)$`, "i"));
+    const matches = lines.slice(headers[0]! + 1).flatMap((line) => {
+      const match = line.match(new RegExp(`^${label}\\s*([2-9A-HJ-NP-Z ]+)$`, "i"));
       return match ? [match[1]!.replace(/ /g, "").toUpperCase()] : [];
     });
     if (matches.length !== 1 || matches[0]!.length !== 20) throw new CardError(`Couldn't read code row ${label}. Please upload a clearer screenshot.`);
