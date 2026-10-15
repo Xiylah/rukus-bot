@@ -46,3 +46,10 @@ test("fresh cards can reduce gold and home value but cannot swap identity or rol
   assert.throws(() => validateCardUpdate({ ...previous, capturedAt: card.capturedAt }, card), /already submitted/);
   assert.throws(() => validateCardUpdate({ ...previous, playtimeSeconds: 99999n }, card), /Playtime/);
 });
+
+
+test("OCR may join a row label to its first code group without changing the payload", () => {
+  const values = [112345678n, 923456789n, 402n, 1800000n, 3661n, 450000n, 1792087200n];
+  const text = encodeGroupedCard([...values, cardChecksum(values)]).replace(/\n([ABC]) /g, "\n$1");
+  assert.equal(decodeStatCard(text, 1792087200000).goldBalance, 450000n);
+});

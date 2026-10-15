@@ -2,8 +2,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { gunzipSync } from "node:zlib";
-import { createWorker, type Worker } from "tesseract.js";
-import { CardError } from "./card.js";
+import { createWorker, PSM, type Worker } from "tesseract.js";
+import { isolateStatCardCodes } from "./card-image.js";
+import { CardError, decodeStatCard } from "./card.js";
 let workerPromise: Promise<Worker> | null = null;
 
 async function englishData(): Promise<string> {
@@ -39,7 +40,20 @@ export async function recognizeStatCard(bytes: Buffer): Promise<string> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
-      currentWorker.then((worker) => worker.recognize(bytes)).then((result) => result.data.text),
+      currentWorker.then(async (worker) => {
+        await worker.setParameters({ tessedit_pageseg_mode: PSM.AUTO, tessedit_char_whitelist: "" });
+        const isolated = await isolateStatCardCodes(bytes);
+        const full = (await worker.recognize(bytes)).data.text;
+        const lines = full.split("\n");
+        const index = lines.findIndex((line) => /^BAH2$/i.test(line.trim()));
+        const prefix = index >= 0 ? lines.slice(0, index).join("\n") + "\n" : "";
+        if (isolated?.machineText) return prefix + isolated.machineText;
+        try { decodeStatCard(full); return full; } catch {}
+        if (!isolated) return full;
+        await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK, tessedit_char_whitelist: "23456789ABCDEFGHJKLMNPQRSTUVWXYZ " });
+        const codes = (await worker.recognize(isolated.codes)).data.text;
+        return prefix + codes;
+      }),
       new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(new CardError("Reading the image timed out. Try a clearer, cropped image.")), 30000);
       }),

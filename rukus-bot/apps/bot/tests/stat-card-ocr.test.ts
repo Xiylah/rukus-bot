@@ -53,3 +53,17 @@ test("centered username and grouped letter-number codes decode from a rendered c
     assert.equal(card.displayName, "ExamplePlayer");
   } finally { await stopStatCardReader(); }
 });
+
+
+test("whole-game screenshot with heavy code lettering uses the machine strip", { skip: !process.env.TEST_CARD_OCR, timeout: 60000 }, async () => {
+  const { screenshotWithStrip } = await import("./fixtures/stat-card.js");
+  const { image } = screenshotWithStrip();
+  try {
+    const text = await recognizeStatCard(image.toBuffer("image/png"));
+    const card = decodeStatCard(text);
+    assert.equal(card.goldBalance, 2316918508n);
+    assert.equal(card.homeValue, 166907559750n);
+    assert.equal(card.collection, 1024);
+    assert.equal(card.displayName, "Rukus");
+  } finally { await stopStatCardReader(); }
+});
