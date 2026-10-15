@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { BUILD_A_HOUSE_GUILD_ID, buildAHouseConfigSchema, buildAHouseSubmissionPanel } from "@rukus/shared";
-import { getBuildAHouseConfig, setBuildAHouseConfig } from "@rukus/supabase";
+import { getBuildAHouseConfig, setBuildAHouseConfig, requestBuildAHouseLeaderboardRefresh } from "@rukus/supabase";
 import { requireGuildAccess } from "@/lib/guard";
 import { loadGuildOptions } from "@/lib/guildOptions";
 import { editChannelMessageStatus, postChannelMessage } from "@/lib/discord";
@@ -47,4 +47,20 @@ export async function publishSubmissionPanel(guildId: string) {
     revalidatePath(`/dashboard/${guildId}/build-a-house`);
     return { ok: true };
   } catch { return { ok: false, error: "Couldn't publish the submission panel. Please try again." }; }
+}
+
+
+export async function refreshLeaderboardNow(guildId: string) {
+  await requireGuildAccess(guildId);
+  if (guildId !== BUILD_A_HOUSE_GUILD_ID) return { ok: false, error: "This feature is not available for this server." };
+  try {
+    const config = await getBuildAHouseConfig(guildId);
+    const channelId = config.leaderboardChannelId;
+    const { channels } = await loadGuildOptions(guildId);
+    if (!channelId || !channels.some((channel) => channel.id === channelId)) {
+      return { ok: false, error: "Save a leaderboard channel first." };
+    }
+    await requestBuildAHouseLeaderboardRefresh(guildId, channelId);
+    return { ok: true };
+  } catch { return { ok: false, error: "Couldn't request a refresh. Please try again." }; }
 }
