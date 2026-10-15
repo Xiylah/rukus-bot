@@ -122,3 +122,17 @@ test("weekly and manual refreshes edit the same message, survive restarts and re
     assert.equal(edits, 4); assert.equal(state!.week, leaderboardWeek());
   } finally { prisma.$transaction = original; }
 });
+
+
+test("leaderboard footer automatically displays CST or CDT for Central daylight saving", () => {
+  for (const [date, zone] of [
+    ["2026-01-11T06:00:00Z", "CST"],
+    ["2026-07-12T05:00:00Z", "CDT"],
+    ["2026-11-01T06:59:59Z", "CDT"],
+    ["2026-11-01T08:00:00Z", "CST"],
+  ]) {
+    const footer = weeklyEmbed("collection", [], new Date(date!)).toJSON().footer!.text;
+    assert.ok(footer.endsWith(`Refreshes Sunday, 12 AM ${zone}`));
+    assert.ok(!footer.includes("America/Chicago"));
+  }
+});
