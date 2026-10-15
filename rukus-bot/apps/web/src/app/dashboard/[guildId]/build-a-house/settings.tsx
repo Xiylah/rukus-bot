@@ -69,7 +69,7 @@ export function LeaderboardSettings({ guildId, initial, channels }: {
         } catch { setStatus("Couldn't allow card replacement. Please try again."); }
       });
     }}>Replace my linked card</button>
-    <p className="text-sm text-zinc-400">Use when your Discord account was linked to a blank playtest save. Allows one different card within 15 minutes, including a new playtime baseline. Your current stats stay until the replacement succeeds. The replacement starts a new 24-hour submission limit.</p>
+    <p className="text-sm text-zinc-400">Use when your Discord account was linked to a blank playtest save. Allows one different card within 15 minutes, from the correct game save. Your current stats stay until the replacement succeeds. The replacement starts a new 24-hour submission limit.</p>
     <p role="status" className="text-sm text-zinc-300">{status}</p>
   </div>;
 }

@@ -4,14 +4,14 @@ import { BUILD_A_HOUSE_GUILD_ID, buildAHouseConfigSchema, leaderboardWeek } from
 import { leaderboardMetrics, formatLeaderboardValue, type LeaderboardMetric } from "./settings.js";
 import { log } from "../../lib/logger.js";
 
-export function weeklyEmbed(metric: LeaderboardMetric, rows: { fortniteDisplayName: string; userId: string; collection: number; homeValue: bigint; playtimeSeconds: bigint; goldBalance: bigint }[], now: Date) {
+export function weeklyEmbed(metric: LeaderboardMetric, rows: { fortniteDisplayName: string; userId: string; collection: number; homeValue: bigint; houseLikes: bigint | null; goldBalance: bigint }[], now: Date) {
   const zone = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Chicago", timeZoneName: "short",
   }).formatToParts(now).find((part) => part.type === "timeZoneName")?.value ?? "Central Time";
   return new EmbedBuilder().setTitle(`Build A House Leaderboard • ${leaderboardMetrics[metric]}`)
     .setColor(0x81947a).setTimestamp(now)
     .setDescription(rows.length ? rows.map((row, index) =>
-      `**${index + 1}.** <@${row.userId}> — **${formatLeaderboardValue(metric, row[metric])}**`
+      `**${index + 1}.** <@${row.userId}> — **${formatLeaderboardValue(metric, row[metric] ?? 0)}**`
     ).join("\n") : "No stat cards submitted yet.")
     .setFooter({ text: `Top 10 • Latest submitted stats • Refreshes Sunday, 12 AM ${zone}` });
 }
@@ -40,7 +40,7 @@ export async function refreshWeeklyLeaderboard(client: Client) {
     if (!channel?.isSendable() || !("guildId" in channel) || channel.guildId !== BUILD_A_HOUSE_GUILD_ID) throw new Error("Invalid Build A House leaderboard channel");
     const embeds = [];
     for (const metric of Object.keys(leaderboardMetrics) as LeaderboardMetric[]) {
-      const rows = await tx.buildAHouseStats.findMany({ where: { guildId: BUILD_A_HOUSE_GUILD_ID },
+      const rows = await tx.buildAHouseStats.findMany({ where: { guildId: BUILD_A_HOUSE_GUILD_ID, ...(metric === "houseLikes" ? { houseLikes: { not: null } } : {}) },
         orderBy: [{ [metric]: "desc" }, { userId: "asc" }], take: 10 });
       embeds.push(weeklyEmbed(metric, rows, now));
     }

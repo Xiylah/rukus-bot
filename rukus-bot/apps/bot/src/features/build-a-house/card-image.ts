@@ -1,6 +1,6 @@
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 
-export async function isolateStatCardCodes(bytes: Buffer): Promise<{ codes: Buffer; machineText: string | null } | null> {
+export async function isolateStatCardCodes(bytes: Buffer): Promise<{ codes: Buffer; name: Buffer | null; machineText: string | null } | null> {
   const image = await loadImage(bytes);
   if (image.width * image.height > 20_000_000) return null;
   const scale = Math.min(1, 1400 / image.width);
@@ -58,7 +58,15 @@ export async function isolateStatCardCodes(bytes: Buffer): Promise<{ codes: Buff
     }
     symbols += alphabet[value];
   }
-  const machineText = symbols.startsWith("BAH2") ? ["BAH2", ...["A", "B", "C"].map((label, row) =>
+  const machineText = symbols.startsWith("BAH3") ? ["BAH3", ...["A", "B", "C"].map((label, row) =>
     `${label} ${symbols.slice(4 + row * 20, 24 + row * 20)}`)].join("\n") : null;
-  return { codes: output.toBuffer("image/png"), machineText };
+  let name: Buffer | null = null;
+  const nameTop = region.top / scale - 84 * w / 920;
+  if (nameTop >= 0) {
+    const nameHeight = 60 * w / 920;
+    const nameCanvas = createCanvas(Math.round(w * zoom), Math.round(nameHeight * zoom));
+    nameCanvas.getContext("2d").drawImage(image, region.left / scale, nameTop, w, nameHeight, 0, 0, nameCanvas.width, nameCanvas.height);
+    name = nameCanvas.toBuffer("image/png");
+  }
+  return { codes: output.toBuffer("image/png"), name, machineText };
 }

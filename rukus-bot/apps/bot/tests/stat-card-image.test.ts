@@ -16,7 +16,7 @@ test("machine strip decodes a whole-screen heavy-font card at multiple scales an
       assert.equal(card.collection, 1024);
       assert.equal(card.homeValue, 166907559750n);
       assert.equal(card.goldBalance, 2316918508n);
-      assert.equal(card.playtimeSeconds, 41n);
+      assert.equal(card.houseLikes, 41n);
       assert.equal(card.cardId, "112345678923456789");
     }
   }

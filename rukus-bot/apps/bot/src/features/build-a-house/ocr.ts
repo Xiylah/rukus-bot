@@ -45,9 +45,16 @@ export async function recognizeStatCard(bytes: Buffer): Promise<string> {
         const isolated = await isolateStatCardCodes(bytes);
         const full = (await worker.recognize(bytes)).data.text;
         const lines = full.split("\n");
-        const index = lines.findIndex((line) => /^BAH2$/i.test(line.trim()));
+        const index = lines.findIndex((line) => /^BAH3$/i.test(line.trim()));
         const prefix = index >= 0 ? lines.slice(0, index).join("\n") + "\n" : "";
-        if (isolated?.machineText) return prefix + isolated.machineText;
+        if (isolated?.machineText) {
+          if (!prefix && isolated.name) {
+            await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_LINE, tessedit_char_whitelist: "" });
+            const name = (await worker.recognize(isolated.name)).data.text.trim().replace(/[\r\n]+/g, " ");
+            return `${name}\n${isolated.machineText}`;
+          }
+          return prefix + isolated.machineText;
+        }
         try { decodeStatCard(full); return full; } catch {}
         if (!isolated) return full;
         await worker.setParameters({ tessedit_pageseg_mode: PSM.SINGLE_BLOCK, tessedit_char_whitelist: "23456789ABCDEFGHJKLMNPQRSTUVWXYZ " });

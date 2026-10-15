@@ -6,7 +6,7 @@ export function screenshotWithStrip(scale = 1) {
   const values = [112345678n, 923456789n, 1024n, 166907559750n, 41n, 2316918508n, now];
   const payload = encodeGroupedCard([...values, cardChecksum(values)]);
   const lines = payload.split("\n");
-  const raw = "BAH2" + lines.slice(1).map((line) => line.slice(2).replace(/ /g, "")).join("");
+  const raw = "BAH3" + lines.slice(1).map((line) => line.slice(2).replace(/ /g, "")).join("");
   const image = createCanvas(1920, 1080), ctx = image.getContext("2d");
   ctx.fillStyle = "#123342"; ctx.fillRect(0, 0, 1920, 1080);
   ctx.fillStyle = "#006b60"; ctx.fillRect(460, 195, 1000, 690);
