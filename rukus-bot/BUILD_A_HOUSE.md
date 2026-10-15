@@ -72,3 +72,7 @@ The weekly channel receives one message with four category embeds (Collection, H
 ## Machine-readable screenshot strip
 
 New in-game cards retain the centered username and grouped BAH2 codes, and include a small black/cream data strip beneath the text. This avoids OCR confusing Fortnite's heavy code lettering. The strip carries a four-symbol BAH2 marker followed by the same 60 encoded payload symbols (five binary cells per symbol). The bot locates the cream panel, samples the strip and applies the existing checksum, bounds, identity and freshness validation. It still uses OCR for the username and supports older cards through text OCR, with an isolated-panel fallback. No encryption or anti-forgery guarantee is added. Deploy the bot update and open a fresh card after updating the Verse UI.
+
+## Rolling 24-hour update limit
+
+Each Discord player can successfully submit or update their stats once every 24 hours, measured from the persisted server-side `submittedAt` timestamp. This applies to every metric together and both direct uploads and the modal. Failed uploads do not consume the daily allowance. A precheck rejects early uploads before download/OCR, and the serializable save transaction rechecks the limit to prevent concurrent bypasses. The limit survives bot restarts and shows the next allowed update using Discord timestamps. The separate 15-second anti-spam guard remains. Existing successful submissions count toward the limit. No new migration is needed. Republish the submission panel to display the updated 24-hour footer.

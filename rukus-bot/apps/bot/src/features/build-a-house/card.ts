@@ -109,11 +109,23 @@ export function decodeStatCard(text: string, now = Date.now()): StatCard {
   };
 }
 
+export const STAT_CARD_UPDATE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+export function validateSubmissionCooldown(previous: { submittedAt: Date } | null, now = Date.now()): void {
+  if (!previous) return;
+  const nextUpdate = previous.submittedAt.getTime() + STAT_CARD_UPDATE_INTERVAL_MS;
+  if (now < nextUpdate) {
+    const timestamp = Math.ceil(nextUpdate / 1000);
+    throw new CardError(`You can update your stat card once every 24 hours. Your next update is available <t:${timestamp}:R> (<t:${timestamp}:f>).`);
+  }
+}
+
 export function validateCardUpdate(previous: {
-  cardId: string | null; capturedAt: Date | null; playtimeSeconds: bigint; goldBalance: bigint;
-} | null, card: StatCard): void {
+  cardId: string | null; capturedAt: Date | null; playtimeSeconds: bigint; goldBalance: bigint; submittedAt: Date;
+} | null, card: StatCard, now = Date.now()): void {
   if (!previous) return;
   if (previous.cardId && previous.cardId !== card.cardId) throw new CardError("Your Discord account is already linked to another card identity. Contact a moderator.");
+  validateSubmissionCooldown(previous, now);
   if (previous.capturedAt && previous.capturedAt >= card.capturedAt) throw new CardError("You've already submitted this card or a newer one. Open a fresh card to update your stats.");
   if (card.playtimeSeconds < previous.playtimeSeconds) {
     throw new CardError("Playtime went backwards. Please open a fresh card or contact a moderator.");
