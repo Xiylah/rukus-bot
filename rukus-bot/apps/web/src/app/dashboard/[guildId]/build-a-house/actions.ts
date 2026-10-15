@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { BUILD_A_HOUSE_GUILD_ID, buildAHouseConfigSchema, buildAHouseSubmissionPanel } from "@rukus/shared";
-import { getBuildAHouseConfig, setBuildAHouseConfig, requestBuildAHouseLeaderboardRefresh, resetBuildAHouseSubmissionLimits } from "@rukus/supabase";
+import { getBuildAHouseConfig, setBuildAHouseConfig, requestBuildAHouseLeaderboardRefresh, resetBuildAHouseSubmissionLimits, allowBuildAHouseCardReplacement } from "@rukus/supabase";
 import { requireGuildAccess } from "@/lib/guard";
 import { loadGuildOptions } from "@/lib/guildOptions";
 import { editChannelMessageStatus, postChannelMessage } from "@/lib/discord";
@@ -73,4 +73,15 @@ export async function resetEveryoneSubmissionLimit(guildId: string) {
     await resetBuildAHouseSubmissionLimits(guildId);
     return { ok: true };
   } catch { return { ok: false, error: "Couldn't reset submission limits. Please try again." }; }
+}
+
+
+export async function replaceMyLinkedCard(guildId: string) {
+  const { session } = await requireGuildAccess(guildId);
+  if (guildId !== BUILD_A_HOUSE_GUILD_ID) return { ok: false, error: "This feature is not available for this server." };
+  try {
+    const allowed = await allowBuildAHouseCardReplacement(guildId, session.discordId!);
+    if (!allowed) return { ok: false, error: "Your signed-in Discord account has no linked card. Submit a card normally." };
+    return { ok: true };
+  } catch { return { ok: false, error: "Couldn't allow card replacement. Please try again." }; }
 }

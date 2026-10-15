@@ -127,6 +127,25 @@ export async function resetBuildAHouseSubmissionLimits(guildId: string): Promise
   if (error) throw new Error(`Submission limit reset failed: ${error.message}`);
 }
 
+export async function allowBuildAHouseCardReplacement(guildId: string, userId: string): Promise<boolean> {
+  if (guildId !== BUILD_A_HOUSE_GUILD_ID || !/^\d{17,20}$/.test(userId)) throw new Error("Invalid card replacement target");
+  const supabase = getSupabase();
+  const { data: previous, error: readError } = await supabase.from("BuildAHouseStats")
+    .select("cardId,submittedAt").eq("guildId", guildId).eq("userId", userId).maybeSingle();
+  if (readError) throw new Error(`Card link lookup failed: ${readError.message}`);
+  if (!previous?.cardId) return false;
+  const submittedAt = String(previous.submittedAt);
+  const previousSubmittedAt = new Date(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(submittedAt) ? submittedAt : `${submittedAt}Z`).toISOString();
+  const now = new Date();
+  const { error } = await supabase.from(TABLE).upsert({
+    id: newId(), guildId, feature: `buildahouse-relink:${userId}`,
+    config: { previousCardId: previous.cardId, previousSubmittedAt,
+      expiresAt: new Date(now.getTime() + 15 * 60 * 1000).toISOString() }, updatedAt: now.toISOString(),
+  }, { onConflict: "guildId,feature" });
+  if (error) throw new Error(`Card replacement request failed: ${error.message}`);
+  return true;
+}
+
 export const getTicketConfig = (guildId: string) =>
   readConfig<TicketConfig>(guildId, "tickets");
 export const setTicketConfig = (guildId: string, config: unknown) =>

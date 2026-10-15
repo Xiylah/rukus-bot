@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import type { BuildAHouseConfig } from "@rukus/shared";
 import { Select, type Option } from "@/components/Pickers";
-import { publishSubmissionPanel, saveLeaderboardSettings, refreshLeaderboardNow, resetEveryoneSubmissionLimit } from "./actions";
+import { publishSubmissionPanel, saveLeaderboardSettings, refreshLeaderboardNow, resetEveryoneSubmissionLimit, replaceMyLinkedCard } from "./actions";
 
 export function LeaderboardSettings({ guildId, initial, channels }: {
   guildId: string; initial: BuildAHouseConfig; channels: Option[];
@@ -60,6 +60,16 @@ export function LeaderboardSettings({ guildId, initial, channels }: {
       });
     }}>Reset submission limits for everyone</button>
     <p className="text-sm text-zinc-400">Testing control: clears everyone’s current 24-hour wait. Saved leaderboard stats and account links stay intact. Each player must capture a fresh card; their next successful update starts the normal 24-hour limit again.</p>
+    <button className="btn-primary" disabled={pending} onClick={() => {
+      setStatus("");
+      startTransition(async () => {
+        try {
+          const result = await replaceMyLinkedCard(guildId);
+          setStatus(result.ok ? "Card replacement allowed for your signed-in Discord account for 15 minutes. Capture a fresh card from your correct Fortnite save and submit it with that same Discord account." : result.error ?? "Couldn't allow replacement.");
+        } catch { setStatus("Couldn't allow card replacement. Please try again."); }
+      });
+    }}>Replace my linked card</button>
+    <p className="text-sm text-zinc-400">Use when your Discord account was linked to a blank playtest save. Allows one different card within 15 minutes, including a new playtime baseline. Your current stats stay until the replacement succeeds. The replacement starts a new 24-hour submission limit.</p>
     <p role="status" className="text-sm text-zinc-300">{status}</p>
   </div>;
 }

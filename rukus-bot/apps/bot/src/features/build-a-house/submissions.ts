@@ -3,7 +3,7 @@ import { prisma, Prisma, getBuildAHouseConfig } from "@rukus/db";
 import type { Attachment, Message } from "discord.js";
 import { log } from "../../lib/logger.js";
 import { BUILD_A_HOUSE_GUILD_ID, formatLeaderboardValue } from "./settings.js";
-import { CardError, decodeStatCard, validateCardUpdate, validateSubmissionCooldown, type StatCard } from "./card.js";
+import { CardError, decodeStatCard, validateCardUpdate, validateSubmissionCooldown, canReplaceLinkedCard, type StatCard } from "./card.js";
 
 const MAX_BYTES = 8 * 1024 * 1024;
 let queue: Promise<unknown> = Promise.resolve();
@@ -52,6 +52,13 @@ export async function submissionResetAt(db: Pick<Prisma.TransactionClient, "feat
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
+async function cardReplacementRequest(userId: string, db: Pick<Prisma.TransactionClient, "featureConfig"> = prisma) {
+  const row = await db.featureConfig.findUnique({ where: { guildId_feature: {
+    guildId: BUILD_A_HOUSE_GUILD_ID, feature: `buildahouse-relink:${userId}`,
+  } } });
+  return row?.config;
+}
+
 async function saveCard(actor: { userId: string; displayName: string }, card: StatCard): Promise<void> {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -61,7 +68,9 @@ async function saveCard(actor: { userId: string; displayName: string }, card: St
         const where = { guildId_userId: { guildId: BUILD_A_HOUSE_GUILD_ID, userId: actor.userId } };
         const previous = await tx.buildAHouseStats.findUnique({ where });
         const resetAt = await submissionResetAt(tx);
-        validateCardUpdate(previous, card, Date.now(), resetAt);
+        const grant = await cardReplacementRequest(actor.userId, tx);
+        const approvedRelink = previous?.cardId !== card.cardId && canReplaceLinkedCard(previous, grant);
+        validateCardUpdate(previous, card, Date.now(), resetAt, approvedRelink);
         const data = {
           cardId: card.cardId, collection: card.collection, homeValue: card.homeValue,
           playtimeSeconds: card.playtimeSeconds, goldBalance: card.goldBalance,
@@ -92,9 +101,10 @@ export async function submitStatCard(input: {
     try {
       const previous = await prisma.buildAHouseStats.findUnique({
         where: { guildId_userId: { guildId: BUILD_A_HOUSE_GUILD_ID, userId: input.userId } },
-        select: { submittedAt: true },
+        select: { submittedAt: true, cardId: true },
       });
-      validateSubmissionCooldown(previous, Date.now(), await submissionResetAt());
+      const grant = await cardReplacementRequest(input.userId);
+      if (!canReplaceLinkedCard(previous, grant)) validateSubmissionCooldown(previous, Date.now(), await submissionResetAt());
       const bytes = await downloadStatCardImage(input.attachment);
       const card = decodeStatCard(await recognizeStatCard(bytes));
       const config = await getBuildAHouseConfig(BUILD_A_HOUSE_GUILD_ID);
