@@ -3,7 +3,7 @@ import { prisma, Prisma, getBuildAHouseConfig } from "@rukus/db";
 import type { Attachment, Message } from "discord.js";
 import { log } from "../../lib/logger.js";
 import { BUILD_A_HOUSE_GUILD_ID, formatLeaderboardValue } from "./settings.js";
-import { CardError, decodeStatCard, validateCardUpdate, type StatCard } from "./card.js";
+import { CardError, decodeStatCard, validateCardUpdate, validateSubmissionCooldown, type StatCard } from "./card.js";
 
 const MAX_BYTES = 8 * 1024 * 1024;
 let queue: Promise<unknown> = Promise.resolve();
@@ -80,13 +80,18 @@ export async function submitStatCard(input: {
   pending++;
   const job = queue.then(async () => {
     try {
+      const previous = await prisma.buildAHouseStats.findUnique({
+        where: { guildId_userId: { guildId: BUILD_A_HOUSE_GUILD_ID, userId: input.userId } },
+        select: { submittedAt: true },
+      });
+      validateSubmissionCooldown(previous);
       const bytes = await downloadStatCardImage(input.attachment);
       const card = decodeStatCard(await recognizeStatCard(bytes));
       const config = await getBuildAHouseConfig(BUILD_A_HOUSE_GUILD_ID);
       if (config.submissionChannelId !== input.channelId) throw new CardError("The submission channel changed. Please use the new channel.");
       await input.ensureSource?.();
       await saveCard(input, card);
-      await input.reply(`Your Build A House stats are saved!\nCollection: ${card.collection}\nHome value: ${formatLeaderboardValue("homeValue", card.homeValue)}\nPlaytime: ${formatLeaderboardValue("playtimeSeconds", card.playtimeSeconds)}\nGold balance: ${formatLeaderboardValue("goldBalance", card.goldBalance)}\nUse /leaderboard to see the rankings.`);
+      await input.reply(`Your Build A House stats are saved!\nCollection: ${card.collection}\nHome value: ${formatLeaderboardValue("homeValue", card.homeValue)}\nPlaytime: ${formatLeaderboardValue("playtimeSeconds", card.playtimeSeconds)}\nGold balance: ${formatLeaderboardValue("goldBalance", card.goldBalance)}\nUse /leaderboard to see the rankings. You can update your stats again in 24 hours.`);
     } catch (error) {
       log.warn("Build A House stat-card processing failed", error);
       await input.reply(error instanceof CardError ? error.message.slice(0, 600) : "Couldn't save the card right now. Please try again later.").catch(() => {});
