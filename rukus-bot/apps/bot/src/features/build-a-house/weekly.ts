@@ -22,10 +22,17 @@ export async function refreshWeeklyLeaderboard(client: Client) {
     if (!config.leaderboardChannelId) return;
     const stateKey = { guildId: BUILD_A_HOUSE_GUILD_ID, feature: "buildahouse-weekly-state" };
     const stored = await tx.featureConfig.findUnique({ where: { guildId_feature: stateKey } });
-    const state = (stored?.config ?? {}) as { channelId?: string; messageId?: string; week?: string };
+    const state = (stored?.config ?? {}) as { channelId?: string; messageId?: string; week?: string; handledRequestId?: string };
+    const requestRow = await tx.featureConfig.findUnique({ where: { guildId_feature: {
+      guildId: BUILD_A_HOUSE_GUILD_ID, feature: "buildahouse-refresh-request",
+    } } });
+    const request = (requestRow?.config ?? {}) as { requestId?: string; channelId?: string };
+    const requestId = typeof request.requestId === "string" && request.requestId && request.channelId === config.leaderboardChannelId
+      ? request.requestId : undefined;
+    const manualRefresh = requestId && requestId !== state.handledRequestId;
     const now = new Date();
     const week = leaderboardWeek(now);
-    if (state.channelId === config.leaderboardChannelId && state.week === week) return;
+    if (state.channelId === config.leaderboardChannelId && state.week === week && !manualRefresh) return;
     const channel = await client.channels.fetch(config.leaderboardChannelId);
     if (!channel?.isSendable() || !("guildId" in channel) || channel.guildId !== BUILD_A_HOUSE_GUILD_ID) throw new Error("Invalid Build A House leaderboard channel");
     const embeds = [];
@@ -45,7 +52,7 @@ export async function refreshWeeklyLeaderboard(client: Client) {
       }
     }
     if (!messageId) messageId = (await channel.send(payload)).id;
-    const next = { channelId: channel.id, messageId, week };
+    const next = { channelId: channel.id, messageId, week, ...(requestId ? { handledRequestId: requestId } : state.handledRequestId ? { handledRequestId: state.handledRequestId } : {}) };
     await tx.featureConfig.upsert({ where: { guildId_feature: stateKey }, create: { ...stateKey, config: next }, update: { config: next } });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 45000, maxWait: 5000 });
 }

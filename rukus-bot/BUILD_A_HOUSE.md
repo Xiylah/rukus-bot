@@ -76,3 +76,7 @@ New in-game cards retain the centered username and grouped BAH2 codes, and inclu
 ## Rolling 24-hour update limit
 
 Each Discord player can successfully submit or update their stats once every 24 hours, measured from the persisted server-side `submittedAt` timestamp. This applies to every metric together and both direct uploads and the modal. Failed uploads do not consume the daily allowance. A precheck rejects early uploads before download/OCR, and the serializable save transaction rechecks the limit to prevent concurrent bypasses. The limit survives bot restarts and shows the next allowed update using Discord timestamps. The separate 15-second anti-spam guard remains. Existing successful submissions count toward the limit. No new migration is needed. Republish the submission panel to display the updated 24-hour footer.
+
+## Manual leaderboard refresh
+
+After saving the weekly leaderboard channel, press **Refresh leaderboard now** on the Build A House dashboard. An authorized dashboard user can queue an immediate refresh of the same four top-10 embeds from the latest saved player submissions. The online bot processes the request within a minute; queued requests survive restarts, and failures are retried. This does not submit new cards, reset stats, bypass the daily player submission limit, or change the Sunday schedule. Requests for an old channel are ignored after the channel changes. The bot acknowledges a request only after successfully posting/editing the message and saving its state. Deploy both bot and dashboard; no migration is needed.

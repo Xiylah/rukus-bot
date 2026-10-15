@@ -1,5 +1,6 @@
 import {
   FEATURE_SCHEMAS,
+  BUILD_A_HOUSE_GUILD_ID,
   type BuildAHouseConfig,
   type TicketConfig,
   type FormsConfig,
@@ -105,6 +106,16 @@ export const getBuildAHouseConfig = (guildId: string) =>
   readConfig<BuildAHouseConfig>(guildId, "buildahouse");
 export const setBuildAHouseConfig = (guildId: string, config: unknown) =>
   writeConfig<BuildAHouseConfig>(guildId, "buildahouse", config);
+
+export async function requestBuildAHouseLeaderboardRefresh(guildId: string, channelId: string): Promise<void> {
+  if (guildId !== BUILD_A_HOUSE_GUILD_ID) throw new Error("Build A House is unavailable in this server");
+  const now = new Date().toISOString();
+  const { error } = await getSupabase().from(TABLE).upsert({
+    id: newId(), guildId, feature: "buildahouse-refresh-request",
+    config: { requestId: newId(), channelId, requestedAt: now }, updatedAt: now,
+  }, { onConflict: "guildId,feature" });
+  if (error) throw new Error(`Leaderboard refresh request failed: ${error.message}`);
+}
 
 export const getTicketConfig = (guildId: string) =>
   readConfig<TicketConfig>(guildId, "tickets");

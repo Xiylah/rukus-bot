@@ -48,17 +48,20 @@ test("four top-ten embeds stay within Discord limits and preserve large gold val
 });
 
 
-test("weekly refresh posts once, survives restarts, edits next week and retries permission failures", async () => {
+test("weekly and manual refreshes edit the same message, survive restarts and retry failures", async () => {
   const { prisma } = await import("@rukus/db");
   let state: Record<string, string> | undefined;
   let sends = 0, edits = 0, reads = 0;
+  let request: { requestId: string; channelId: string } | undefined;
   let locked = true, deleted = false, denied = false;
   const channelId = "123456789012345678";
   const tx = {
     $queryRaw: async () => [{ locked }],
     featureConfig: {
       findUnique: async (args: any) => args.where.guildId_feature.feature === "buildahouse"
-        ? { config: { leaderboardChannelId: channelId } } : state ? { config: state } : null,
+        ? { config: { leaderboardChannelId: channelId } }
+        : args.where.guildId_feature.feature === "buildahouse-refresh-request" ? request ? { config: request } : null
+        : state ? { config: state } : null,
       upsert: async (args: any) => { state = args.update.config; },
     },
     buildAHouseStats: { findMany: async (args: any) => {
@@ -95,5 +98,25 @@ test("weekly refresh posts once, survives restarts, edits next week and retries 
     denied = false; deleted = true;
     await refreshWeeklyLeaderboard(client); assert.equal(sends, 2);
     assert.equal(state!.week, leaderboardWeek());
+    deleted = false;
+    request = { requestId: "manual-1", channelId };
+    await refreshWeeklyLeaderboard(client);
+    assert.equal(edits, 2); assert.equal(sends, 2);
+    assert.equal(state!.handledRequestId, "manual-1");
+    await refreshWeeklyLeaderboard(client);
+    assert.equal(edits, 2);
+    request = { requestId: "manual-2", channelId };
+    denied = true;
+    await assert.rejects(refreshWeeklyLeaderboard(client));
+    assert.equal(state!.handledRequestId, "manual-1");
+    denied = false;
+    await refreshWeeklyLeaderboard(client);
+    assert.equal(edits, 3); assert.equal(state!.handledRequestId, "manual-2");
+    request = { requestId: "manual-wrong-channel", channelId: "999999999999999999" };
+    await refreshWeeklyLeaderboard(client);
+    assert.equal(edits, 3);
+    state!.week = "2000-01-01";
+    await refreshWeeklyLeaderboard(client);
+    assert.equal(edits, 4); assert.equal(state!.week, leaderboardWeek());
   } finally { prisma.$transaction = original; }
 });

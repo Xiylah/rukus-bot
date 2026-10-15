@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import type { BuildAHouseConfig } from "@rukus/shared";
 import { Select, type Option } from "@/components/Pickers";
-import { publishSubmissionPanel, saveLeaderboardSettings } from "./actions";
+import { publishSubmissionPanel, saveLeaderboardSettings, refreshLeaderboardNow } from "./actions";
 
 export function LeaderboardSettings({ guildId, initial, channels }: {
   guildId: string; initial: BuildAHouseConfig; channels: Option[];
@@ -11,6 +11,7 @@ export function LeaderboardSettings({ guildId, initial, channels }: {
   const [channel, setChannel] = useState(initial.submissionChannelId);
   const [leaderboardChannel, setLeaderboardChannel] = useState(initial.leaderboardChannelId);
   const [savedChannel, setSavedChannel] = useState(initial.submissionChannelId);
+  const [savedLeaderboardChannel, setSavedLeaderboardChannel] = useState(initial.leaderboardChannelId);
   const [pending, startTransition] = useTransition();
   const [status, setStatus] = useState("");
   return <div className="card space-y-5">
@@ -25,7 +26,7 @@ export function LeaderboardSettings({ guildId, initial, channels }: {
       startTransition(async () => {
         try {
           const result = await saveLeaderboardSettings(guildId, { submissionChannelId: channel, leaderboardChannelId: leaderboardChannel });
-          if (result.ok) setSavedChannel(channel);
+          if (result.ok) { setSavedChannel(channel); setSavedLeaderboardChannel(leaderboardChannel); }
           setStatus(result.ok ? "Saved." : result.error ?? "Couldn't save.");
         } catch { setStatus("Couldn't save. Please try again."); }
       });
@@ -39,6 +40,16 @@ export function LeaderboardSettings({ guildId, initial, channels }: {
       });
     }}>Publish submission panel</button>
     <p className="text-sm text-zinc-400">Save the submission channel first, then publish. The green Submit Stat Card button opens a private screenshot upload form.</p>
+    <button className="btn-primary" disabled={pending || !leaderboardChannel || leaderboardChannel !== savedLeaderboardChannel} onClick={() => {
+      setStatus("");
+      startTransition(async () => {
+        try {
+          const result = await refreshLeaderboardNow(guildId);
+          setStatus(result.ok ? "Refresh queued. The bot will update the leaderboard within a minute while online." : result.error ?? "Couldn't request a refresh.");
+        } catch { setStatus("Couldn't request a refresh. Please try again."); }
+      });
+    }}>Refresh leaderboard now</button>
+    <p className="text-sm text-zinc-400">Save the leaderboard channel first. Refresh all four top-10 embeds using players’ latest submitted cards, without waiting for Sunday. This does not change their 24-hour submission limit.</p>
     <p role="status" className="text-sm text-zinc-300">{status}</p>
   </div>;
 }
