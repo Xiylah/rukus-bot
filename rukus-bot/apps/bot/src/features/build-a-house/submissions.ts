@@ -12,12 +12,12 @@ let configUntil = 0;
 let configuredChannel: string | undefined;
 const cooldowns = new Map<string, number>();
 
-async function download(attachment: Attachment): Promise<Buffer> {
+export async function downloadStatCardImage(attachment: Attachment): Promise<Buffer> {
   if (!attachment.width || !attachment.height || attachment.width * attachment.height > 20_000_000 || attachment.size > MAX_BYTES || !["image/png", "image/jpeg"].includes(attachment.contentType ?? "")) {
     throw new CardError("Upload one PNG or JPEG screenshot/photo, up to 8 MB and 20 megapixels.");
   }
   const url = new URL(attachment.url);
-  if (url.protocol !== "https:" || url.port || url.username || !["cdn.discordapp.com", "media.discordapp.net"].includes(url.hostname) || !url.pathname.startsWith("/attachments/")) {
+  if (url.protocol !== "https:" || url.port || url.username || url.password || !["cdn.discordapp.com", "media.discordapp.net"].includes(url.hostname) || !["/attachments/", "/ephemeral-attachments/"].some((path) => url.pathname.startsWith(path))) {
     throw new CardError("Please upload the image directly to Discord.");
   }
   const response = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(15000) });
@@ -80,7 +80,7 @@ export async function submitStatCard(input: {
   pending++;
   const job = queue.then(async () => {
     try {
-      const bytes = await download(input.attachment);
+      const bytes = await downloadStatCardImage(input.attachment);
       const card = decodeStatCard(await recognizeStatCard(bytes));
       const config = await getBuildAHouseConfig(BUILD_A_HOUSE_GUILD_ID);
       if (config.submissionChannelId !== input.channelId) throw new CardError("The submission channel changed. Please use the new channel.");
