@@ -14,6 +14,24 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model BuildAHouseStats {
+  guildId            String
+  userId             String
+  fortniteDisplayName String @db.VarChar(64)
+  collection         Int
+  homeValue          BigInt
+  playtimeSeconds    BigInt
+  totalMoneyEarned   BigInt
+  submittedAt        DateTime
+
+  @@id([guildId, userId])
+  @@index([guildId, collection(sort: Desc), userId])
+  @@index([guildId, homeValue(sort: Desc), userId])
+  @@index([guildId, playtimeSeconds(sort: Desc), userId])
+  @@index([guildId, totalMoneyEarned(sort: Desc), userId])
+  @@schema("rukus")
+}
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")

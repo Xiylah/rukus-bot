@@ -7,6 +7,8 @@ import {
 import type { Command } from "../lib/types.js";
 import { levelingConfig } from "../lib/configCache.js";
 import { getLeaderboard } from "../features/leveling/service.js";
+import { isBuildAHouseGuild } from "../features/build-a-house/settings.js";
+import { showBuildAHouseLeaderboard } from "../features/build-a-house/leaderboard.js";
 import {
   leaderboardEmbed,
   leaderboardButtons,
@@ -32,6 +34,11 @@ const command: Command = {
 
   execute: async (interaction: ChatInputCommandInteraction) => {
     if (!interaction.inCachedGuild()) return;
+
+    if (isBuildAHouseGuild(interaction.guildId)) {
+      await showBuildAHouseLeaderboard(interaction);
+      return;
+    }
 
     const config = await levelingConfig(interaction.guildId);
     if (!config.enabled) {

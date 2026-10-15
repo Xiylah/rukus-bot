@@ -1,3 +1,4 @@
+import { getBuildAHouseConfig } from "@rukus/supabase";
 import {
   getTicketConfig,
   getFormsConfig,
@@ -133,7 +134,9 @@ export default async function GuildOverview({
   const moderationOn =
     moderation.drugFilter || moderation.bannedWordsEnabled || !!moderation.imageOnlyChannelId;
 
+  const buildAHouse = guildId === "700382994946588814" ? await getBuildAHouseConfig(guildId) : null;
   const state: Record<FeatureKey, ModuleState> = {
+    buildahouse: { enabled: Boolean(buildAHouse?.submissionChannelId), detail: buildAHouse?.submissionChannelId ? "Submission channel configured" : "Choose a submission channel" },
     tickets: {
       enabled: tickets.enabled,
       detail: `${tickets.supportRoleIds.length} support role(s)`,
@@ -292,7 +295,7 @@ export default async function GuildOverview({
       </div>
 
       {MODULE_CATEGORIES.map((category) => {
-        const mods = MODULES.filter((m) => m.category === category);
+        const mods = MODULES.filter((m) => m.category === category && (!m.guildId || m.guildId === guildId));
         if (mods.length === 0) return null;
         return (
           <section key={category} className="mb-8">
