@@ -20,6 +20,7 @@ test("a rendered stat card passes through the actual image reader and decoder", 
     const card = decodeStatCard(read);
     assert.equal(card.collection, 402);
     assert.equal(card.homeValue, 1800000n);
+    assert.equal(card.houseLikes, 3661n);
     assert.equal(card.goldBalance, 450000n);
   } finally { await stopStatCardReader(); }
 });
@@ -50,6 +51,7 @@ test("centered username and grouped letter-number codes decode from a rendered c
     try { card = decodeStatCard(read); } catch (error) { throw new Error(`${String(error)}\nOCR output: ${read}`); }
     assert.equal(card.goldBalance, 450000n);
     assert.equal(card.homeValue, 1800000n);
+    assert.equal(card.houseLikes, 3661n);
     assert.equal(card.displayName, "ExamplePlayer");
   } finally { await stopStatCardReader(); }
 });
@@ -63,6 +65,7 @@ test("whole-game screenshot with heavy code lettering uses the machine strip", {
     const card = decodeStatCard(text);
     assert.equal(card.goldBalance, 2316918508n);
     assert.equal(card.homeValue, 166907559750n);
+    assert.equal(card.houseLikes, 41n);
     assert.equal(card.collection, 1024);
     assert.equal(card.displayName, "Rukus");
   } finally { await stopStatCardReader(); }
