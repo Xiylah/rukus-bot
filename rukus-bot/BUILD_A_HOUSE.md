@@ -1,52 +1,49 @@
 # Build A House Leaderboard
 
-`/leaderboard` opens **Build A House Leaderboard** exclusively in Discord server
-`700382994946588814`. In every other server, the existing XP handler remains in use.
-The target server does not need Discord leveling enabled to use this leaderboard.
+`/leaderboard` opens **Build A House Leaderboard** only in server `700382994946588814`. Other servers retain XP rankings. The selector offers collection, home value, playtime, and **Gold Balance**. Gold is the existing saved `Money` balance. Candy, tickets, tokens, pizza-specific stats, and lifetime earnings are not ranked as gold. Spending gold can lower the ranking.
 
-The existing optional `page` argument is supported. A selector switches between
-collection, home value, playtime, and total money earned. Only the person who opened
-the view can change its selection or page; controls expire after five minutes.
-Rankings use the latest submitted stats and show each submission's age.
+## Player flow
 
-The target server has a **Build A House Leaderboard** dashboard page with a
-submission-channel picker. Other servers do not see it, and the server action
-rejects writes for other guilds. The selected channel is stored under the
-`buildahouse` feature config. A future screenshot handler must read that setting;
-changing it does not require a code edit or redeployment.
+1. Open **Leaderboard Stat Card** using the new button in the island.
+2. Capture the whole card in a clear screenshot or upright photo.
+3. Upload one PNG or JPEG to the dashboard's selected stat-card channel.
+4. The bot reads the card, saves a snapshot, and replies. Run `/leaderboard`.
 
-## Deployment
+No code-entry step is needed. A persistent random card identity is linked to the submitting Discord user on first upload. A card cannot be claimed by two Discord accounts, and an account cannot silently switch identities. Incorrect first claims require moderator review and a database correction.
 
-Generate the Prisma client and apply the additive schema change to the bot's
-`rukus` schema using the existing database deployment procedure, then deploy the
-bot. No commands or live database changes have been deployed by this change.
-The bot requires the new `BuildAHouseStats` table before it can display rankings.
-Existing XP data and the shared database's `public` schema are unaffected.
+## Dashboard and deployment
 
-## Submission integration still required
+Only the target server has the **Build A House Leaderboard** dashboard page. Choose a dedicated text channel where the bot can view messages, read history, and reply. The existing Message Content intent must be enabled. Leave the channel unset to disable uploads. Settings refresh within five seconds; queued jobs recheck the setting before saving.
 
-This change implements server routing, storage, and the leaderboard view. It does
-**not** implement the in-game stat card, screenshot decoding and identity checks,
-validation, or new lifetime counters. Until that submission flow is implemented,
-the leaderboard has no entries. Do not import arbitrary screenshots as verified
-player data.
+Before deploying:
 
-The intended flow is: open the in-game card, capture it, and upload it to the
-Discord bot, with no separate code-entry step. The card should carry a versioned
-machine-readable payload and readable stat labels. Corner markers can help image
-alignment but cannot prove authenticity. A checksum can detect damaged captures,
-but cannot stop an edited or forged card. Screenshot ownership and Epic account
-ownership must not be treated as equivalent.
+1. Back up the bot database and apply `packages/db/prisma/build_a_house.sql`. It creates only the bot's `rukus` table and does not change the shared `public` schema.
+2. Run `pnpm db:generate` and deploy the bot and dashboard through the existing process.
+3. Select the submission channel in the dashboard.
+4. Push/launch the matching UEFN changes and submit a real in-game screenshot.
 
-The submission flow should upsert one row per `(guildId, userId)` after decoding
-and applying the chosen validation and moderation rules. `homeValue` must
-come from the game's existing home-value calculation. Store full integer values,
-not rounded HUD abbreviations. `playtimeSeconds`, `homeValue`, and
-`totalMoneyEarned` use Postgres bigint; collection uses an integer. Reject negative
-values and out-of-range values before saving. Set `submittedAt` server-side.
+The additive SQL also supports the earlier unreleased prototype. A legacy `totalMoneyEarned` column, if present, is retained with a default so old data is not dropped. The current code uses `goldBalance` only.
 
-Test the pure routing and formatting rules with:
+OCR uses the already-installed Tesseract library; no paid OCR service or new bot credentials are needed. Its host needs outbound HTTPS to download Discord attachments and English recognition data on first use. Language data is cached in the OS temporary directory. Images are processed in memory, not stored in the repository or stats table. The original upload remains in Discord.
+
+## Island and card contract
+
+The native Verse card is implemented in `LeaderboardCard.verse`. The placed `leaderboard_card_device` references the existing PropPlacer and a new button. Their editor labels are **Build A House Stat Card Controller** and **Build A House - Open Stat Card**, in the `Leaderboard` folder.
+
+The `BAH1` data lines carry `ID` (two nine-digit integers), `COLLECTION`, `HOME`, `PLAYTIME` in seconds, `GOLD`, `STAMP` (epoch seconds), and `CHECK`. Full integers are used instead of abbreviated HUD numbers. The checksum starts at 17 and folds the seven values in that order using `(check * 131 + value % 1000003) % 1000003`.
+
+Home value uses PropPlacer's existing `LiveHomeValue`. Collection counts true saved entries from all seven variant books within the current furniture catalog; it does not change the collection-book UI. Playtime starts after this update, with no fabricated historical totals. It is checkpointed every 30 seconds and flushed when opening a card. Abrupt departures may lose the uncheckpointed interval. Offline time is excluded. Gold comes directly from the saved `Money` field. No earnings hook is added to `save_functions.verse`.
+
+Cards expire after 24 hours. Duplicate/older captures, decreasing playtime, damaged checksums, malformed numbers, and out-of-range values are rejected. Gold, home value, and collection may decrease in a newer snapshot. Unique identity constraints and serializable transactions protect concurrent submissions. Each image is limited to 8 MB and 20 megapixels. At most four jobs are queued, with a 15-second per-user cooldown and a 30-second OCR timeout. Only direct Discord attachments are downloaded.
+
+## Trust and validation limits
+
+These are **screenshot-submitted stats**, not server-authenticated Fortnite data. The checksum detects reading damage but does not prevent intentional forgery. The card identity prevents reuse after first linking; it does not prove Epic account ownership. Suspicious entries need moderator review.
+
+Validation performed: Verse compilation, all workspace typechecks, six routing/decoder/formatting tests, and a generated-image OCR test. A live Discord/database upload and a real Fortnite capture still require deployment/playtesting.
 
 ```sh
-pnpm --filter @rukus/bot exec tsx --test tests/build-a-house.test.ts
+pnpm -r typecheck
+pnpm --filter @rukus/bot exec tsx --test tests/build-a-house.test.ts tests/stat-card.test.ts
+TEST_CARD_OCR=1 pnpm --filter @rukus/bot exec tsx --test tests/stat-card-ocr.test.ts
 ```

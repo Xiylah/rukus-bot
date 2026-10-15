@@ -1,5 +1,6 @@
 import {
   FEATURE_SCHEMAS,
+  type BuildAHouseConfig,
   ticketConfigSchema,
   formsConfigSchema,
   translationConfigSchema,
@@ -100,6 +101,9 @@ async function writeConfig<T>(
   });
   return parsed as T;
 }
+
+export const getBuildAHouseConfig = (guildId: string) =>
+  readConfig<BuildAHouseConfig>(guildId, "buildahouse");
 
 export const getTicketConfig = (guildId: string) =>
   readConfig<TicketConfig>(guildId, "tickets");

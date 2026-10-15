@@ -10,7 +10,7 @@ export const leaderboardMetrics = {
   collection: "Collection",
   homeValue: "Home value",
   playtimeSeconds: "Playtime",
-  totalMoneyEarned: "Total money earned",
+  goldBalance: "Gold balance",
 } as const;
 
 export type LeaderboardMetric = keyof typeof leaderboardMetrics;
@@ -25,6 +25,6 @@ export function formatLeaderboardValue(metric: LeaderboardMetric, value: bigint 
     return `${integer / 3600n}h ${(integer % 3600n) / 60n}m`;
   }
   const formatted = integer.toLocaleString("en-US");
-  return metric === "homeValue" || metric === "totalMoneyEarned"
+  return metric === "homeValue" || metric === "goldBalance"
     ? `$${formatted}` : `${formatted} collected`;
 }

@@ -15,20 +15,23 @@ generator client {
 }
 
 model BuildAHouseStats {
+  cardId             String? @db.VarChar(18)
+  capturedAt         DateTime?
   guildId            String
   userId             String
   fortniteDisplayName String @db.VarChar(64)
   collection         Int
   homeValue          BigInt
   playtimeSeconds    BigInt
-  totalMoneyEarned   BigInt
+  goldBalance   BigInt
   submittedAt        DateTime
 
   @@id([guildId, userId])
+  @@unique([guildId, cardId])
   @@index([guildId, collection(sort: Desc), userId])
   @@index([guildId, homeValue(sort: Desc), userId])
   @@index([guildId, playtimeSeconds(sort: Desc), userId])
-  @@index([guildId, totalMoneyEarned(sort: Desc), userId])
+  @@index([guildId, goldBalance(sort: Desc), userId])
   @@schema("rukus")
 }
 
