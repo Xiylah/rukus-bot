@@ -83,6 +83,17 @@ export async function saveFormsConfig(
   const currentForms = await getFormsConfig(guildId);
   parsed.data.panelChannelId = currentForms.panelChannelId;
   parsed.data.panelMessageId = currentForms.panelMessageId;
+  // Each form's OWN panel is tracked per form, and the publish action owns
+  // those fields too. Saving without this wrote back the values from when the
+  // page loaded, so a save after publishing wiped the id and the next publish
+  // posted a duplicate panel instead of editing the live one.
+  const formPanels = new Map(
+    currentForms.forms.map((f) => [f.id, { panelChannelId: f.panelChannelId, panelMessageId: f.panelMessageId }]),
+  );
+  parsed.data.forms = parsed.data.forms.map((f) => ({
+    ...f,
+    ...(formPanels.get(f.id) ?? { panelChannelId: undefined, panelMessageId: undefined }),
+  }));
   await setFormsConfig(guildId, parsed.data);
   revalidatePath(`/dashboard/${guildId}/forms`);
   revalidatePath(`/dashboard/${guildId}`);
