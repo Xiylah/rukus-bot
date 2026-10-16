@@ -87,12 +87,21 @@ export async function sweepReminders(client: Client): Promise<void> {
         if (next <= now) {
           next += Math.ceil((now - next) / stepMs) * stepMs;
         }
-        await prisma.reminder.update({
-          where: { id: r.id },
+        // Conditional on the dueAt we read: an atomic claim. The interval does
+        // not wait for a slow pass, so two passes (or two processes during a
+        // deploy) can hold the same due row; only the one whose update matches
+        // delivers, the other sees count 0 and skips. A plain update/delete here
+        // let both deliver, and a second delete threw and aborted the pass.
+        const claimed = await prisma.reminder.updateMany({
+          where: { id: r.id, dueAt: r.dueAt },
           data: { dueAt: new Date(next) },
         });
+        if (claimed.count === 0) continue;
       } else {
-        await prisma.reminder.delete({ where: { id: r.id } });
+        const claimed = await prisma.reminder.deleteMany({
+          where: { id: r.id, dueAt: r.dueAt },
+        });
+        if (claimed.count === 0) continue;
       }
 
       await deliver(client, r);
