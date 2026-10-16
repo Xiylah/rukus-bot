@@ -7,6 +7,7 @@ import {
 import { COLORS, type LoggingConfig } from "@rukus/shared";
 import { loggingConfig } from "../../lib/configCache.js";
 import { log as botLog } from "../../lib/logger.js";
+import { admit, summaryLines } from "./floodGuard.js";
 
 /**
  * The single entry point every logging event goes through.
@@ -145,6 +146,30 @@ export async function emit(
       guild.channels.cache.get(channelId) ??
       (await guild.channels.fetch(channelId).catch(() => null));
     if (!channel?.isSendable()) return;
+
+    // Flood guard: a mass action (/role all, a lockdown, a raid ban wave) can
+    // produce thousands of entries at once, which would queue for hours in one
+    // channel. Over the per-channel budget, entries are counted and reported in
+    // one summary when the burst ends.
+    const admitted = admit(`${guild.id}:${channelId}`, event, (counts) => {
+      const summary = new EmbedBuilder()
+        .setColor(COLORS.warning)
+        .setTitle("⚠️ Busy moment: some entries were summarized")
+        .setDescription(
+          [
+            "Too many events happened at once to log each one, so these were counted instead:",
+            "",
+            ...summaryLines(counts),
+            "",
+            "-# This happens during mass actions like giving a role to everyone, a lockdown, or a raid.",
+          ].join("\n"),
+        )
+        .setTimestamp();
+      void channel
+        .send({ embeds: [summary], allowedMentions: { parse: [] } })
+        .catch((err) => botLog.warn(`Log flood summary failed: ${String(err)}`));
+    });
+    if (!admitted) return;
 
     // Logs must never ping. A deleted message full of @everyone would otherwise
     // re-fire the ping in the log channel.
