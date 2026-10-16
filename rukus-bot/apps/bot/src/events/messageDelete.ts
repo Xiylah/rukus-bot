@@ -15,6 +15,7 @@ import {
 } from "../features/logging/index.js";
 import { removeEntryForMessage } from "../features/contests/service.js";
 import { log } from "../lib/logger.js";
+import { queueUncachedDelete } from "../features/logging/uncachedDeletes.js";
 
 const handler: EventHandler<Events.MessageDelete> = {
   name: Events.MessageDelete,
@@ -42,6 +43,16 @@ const handler: EventHandler<Events.MessageDelete> = {
         content: message.content,
       })
     ) {
+      return;
+    }
+
+    // A message the bot never saw arrives with no author and no text. Logging
+    // each one floods the channel with empty "Unknown user" entries whenever old
+    // messages are cleared out, so they are batched into one summary instead.
+    // This also skips the executor lookup below: with no author to match it
+    // would pick ANY recent delete in the audit log and could blame the wrong mod.
+    if (message.partial && !message.author && !message.content) {
+      queueUncachedDelete(message.guild, message.channelId, message.id);
       return;
     }
 
