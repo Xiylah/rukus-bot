@@ -4,10 +4,17 @@ export const BAH_FILE_ID = "bah:photo";
 
 export function buildAHouseSubmissionPanel() {
   return {
-    embeds: [{ title: "Build A House Leaderboard", color: 0x81947a,
-      image: { url: "https://raw.githubusercontent.com/Xiylah/rukus-bot/main/rukus-bot/apps/web/public/build-a-house/stat-card-guide-v3.png" },
-      description: "**Submit your stat card**\n\n1. Open your leaderboard stat card in Build A House.\n2. Take a clear screenshot with the whole card visible.\n3. Press **Submit Stat Card** below and upload your PNG or JPEG.\n\nYour collection, home value, house likes and saved gold balance will update after the card is read.",
-      footer: { text: "One image per submission • Maximum 8 MB • One successful update every 24 hours" } }],
+    embeds: [
+      { title: "Build A House Leaderboard", color: 0x81947a,
+        description: "**1. Open your stat card**",
+        image: { url: "https://raw.githubusercontent.com/Xiylah/rukus-bot/main/rukus-bot/apps/web/public/build-a-house/stat-card-open-wide.png" } },
+      { title: "2. Capture your card", color: 0x81947a,
+        description: "Keep the whole card visible.",
+        image: { url: "https://raw.githubusercontent.com/Xiylah/rukus-bot/main/rukus-bot/apps/web/public/build-a-house/stat-card-capture-wide.png" } },
+      { title: "3. Submit your card", color: 0x81947a,
+        description: "Press **Submit Stat Card** below to upload your PNG or JPEG.",
+        footer: { text: "One image per submission • Maximum 8 MB • One successful update every 24 hours" } },
+    ],
     components: [{ type: 1, components: [{ type: 2, custom_id: BAH_SUBMIT_ID, label: "Submit Stat Card", emoji: { name: "📸" }, style: 3 }] }],
     allowed_mentions: { parse: [] },
   };

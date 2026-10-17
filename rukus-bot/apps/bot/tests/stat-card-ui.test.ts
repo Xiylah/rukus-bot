@@ -9,9 +9,11 @@ test("submission button opens a modal with exactly one required file", () => {
   const panel = buildAHouseSubmissionPanel();
   assert.equal(panel.components[0].components[0].custom_id, BAH_SUBMIT_ID);
   assert.equal(panel.components[0].components[0].style, 3);
-  assert.equal(panel.embeds[0].image.url, "https://raw.githubusercontent.com/Xiylah/rukus-bot/main/rukus-bot/apps/web/public/build-a-house/stat-card-guide-v3.png");
-  assert.match(panel.embeds[0].description, /whole card visible/);
-  assert.match(panel.embeds[0].footer.text, /24 hours/);
+  assert.equal(panel.embeds.length, 3);
+  assert.equal(panel.embeds[0].image?.url, "https://raw.githubusercontent.com/Xiylah/rukus-bot/main/rukus-bot/apps/web/public/build-a-house/stat-card-open-wide.png");
+  assert.equal(panel.embeds[1].image?.url, "https://raw.githubusercontent.com/Xiylah/rukus-bot/main/rukus-bot/apps/web/public/build-a-house/stat-card-capture-wide.png");
+  assert.match(panel.embeds[1].description, /whole card visible/);
+  assert.match(panel.embeds[2].footer?.text ?? "", /24 hours/);
   const modal = statCardUploadModal().toJSON();
   const label = modal.components[0];
   assert.equal(label.type, 18);
